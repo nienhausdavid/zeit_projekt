@@ -16,14 +16,15 @@ zeit_projekt/
 ├── README.md
 └── zeit_projekt/
     ├── __init__.py           # Versionsnummer
-    ├── hooks.py              # doctype_js + Install-Hooks
+    ├── hooks.py              # doctype_js + doc_events + Install-Hooks
     ├── install.py            # Custom Fields anlegen / entfernen
+    ├── sales_order.py        # Projektanlage in before_submit (serverseitig)
     ├── modules.txt           # Modulname "Zeit Projekt"
     ├── patches.txt
     ├── public/js/
     │   ├── sales_invoice.js  # Import-Knopf und Positionslogik
-    │   └── sales_order.js    # Projektanlage beim Buchen
-    └── zeit_projekt/         # Modulordner (für spätere DocTypes)
+    │   └── sales_order.js    # Hinweise + Sprung zum Projekt nach dem Buchen
+    └── zeit_projekt/         # Modulordner (für DocTypes)
         └── __init__.py
 ```
 
@@ -114,4 +115,4 @@ Dann noch einrichten:
 
 - Custom Fields, die du später über die Oberfläche anlegst, gehören nicht automatisch der App. Trage sie in `CUSTOM_FIELDS` in `install.py` nach, dann werden sie beim Deinstallieren mitentfernt.
 - Für Property Setter (geänderte Feldeigenschaften am Standard) gilt dasselbe: entweder im `after_install` erzeugen oder als Fixture exportieren und dabei das Modul auf „Zeit Projekt" setzen.
-- Serverseitige Logik (etwa die Projektanlage) ließe sich später von JavaScript nach `doc_events` verschieben. Das wäre robuster, weil es auch bei API-Zugriffen und Massenbuchungen greift.
+- ~~Serverseitige Logik (etwa die Projektanlage) ließe sich später von JavaScript nach `doc_events` verschieben.~~ Erledigt: Die Projektanlage läuft in `sales_order.py` als `before_submit`-Hook, im selben Request wie das Buchen. Grund: Die alte JS-Variante rief `frappe.client.insert` in einem eigenen Request auf, *bevor* der eigentliche Buchen-Request lief - bei einem doppelten Klick auf Buchen (z. B. auf dem Handy) konnte der zweite Request dann mit einem veralteten Zeitstempel auf "has been modified after you have opened it" laufen, obwohl das Projekt schon korrekt angelegt war. Serverseitig in `before_submit` gibt es diesen zweiten Request nicht mehr, dadurch entfällt das Zeitfenster für den Konflikt vollständig - und es greift jetzt auch bei API-Zugriffen und Massenbuchungen.

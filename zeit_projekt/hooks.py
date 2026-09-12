@@ -20,6 +20,21 @@ doctype_js = {
 }
 
 # ---------------------------------------------------------------------------
+# Projektanlage aus dem Auftrag
+#
+# Laeuft serverseitig, innerhalb derselben Transaktion wie das Buchen selbst
+# (kein separater Request mehr davor). Verhindert den "has been modified
+# after you have opened it"-Konflikt, der bei einem eigenen frappe.call vor
+# dem Buchen-Request auftreten konnte, und greift auch bei API-Zugriffen und
+# Massenbuchungen.
+# ---------------------------------------------------------------------------
+doc_events = {
+	"Sales Order": {
+		"before_submit": "zeit_projekt.zeit_projekt.sales_order.before_submit",
+	},
+}
+
+# ---------------------------------------------------------------------------
 # Installation / Deinstallation
 #
 # after_install legt die Custom Fields an, before_uninstall entfernt sie
