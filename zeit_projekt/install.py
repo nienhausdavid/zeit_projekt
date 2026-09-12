@@ -54,11 +54,15 @@ ALTE_CLIENT_SCRIPTS = [
 def after_install():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True)
 	_deaktiviere_alte_client_scripts()
-	frappe.db.commit()
 	click.secho("Zeit & Projekt: Felder angelegt.", fg="green")
 
 
 def before_uninstall():
+	# Kein frappe.db.commit() hier: bench haengt diesen Hook in seine eigene
+	# Transaktion um `uninstall-app` ein. Ein eigener commit() wuerde die
+	# Loeschung sofort fest schreiben - auch bei `--dry-run`, das sich sonst
+	# auf ein Rollback am Ende verlaesst (beobachtet am 12.09.2026: drei
+	# Felder blieben nach einem Dry-Run tatsaechlich geloescht).
 	geloescht = 0
 	for doctype, felder in CUSTOM_FIELDS.items():
 		for feld in felder:
@@ -67,7 +71,6 @@ def before_uninstall():
 				frappe.delete_doc("Custom Field", name, ignore_missing=True, force=True)
 				geloescht += 1
 
-	frappe.db.commit()
 	click.secho(
 		f"Zeit & Projekt: {geloescht} Felder entfernt. "
 		"Hinweis: Die darin gepflegten Werte (z. B. die Artikelzuordnung je "
