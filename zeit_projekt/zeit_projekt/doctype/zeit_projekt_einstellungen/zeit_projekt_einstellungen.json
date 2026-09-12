@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "creation": "2026-09-10 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "rechnung_section",
+  "positionsbezeichnung",
+  "lieferdatum_quelle"
+ ],
+ "fields": [
+  {
+   "fieldname": "rechnung_section",
+   "fieldtype": "Section Break",
+   "label": "Zeiten in der Ausgangsrechnung"
+  },
+  {
+   "default": "Nur Datum und Uhrzeit",
+   "description": "Bestimmt, was in der ersten Zeile der Positionsbeschreibung steht. Der Artikelname steht ohnehin schon in der Position.",
+   "fieldname": "positionsbezeichnung",
+   "fieldtype": "Select",
+   "label": "Erste Zeile der Positionsbeschreibung",
+   "options": "Nur Datum und Uhrzeit\nAktivit\u00e4tsart voranstellen\nBezeichnung f\u00fcr Rechnung, sonst Aktivit\u00e4tsart"
+  },
+  {
+   "default": "Beginn der Zeitbuchung",
+   "description": "Welcher Zeitpunkt als Liefertermin der Position eingetragen wird.",
+   "fieldname": "lieferdatum_quelle",
+   "fieldtype": "Select",
+   "label": "Liefertermin der Position",
+   "options": "Beginn der Zeitbuchung\nEnde der Zeitbuchung"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-10 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Zeit Projekt",
+ "name": "Zeit Projekt Einstellungen",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Accounts User"
+  },
+  {
+   "read": 1,
+   "role": "Accounts Manager"
+  },
+  {
+   "read": 1,
+   "role": "Projects User"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

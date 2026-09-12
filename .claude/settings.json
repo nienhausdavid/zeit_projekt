@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(fm shell * -c *)",
+      "Bash(fm shell * --bench-console -c *)",
+      "Bash(fm logs *)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Bash(fm delete*)",
+      "Bash(fm reset*)",
+      "Bash(bench drop-site*)",
+      "Bash(rm -rf*)"
+    ]
+  }
+}
