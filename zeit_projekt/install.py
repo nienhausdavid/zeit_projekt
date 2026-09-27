@@ -107,6 +107,7 @@ def before_uninstall():
 		fg="yellow",
 	)
 	_site_visit_pdf_on_submit_disable()
+	_entferne_desktop_symbole()
 
 
 def _deaktiviere_alte_client_scripts():
@@ -118,6 +119,27 @@ def _deaktiviere_alte_client_scripts():
 				"(Funktion kommt jetzt aus der App). Loeschen kannst du es selbst.",
 				fg="yellow",
 			)
+
+
+def _entferne_desktop_symbole():
+	"""Frappe legt beim Installieren ein App-Symbol mit dem Titel "Zeit &
+	Projekt" an, sucht es beim Deinstallieren aber unter dem App-Namen
+	"zeit_projekt" (frappe/utils/install.py, delete_desktop_icon_and_sidebar) -
+	es bliebe als toter Link auf dem Desk stehen. Untergeordnete Symbole
+	zuerst, sie verweisen per parent_icon auf das App-Symbol."""
+	if not frappe.db.table_exists("Desktop Icon"):
+		return
+	app_title = frappe.get_hooks("app_title", app_name="zeit_projekt")[0]
+	kinder = frappe.get_all("Desktop Icon", filters={"parent_icon": app_title}, pluck="name")
+	eigene = frappe.get_all(
+		"Desktop Icon",
+		or_filters=[["app", "=", "zeit_projekt"], ["name", "=", app_title]],
+		pluck="name",
+	)
+	for name in kinder + [n for n in eigene if n not in kinder]:
+		frappe.delete_doc("Desktop Icon", name, ignore_permissions=True, force=True)
+	if kinder or eigene:
+		click.secho("Zeit & Projekt: Desktop-Symbole entfernt.", fg="yellow")
 
 
 def _site_visit_pdf_on_submit_enable():

@@ -50,15 +50,17 @@ doc_events = {
 # ---------------------------------------------------------------------------
 # Fahrt/Site Visit in der Verknuepfungen-Liste des Projekt-Formulars
 #
-# Frappes override_doctype_dashboards nimmt pro Doctype nur einen einzigen
-# dotted path entgegen - siehe zeit_projekt.zeit_projekt.project_dashboard
-# fuer die Verkettung beider Erweiterungen. fieldname bleibt jeweils
-# "project" (Standard aus erpnext.projects.doctype.project.project_dashboard),
-# das reicht fuer die automatische Vorbelegung beim Anlegen ueber die
-# "+"-Verknuepfung, da das Feld auf Fahrt/Site Visit ebenfalls "project" heisst.
+# Frappe ruft alle Eintraege der Liste nacheinander auf und reicht das
+# Ergebnis weiter (frappe/model/meta.py, get_dashboard_data). fieldname
+# bleibt jeweils "project" (Standard aus
+# erpnext.projects.doctype.project.project_dashboard), das reicht fuer die
+# automatische Vorbelegung beim Anlegen ueber die "+"-Verknuepfung.
 # ---------------------------------------------------------------------------
 override_doctype_dashboards = {
-	"Project": "zeit_projekt.zeit_projekt.project_dashboard.get_data",
+	"Project": [
+		"zeit_projekt.fahrtenbuch.project_dashboard.get_data",
+		"zeit_projekt.site_visit.project_dashboard.get_data",
+	],
 }
 
 # ---------------------------------------------------------------------------
