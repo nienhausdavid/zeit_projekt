@@ -95,5 +95,10 @@ add_to_apps_screen = [
 # wieder. Damit ist der Zustand vor der Installation vollstaendig
 # wiederhergestellt (Nutzdaten ausgenommen, siehe README).
 # ---------------------------------------------------------------------------
+before_install = "zeit_projekt.install.before_install"
 after_install = "zeit_projekt.install.after_install"
 before_uninstall = "zeit_projekt.install.before_uninstall"
+
+# Wird von Frappe bei der Installation jeder anderen App aufgerufen - verhindert,
+# dass fahrtenbuch/site_visit nachtraeglich parallel installiert werden.
+before_app_install = "zeit_projekt.install.before_app_install"

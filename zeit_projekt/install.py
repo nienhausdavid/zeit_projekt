@@ -54,6 +54,29 @@ ALTE_CLIENT_SCRIPTS = [
 SITE_VISIT_DOCUMENT_TYPE = "Site Visit"
 SITE_VISIT_PRINT_FORMAT = "Site Visit Report"
 
+# Die frueheren Einzel-Apps bringen dieselben Module und Doctypes mit. Parallel
+# installiert gewinnt nur eine der beiden Definitionen, die Hooks laufen aber
+# doppelt (z. B. Fahrzeit zweimal im Auftrag).
+KONFLIKT_APPS = ("fahrtenbuch", "site_visit")
+
+
+def before_install():
+	installiert = [app for app in KONFLIKT_APPS if app in frappe.get_installed_apps()]
+	if installiert:
+		frappe.throw(
+			"Zeit & Projekt enthält die Module der Apps {0} bereits. Bitte diese zuerst "
+			"entfernen. Achtung: uninstall-app löscht dabei deren Tabellen samt Daten."
+			.format(", ".join(installiert))
+		)
+
+
+def before_app_install(app_name):
+	if app_name in KONFLIKT_APPS:
+		frappe.throw(
+			f"Die App {app_name} ist bereits vollständig in Zeit & Projekt enthalten "
+			"und darf nicht zusätzlich installiert werden."
+		)
+
 
 def after_install():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True)
