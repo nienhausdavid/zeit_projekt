@@ -29,16 +29,16 @@ def before_submit(doc, method=None):
 		return
 
 	if not doc.customer:
-		frappe.throw(_("Please select a Customer before submitting.", context="Site Visit"))
+		frappe.throw(_("Bitte vor dem Buchen einen Kunden auswählen."))
 	if not doc.activity_type:
-		frappe.throw(_("Please select an Activity Type before submitting.", context="Site Visit"))
+		frappe.throw(_("Bitte vor dem Buchen eine Aktivitätsart auswählen."))
 	if not doc.sales_order:
-		frappe.throw(_("Please select a Sales Order before submitting.", context="Site Visit"))
+		frappe.throw(_("Bitte vor dem Buchen einen Auftrag auswählen."))
 	if not doc.to_time:
-		frappe.throw(_("Please enter an end time before submitting.", context="Site Visit"))
+		frappe.throw(_("Bitte vor dem Buchen eine Endzeit eintragen."))
 
 	if get_datetime(doc.to_time) <= get_datetime(doc.from_time):
-		frappe.throw(_("End time must be after the start time.", context="Site Visit"))
+		frappe.throw(_("Das Ende muss nach dem Beginn liegen."))
 
 	check_sales_order(doc.sales_order, doc.customer)
 
@@ -53,7 +53,7 @@ def before_submit(doc, method=None):
 		description=doc.description or doc.name,
 	)
 	frappe.msgprint(
-		_("Timesheet {0} created and submitted.", context="Site Visit").format(f"<b>{doc.timesheet}</b>"),
+		_("Zeitblatt {0} wurde angelegt und gebucht.").format(f"<b>{doc.timesheet}</b>"),
 		indicator="green",
 		alert=True,
 	)
@@ -86,7 +86,7 @@ def _item_description(doc, row):
 	Beschreibung im selben Auftrag ab, solange Mehrfachartikel in den
 	Verkaufseinstellungen aus sind."""
 	item_name = row.item_name or frappe.db.get_value("Item", row.item_code, "item_name") or row.item_code
-	return _("{0} (Site Visit {1}, row {2})", context="Site Visit").format(item_name, doc.name, row.idx)
+	return _("{0} (Kundeneinsatz {1}, Zeile {2})").format(item_name, doc.name, row.idx)
 
 
 @frappe.whitelist()
@@ -100,15 +100,15 @@ def create_sales_order(site_visit, po_no=None):
 	doc.check_permission("write")
 
 	if doc.docstatus != 0:
-		frappe.throw(_("Only draft Site Visits can create a Sales Order.", context="Site Visit"))
+		frappe.throw(_("Nur ein Kundeneinsatz im Entwurf kann einen Auftrag anlegen."))
 	if doc.sales_order:
-		frappe.throw(_("This Site Visit is already linked to Sales Order {0}.", context="Site Visit").format(doc.sales_order))
+		frappe.throw(_("Dieser Kundeneinsatz ist bereits mit Auftrag {0} verknüpft.").format(doc.sales_order))
 	if not doc.customer:
-		frappe.throw(_("Please select a Customer first.", context="Site Visit"))
+		frappe.throw(_("Bitte zuerst einen Kunden auswählen."))
 
 	pending = [row for row in doc.extra_items if not row.added_to_order]
 	if not pending:
-		frappe.throw(_("Add at least one item before creating a new Sales Order.", context="Site Visit"))
+		frappe.throw(_("Bitte mindestens einen Artikel hinzufügen, bevor ein neuer Auftrag angelegt wird."))
 
 	delivery_date = max(getdate(doc.date or nowdate()), getdate(nowdate()))
 	rows = [

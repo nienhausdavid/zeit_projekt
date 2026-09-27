@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 
 
 def projektname(doc):
@@ -40,7 +41,7 @@ def before_submit(doc, method=None):
 
 	doc.project = projekt.name
 	frappe.msgprint(
-		f"Projekt <b>{projekt.name}</b> ({projekt.project_name}) angelegt und verknuepft.",
+		_("Projekt {0} ({1}) angelegt und verknüpft.").format(f"<b>{projekt.name}</b>", projekt.project_name),
 		indicator="green",
 		alert=True,
 	)

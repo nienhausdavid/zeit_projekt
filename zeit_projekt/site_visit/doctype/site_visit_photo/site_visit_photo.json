@@ -13,20 +13,20 @@
    "fieldname": "photo",
    "fieldtype": "Attach Image",
    "in_list_view": 1,
-   "label": "Photo",
+   "label": "Foto",
    "reqd": 1
   },
   {
    "fieldname": "caption",
    "fieldtype": "Small Text",
    "in_list_view": 1,
-   "label": "Caption"
+   "label": "Beschriftung"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-13 09:00:00.000000",
+ "modified": "2026-09-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Site Visit",
  "name": "Site Visit Photo",

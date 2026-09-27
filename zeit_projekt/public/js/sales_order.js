@@ -30,20 +30,20 @@
 			if (!frm.doc.custom_projekt_erstellen) { return; }
 			if (frm.doc.project) {
 				frappe.msgprint({
-					title: 'Projekt bereits verknuepft',
+					title: __('Projekt bereits verknüpft'),
 					indicator: 'orange',
-					message: 'Mit diesem Auftrag ist bereits das Projekt <b>' + frm.doc.project + '</b> verknuepft. Es wird kein neues Projekt angelegt.'
+					message: __('Mit diesem Auftrag ist bereits das Projekt {0} verknüpft. Es wird kein neues Projekt angelegt.', ['<b>' + frm.doc.project + '</b>'])
 				});
 				frm.set_value('custom_projekt_erstellen', 0);
 				return;
 			}
-			frappe.show_alert({ message: 'Das Projekt wird angelegt, sobald der Auftrag bestaetigt (gebucht) wird.', indicator: 'blue' }, 6);
+			frappe.show_alert({ message: __('Das Projekt wird angelegt, sobald der Auftrag bestätigt (gebucht) wird.'), indicator: 'blue' }, 6);
 		},
 
 		refresh: function (frm) {
 			if (frm.doc.docstatus === 0 && frm.doc.custom_projekt_erstellen && !frm.doc.project) {
 				frm.dashboard.clear_headline();
-				frm.dashboard.set_headline_alert('Beim Bestaetigen dieses Auftrags wird automatisch ein Projekt angelegt.', 'blue');
+				frm.dashboard.set_headline_alert(__('Beim Bestätigen dieses Auftrags wird automatisch ein Projekt angelegt.'), 'blue');
 			}
 		},
 

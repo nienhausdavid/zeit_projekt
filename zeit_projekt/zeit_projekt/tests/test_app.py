@@ -34,9 +34,11 @@ class TestApp(IntegrationTestCase):
 		):
 			self.assertTrue(frappe.db.exists("Custom Field", name), name)
 
-	def test_uebersetzung_nur_im_kontext(self):
+	def test_uebersetzungen(self):
+		# Quelle ist Deutsch, en.csv uebersetzt - ERPNext-Begriffe bleiben unberuehrt
+		self.assertEqual(frappe._("Tätigkeit", lang="en"), "Work Performed")
 		self.assertNotEqual(frappe._("Duration", lang="de"), "Zeitraum")
-		self.assertEqual(frappe._("Duration", lang="de", context="Site Visit"), "Zeitraum")
+		self.assertEqual(frappe._("Site Visit", lang="de"), "Kundeneinsatz")
 
 	def test_chrome_pdf_standardmaessig_aus(self):
 		from zeit_projekt.zeit_projekt.pdf import chrome_enabled, force_chrome_pdf
