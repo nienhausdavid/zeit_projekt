@@ -40,6 +40,19 @@ CUSTOM_FIELDS = {
 			"module": MODULE,
 		},
 	],
+	"Sales Invoice Item": [
+		{
+			"fieldname": "custom_fahrt",
+			"label": "Fahrt (Kilometer)",
+			"fieldtype": "Link",
+			"options": "Fahrt",
+			"insert_after": "sales_order",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "Vom Zeitimport gesetzt - die Kilometer dieser Fahrt gelten mit dem Buchen der Rechnung als abgerechnet",
+			"module": MODULE,
+		},
+	],
 }
 
 # Client Scripts aus der manuellen Einrichtung. Werden bei der Installation
@@ -76,6 +89,12 @@ def before_app_install(app_name):
 			f"Die App {app_name} ist bereits vollständig in Zeit & Projekt enthalten "
 			"und darf nicht zusätzlich installiert werden."
 		)
+
+
+def after_migrate():
+	"""Neue oder geaenderte Custom Fields auch auf bereits installierten Sites
+	anlegen - after_install laeuft nur einmal."""
+	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True, update=True)
 
 
 def after_install():

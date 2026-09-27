@@ -9,7 +9,9 @@
   "model",
   "api_key",
   "section_break_abrechnung",
-  "time_item",
+  "activity_type",
+  "km_item",
+  "rounding_minutes",
   "section_break_projekt",
   "auto_start_timer",
   "auto_open_camera"
@@ -39,11 +41,26 @@
    "label": "Abrechnung"
   },
   {
-   "description": "Vorbelegung fuer das Feld \"Artikel Fahrzeit\" bei einer neuen Fahrt - bleibt dort weiterhin pro Fahrt aenderbar",
-   "fieldname": "time_item",
+   "description": "Vorbelegung für neue Fahrten. Der Aktivitätsart einen Dienstleistungsartikel zuordnen, damit der Zeitimport der Ausgangsrechnung die Fahrzeit abrechnen kann.",
+   "fieldname": "activity_type",
    "fieldtype": "Link",
-   "label": "Artikel Fahrzeit",
+   "label": "Aktivitätsart Fahrzeit",
+   "options": "Activity Type"
+  },
+  {
+   "description": "Vorbelegung für neue Fahrten",
+   "fieldname": "km_item",
+   "fieldtype": "Link",
+   "label": "Artikel Kilometer",
    "options": "Item"
+  },
+  {
+   "default": "0",
+   "description": "0 = minutengenau. Z. B. 15: abrechenbare Fahrzeit wird auf volle Viertelstunden aufgerundet (die tatsächliche Dauer bleibt im Zeitblatt erhalten).",
+   "fieldname": "rounding_minutes",
+   "fieldtype": "Int",
+   "label": "Fahrzeit abrechnen in Schritten von (Minuten)",
+   "non_negative": 1
   },
   {
    "fieldname": "section_break_projekt",
@@ -68,7 +85,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-13 09:00:00.000000",
+ "modified": "2026-09-28 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrtenbuch Einstellungen",

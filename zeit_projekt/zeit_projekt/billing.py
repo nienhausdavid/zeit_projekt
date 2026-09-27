@@ -27,6 +27,80 @@ def as_administrator():
 		frappe.local.form_dict = form_dict_backup
 
 
+def create_timesheet(source, activity_type, from_time, to_time, *, customer, project=None,
+		company=None, description=None, billing_hours=None):
+	"""Legt ein abrechenbares Zeitblatt fuer eine Fahrt bzw. einen Site Visit
+	an und bucht es. Es erscheint danach im Zeitimport der Ausgangsrechnung
+	des Kunden (siehe sales_invoice.get_billable_time_logs).
+
+	Ohne Rollenpruefung: die Rolle "Employee" darf Zeitblaetter in ERPNext
+	anlegen, aber nicht buchen - massgeblich ist die Berechtigung auf den
+	Quellbeleg."""
+	from erpnext.projects.doctype.timesheet.timesheet import OverlapError
+
+	company = company or frappe.db.get_value("Employee", source.employee, "company")
+	ts = frappe.get_doc(
+		{
+			"doctype": "Timesheet",
+			"employee": source.employee,
+			"company": company,
+			"customer": customer,
+			"parent_project": project or None,
+			"note": _("Automatisch erzeugt aus {0} {1}").format(_(source.doctype), source.name),
+			"time_logs": [
+				{
+					"activity_type": activity_type,
+					"from_time": from_time,
+					"to_time": to_time,
+					"project": project or None,
+					"description": description or source.name,
+					"is_billable": 1,
+					"billing_hours": billing_hours or 0,
+				}
+			],
+		}
+	)
+	ts.flags.ignore_permissions = True
+	try:
+		# Die Ueberschneidungspruefung laeuft schon in validate (also beim insert)
+		ts.insert()
+		ts.submit()
+	except OverlapError:
+		frappe.throw(
+			_("Dieser Zeitraum überschneidet sich mit einer bereits erfassten Zeitbuchung für {0}.").format(
+				source.employee
+			),
+			title=_("Zeitüberschneidung"),
+		)
+	return ts.name
+
+
+def ensure_timesheet_not_invoiced(timesheet):
+	"""Ein bereits fakturiertes Zeitblatt darf nicht mehr mitstorniert werden."""
+	if not timesheet:
+		return
+	invoice = frappe.db.get_value(
+		"Timesheet Detail", {"parent": timesheet, "sales_invoice": ["is", "set"]}, "sales_invoice"
+	)
+	if invoice:
+		frappe.throw(
+			_("Zeitblatt {0} wurde bereits in {1} abgerechnet und kann nicht mehr storniert werden.").format(
+				timesheet, invoice
+			)
+		)
+
+
+def cancel_timesheet(timesheet):
+	if not timesheet:
+		return
+	ensure_timesheet_not_invoiced(timesheet)
+	ts = frappe.get_doc("Timesheet", timesheet)
+	if ts.docstatus != 1:
+		return
+	ts.flags.ignore_permissions = True
+	ts.cancel()
+
+
 def check_sales_order(sales_order, customer):
 	"""Auftrag muss offen sein und zum Kunden des Belegs gehoeren - sonst
 	koennte ein Techniker Positionen in beliebige fremde Auftraege schreiben."""

@@ -45,6 +45,12 @@ doc_events = {
 		"before_submit": "zeit_projekt.site_visit.site_visit.before_submit",
 		"on_cancel": "zeit_projekt.site_visit.site_visit.on_cancel",
 	},
+	# Fahrt-Kilometer aus dem Zeitimport: nur einmal abrechenbar
+	"Sales Invoice": {
+		"validate": "zeit_projekt.zeit_projekt.sales_invoice.validate",
+		"on_submit": "zeit_projekt.zeit_projekt.sales_invoice.on_submit",
+		"on_cancel": "zeit_projekt.zeit_projekt.sales_invoice.on_cancel",
+	},
 }
 
 # ---------------------------------------------------------------------------
@@ -99,6 +105,7 @@ add_to_apps_screen = [
 # ---------------------------------------------------------------------------
 before_install = "zeit_projekt.install.before_install"
 after_install = "zeit_projekt.install.after_install"
+after_migrate = "zeit_projekt.install.after_migrate"
 before_uninstall = "zeit_projekt.install.before_uninstall"
 
 # Wird von Frappe bei der Installation jeder anderen App aufgerufen - verhindert,

@@ -1,12 +1,14 @@
 import frappe
-from erpnext.projects.doctype.timesheet.timesheet import OverlapError
 from frappe import _
 from frappe.utils import get_datetime, getdate, nowdate
 
 from zeit_projekt.zeit_projekt.billing import (
 	add_rows_to_sales_order,
 	as_administrator,
+	cancel_timesheet,
 	check_sales_order,
+	create_timesheet,
+	ensure_timesheet_not_invoiced,
 	price_rows,
 	remove_rows_from_sales_order,
 )
@@ -39,41 +41,18 @@ def before_submit(doc, method=None):
 
 	check_sales_order(doc.sales_order, doc.customer)
 
-	# Die Berechtigung ist die auf den Site Visit selbst: die Rolle "Employee"
-	# darf Zeitblaetter in ERPNext anlegen, aber nicht buchen, und "Projects
-	# Manager" hat gar keine Zeitblatt-Rechte (fuer das Stornieren).
-	ts = frappe.get_doc(
-		{
-			"doctype": "Timesheet",
-			"employee": doc.employee,
-			"company": doc.company,
-			"customer": doc.customer,
-			"parent_project": doc.project or None,
-			"time_logs": [
-				{
-					"activity_type": doc.activity_type,
-					"from_time": doc.from_time,
-					"to_time": doc.to_time,
-					"project": doc.project or None,
-					"description": doc.description or doc.name,
-					"is_billable": 1,
-				}
-			],
-		}
+	doc.timesheet = create_timesheet(
+		doc,
+		doc.activity_type,
+		doc.from_time,
+		doc.to_time,
+		customer=doc.customer,
+		project=doc.project,
+		company=doc.company,
+		description=doc.description or doc.name,
 	)
-	ts.flags.ignore_permissions = True
-	ts.insert()
-	try:
-		ts.submit()
-	except OverlapError:
-		frappe.throw(
-			_("This time range overlaps an existing time entry for {0}.", context="Site Visit").format(doc.employee),
-			title=_("Overlapping Time", context="Site Visit"),
-		)
-
-	doc.timesheet = ts.name
 	frappe.msgprint(
-		_("Timesheet {0} created and submitted.", context="Site Visit").format(f"<b>{ts.name}</b>"),
+		_("Timesheet {0} created and submitted.", context="Site Visit").format(f"<b>{doc.timesheet}</b>"),
 		indicator="green",
 		alert=True,
 	)
@@ -164,15 +143,7 @@ def on_cancel(doc, method=None):
 	heraus und storniert das verknuepfte Timesheet, sofern es noch nicht
 	fakturiert wurde. Zeilen, die ueber create_sales_order() in den Auftrag
 	kamen, bleiben dort (sie waren schon vor dem Buchen Teil des Auftrags)."""
-	ts = frappe.get_doc("Timesheet", doc.timesheet) if doc.timesheet else None
-	if ts and ts.docstatus == 1:
-		for row in ts.time_logs:
-			if row.sales_invoice:
-				frappe.throw(
-					_("Timesheet {0} was already invoiced on {1} and can no longer be cancelled.", context="Site Visit").format(
-						ts.name, row.sales_invoice
-					)
-				)
+	ensure_timesheet_not_invoiced(doc.timesheet)
 
 	synced = [row for row in doc.extra_items if row.sales_order_item]
 	remove_rows_from_sales_order(doc.sales_order, [row.sales_order_item for row in synced])
@@ -181,9 +152,7 @@ def on_cancel(doc, method=None):
 		# wieder uebernimmt (added_to_order wird beim Berichtigen mitkopiert).
 		frappe.db.set_value("Site Visit Item", row.name, {"added_to_order": 0, "sales_order_item": None})
 
-	if ts and ts.docstatus == 1:
-		ts.flags.ignore_permissions = True
-		ts.cancel()
+	cancel_timesheet(doc.timesheet)
 
 
 def check_app_permission():

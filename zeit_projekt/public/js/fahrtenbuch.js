@@ -1,9 +1,10 @@
-// Abrechnung passiert serverseitig beim Buchen (siehe hooks.py -> doc_events
-// -> zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit). Dieses Skript setzt
-// nur Feld-Defaults, uebernimmt Werte aus einer verknuepften Site Visit und
-// stoesst die Kilometerstand-Erkennung nach einem Foto-Upload an - keine
-// async Calls vor dem Buchen, um die Race Condition aus
-// zeit_projekt/sales_order.js nicht zu wiederholen.
+// Beim Buchen legt der Server ein Zeitblatt für die Fahrzeit an (siehe
+// hooks.py -> doc_events -> zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit);
+// Fahrzeit und Kilometer werden über den Zeitimport der Ausgangsrechnung
+// abgerechnet. Dieses Skript setzt nur Feld-Defaults, übernimmt Werte aus
+// verknüpften Belegen und stößt die Kilometerstand-Erkennung an - keine async
+// Calls vor dem Buchen, um die Race Condition aus sales_order.js nicht zu
+// wiederholen.
 
 // Techniker (Rolle "Employee") duerfen Kunde, Auftrag, Artikel und Fahrzeug
 // nicht lesen - Suche und Vorbelegung laufen deshalb ueber eingeschraenkte
@@ -35,7 +36,6 @@ frappe.ui.form.on('Fahrt', {
 		frm.set_query('site_visit', () => {
 			return frm.doc.customer ? { filters: { customer: frm.doc.customer } } : {};
 		});
-		frm.set_query('time_item', () => ({ query: `${TECHNICIAN_API}.item_query` }));
 		frm.set_query('km_item', () => ({ query: `${TECHNICIAN_API}.item_query` }));
 		frm.set_query('vehicle', () => ({ query: `${TECHNICIAN_API}.vehicle_query` }));
 
@@ -46,11 +46,11 @@ frappe.ui.form.on('Fahrt', {
 					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
 				});
 		}
-		if (!frm.doc.time_item) {
-			frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
-				if (r.message && r.message.time_item) frm.set_value('time_item', r.message.time_item);
-			});
-		}
+		frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
+			const d = r.message || {};
+			if (d.activity_type && !frm.doc.activity_type) frm.set_value('activity_type', d.activity_type);
+			if (d.km_item && !frm.doc.km_item) frm.set_value('km_item', d.km_item);
+		});
 		// Kein automatischer Default fuer start_time - das uebernimmt der
 		// Timer (oder die manuelle Eingabe). Ein Default hier wuerde bei
 		// Formularoeffnung den falschen Zeitpunkt festlegen, falls der
@@ -96,6 +96,9 @@ frappe.ui.form.on('Fahrt', {
 	refresh(frm) {
 		frm.dashboard.clear_headline();
 		update_timer_toolbar(frm);
+		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
+			frm.add_custom_button(__('Zeitblatt öffnen'), () => frappe.set_route('Form', 'Timesheet', frm.doc.timesheet));
+		}
 		if (frm.doc.start_odometer && frm.doc.end_odometer && frm.doc.distance_km) {
 			frm.dashboard.set_headline_alert(
 				__('Strecke: {0} km, Dauer: {1} Std.', [frm.doc.distance_km, frm.doc.duration_hours]),
