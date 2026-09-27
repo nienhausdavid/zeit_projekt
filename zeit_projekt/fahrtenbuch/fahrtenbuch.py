@@ -62,15 +62,27 @@ def get_odometer_reading(file_url):
 	manuell ein."""
 	from zeit_projekt.fahrtenbuch.ocr import read_odometer
 
-	return read_odometer(file_url)
+	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
+		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+
+	# Nur Dateien, die der Nutzer selbst lesen darf - sonst liesse sich jede
+	# private Datei an die externe Erkennungs-API schicken.
+	for name in frappe.get_all("File", filters={"file_url": file_url}, pluck="name"):
+		file_doc = frappe.get_doc("File", name)
+		if file_doc.has_permission("read"):
+			return read_odometer(file_doc)
+	frappe.throw(_("Keine Berechtigung für diese Datei."), frappe.PermissionError)
 
 
 @frappe.whitelist()
 def get_available_models(api_url=None, api_key=None):
 	"""Fuer den "Modelle abrufen"-Button in Fahrtenbuch Einstellungen -
 	api_url/api_key optional, damit ein gerade eingetipptes, noch nicht
-	gespeichertes Feld direkt getestet werden kann."""
+	gespeichertes Feld direkt getestet werden kann. Nur System Manager: der
+	Server ruft dabei eine frei angegebene URL ab."""
 	from zeit_projekt.fahrtenbuch.ocr import list_models
+
+	frappe.only_for("System Manager")
 
 	return list_models(api_url=api_url, api_key=api_key)
 
