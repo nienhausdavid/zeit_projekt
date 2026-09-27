@@ -40,6 +40,19 @@ CUSTOM_FIELDS = {
 			"module": MODULE,
 		},
 	],
+	"Sales Order Item": [
+		{
+			"fieldname": "custom_site_visit",
+			"label": "Kundeneinsatz",
+			"fieldtype": "Link",
+			"options": "Site Visit",
+			"insert_after": "prevdoc_docname",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "Kundeneinsatz, aus dem diese Position als Zusatzartikel übernommen wurde",
+			"module": MODULE,
+		},
+	],
 	"Sales Invoice Item": [
 		{
 			"fieldname": "custom_fahrt",

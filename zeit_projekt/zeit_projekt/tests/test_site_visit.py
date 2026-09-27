@@ -59,6 +59,14 @@ class TestSiteVisit(IntegrationTestCase):
 		zeile = next(z for z in sales_order_rows(so.name) if z.name == sv.extra_items[0].sales_order_item)
 		self.assertEqual((flt(zeile.rate), flt(zeile.qty)), (15, 2))
 		self.assertIn(sv.name, zeile.description)
+		# Rueckverfolgbarkeit: Herkunft an der Position, Techniker im Verlauf
+		self.assertEqual(frappe.db.get_value("Sales Order Item", zeile.name, "custom_site_visit"), sv.name)
+		kommentar = frappe.get_all(
+			"Comment",
+			filters={"reference_doctype": "Sales Order", "reference_name": so.name, "comment_type": "Comment"},
+			pluck="content",
+		)
+		self.assertTrue(any(sv.name in k and "zp-tech" in k for k in kommentar), kommentar)
 
 	def test_auftrag_eines_anderen_kunden_abgelehnt(self):
 		fremd = make_sales_order(self.ctx.company, KUNDE_B)
@@ -72,6 +80,19 @@ class TestSiteVisit(IntegrationTestCase):
 		with expect_error(self):
 			sv.submit()
 
+	def test_zusatzartikel_ohne_preis_erlaubt_per_einstellung(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "allow_zero_price", 1)
+		try:
+			so = make_sales_order(self.ctx.company)
+			sv = self.site_visit(6, so.name, [{"item_code": "ZP-OHNEPREIS", "qty": 1}])
+			sv.submit()
+			zeile = frappe.db.get_value(
+				"Sales Order Item", sv.extra_items[0].sales_order_item, ["item_code", "rate"], as_dict=True
+			)
+			self.assertEqual((zeile.item_code, flt(zeile.rate)), ("ZP-OHNEPREIS", 0))
+		finally:
+			frappe.db.set_single_value("Zeit Projekt Einstellungen", "allow_zero_price", 0)
+
 	def test_neuer_auftrag_aus_site_visit(self):
 		frappe.set_user(TECH)
 		sv = self.site_visit(4, items=[{"item_code": "ZP-ADAPTER", "qty": 1}, {"item_code": "ZP-ADAPTER", "qty": 3}])
@@ -81,6 +102,7 @@ class TestSiteVisit(IntegrationTestCase):
 		self.assertEqual(so.docstatus, 0)
 		self.assertTrue(so.delivery_date)
 		self.assertEqual([flt(i.rate) for i in so.items], [15, 15])
+		self.assertEqual({i.custom_site_visit for i in so.items}, {sv.name})
 		sv.reload()
 		self.assertEqual(sv.sales_order, name)
 		self.assertTrue(all(r.added_to_order for r in sv.extra_items))

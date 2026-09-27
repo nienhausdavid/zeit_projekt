@@ -11,6 +11,7 @@ from zeit_projekt.zeit_projekt.billing import (
 	ensure_timesheet_not_invoiced,
 	price_rows,
 	remove_rows_from_sales_order,
+	zero_price_allowed,
 )
 
 
@@ -73,7 +74,7 @@ def _sync_extra_items_to_sales_order(doc):
 		{"item_code": row.item_code, "qty": row.qty, "uom": row.uom, "description": _item_description(doc, row)}
 		for row in pending
 	]
-	new_items = add_rows_to_sales_order(doc.sales_order, doc.customer, rows)
+	new_items = add_rows_to_sales_order(doc.sales_order, doc.customer, rows, source=doc)
 
 	for row, so_item in zip(pending, new_items, strict=True):
 		row.added_to_order = 1
@@ -115,6 +116,7 @@ def create_sales_order(site_visit, po_no=None):
 		for row in pending
 	]
 
+	nutzer = frappe.utils.get_fullname(frappe.session.user)
 	with as_administrator():
 		so = frappe.new_doc("Sales Order")
 		so.update(
@@ -127,9 +129,15 @@ def create_sales_order(site_visit, po_no=None):
 				"delivery_date": delivery_date,
 			}
 		)
-		for row in price_rows(so, rows):
-			so.append("items", row)
+		for row in price_rows(so, rows, throw=not zero_price_allowed()):
+			so.append("items", dict(row, custom_site_visit=doc.name))
 		so.insert()
+		so.add_comment(
+			"Comment",
+			_("Angelegt aus {0} {1} von {2}.").format(
+				_(doc.doctype), frappe.utils.get_link_to_form(doc.doctype, doc.name), nutzer
+			),
+		)
 
 	for row in pending:
 		row.added_to_order = 1

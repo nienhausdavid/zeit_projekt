@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 GESCHLOSSENE_STATUS = ("Closed", "Completed")
 # Kopfdaten, die nicht in den temporaeren Preisberechnungs-Auftrag gehoeren
@@ -161,20 +161,28 @@ def price_rows(header_doc, rows, throw=True):
 	return priced
 
 
-def add_rows_to_sales_order(sales_order, customer, rows):
+def zero_price_allowed():
+	return cint(frappe.db.get_single_value("Zeit Projekt Einstellungen", "allow_zero_price"))
+
+
+def add_rows_to_sales_order(sales_order, customer, rows, source):
 	"""Haengt Positionen an einen (auch bereits gebuchten) Auftrag an und gibt
 	die Namen der neu entstandenen Auftragspositionen zurueck (fuer das
 	Zurueckbuchen beim Stornieren).
 
 	Nutzt erpnext.controllers.accounts_controller.update_child_qty_rate - wie
 	der "Update Items"-Dialog im Auftrag: Steuern, Summen, Kreditlimit usw.
-	werden korrekt neu berechnet."""
+	werden korrekt neu berechnet. Weil das als Administrator laeuft, markiert
+	jede neue Position ihren Ursprungsbeleg (custom_site_visit) und ein
+	Kommentar im Auftrag nennt den Nutzer, der gebucht hat."""
 	from erpnext.controllers.accounts_controller import update_child_qty_rate
 
 	check_sales_order(sales_order, customer)
+	nutzer = frappe.utils.get_fullname(frappe.session.user)
+	ohne_preis_erlaubt = zero_price_allowed()
 	with as_administrator():
 		so = frappe.get_doc("Sales Order", sales_order)
-		priced = price_rows(so, rows)
+		priced = price_rows(so, rows, throw=not ohne_preis_erlaubt)
 		vorher = {row.name for row in so.items}
 		trans_items = [dict(row.as_dict(), docname=row.name) for row in so.items] + priced
 		update_child_qty_rate("Sales Order", frappe.as_json(trans_items), so.name)
@@ -186,7 +194,27 @@ def add_rows_to_sales_order(sales_order, customer, rows):
 			order_by="idx asc",
 			pluck="name",
 		)
-	return [name for name in nachher if name not in vorher]
+		neu = [name for name in nachher if name not in vorher]
+		for name in neu:
+			frappe.db.set_value("Sales Order Item", name, "custom_site_visit", source.name, update_modified=False)
+
+		ohne_preis = [p["item_code"] for p in priced if not flt(p["rate"])]
+		text = _("{0} Position(en) aus {1} {2} übernommen, gebucht von {3}.").format(
+			len(neu), _(source.doctype), frappe.utils.get_link_to_form(source.doctype, source.name), nutzer
+		)
+		if ohne_preis:
+			text += " " + _("Ohne Verkaufspreis (bitte prüfen): {0}").format(", ".join(ohne_preis))
+		so.add_comment("Comment", text)
+
+	if ohne_preis:
+		frappe.msgprint(
+			_("Für {0} wurde kein Verkaufspreis gefunden - die Position steht mit 0 im Auftrag {1}.").format(
+				", ".join(ohne_preis), sales_order
+			),
+			indicator="orange",
+			alert=True,
+		)
+	return neu
 
 
 def remove_rows_from_sales_order(sales_order, item_names):
