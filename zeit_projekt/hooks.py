@@ -39,6 +39,7 @@ doc_events = {
 	},
 	"Fahrt": {
 		"before_submit": "zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit",
+		"on_cancel": "zeit_projekt.fahrtenbuch.fahrtenbuch.on_cancel",
 	},
 	"Site Visit": {
 		"before_submit": "zeit_projekt.site_visit.site_visit.before_submit",

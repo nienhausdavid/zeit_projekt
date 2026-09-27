@@ -126,24 +126,8 @@ function stop_ticking(frm) {
 	}
 }
 
-// Betrag in der Zusatzartikel-Tabelle ist reine Anzeige (qty * rate) - der
-// verknuepfte Auftrag rechnet beim Uebernehmen selbst neu (Steuern,
-// Preisregeln usw., siehe site_visit.py -> _sync_extra_items_to_sales_order).
-frappe.ui.form.on('Site Visit Item', {
-	qty(frm, cdt, cdn) {
-		update_extra_item_amount(cdt, cdn);
-	},
-	rate(frm, cdt, cdn) {
-		update_extra_item_amount(cdt, cdn);
-	},
-});
-
-function update_extra_item_amount(cdt, cdn) {
-	const row = frappe.get_doc(cdt, cdn);
-	const qty = Number(row.qty) || 0;
-	const rate = Number(row.rate) || 0;
-	frappe.model.set_value(cdt, cdn, 'amount', qty * rate);
-}
+// Preis und Betrag der Zusatzartikel ermittelt der Server beim Speichern aus
+// der Preisliste (siehe SiteVisit.set_extra_item_rates) - hier nichts rechnen.
 
 function show_create_sales_order_dialog(frm) {
 	if (!frm.doc.customer) {
@@ -159,35 +143,22 @@ function show_create_sales_order_dialog(frm) {
 		fields: [{ fieldname: 'po_no', fieldtype: 'Data', label: __('Customer Reference') }],
 		primary_action_label: __('Create'),
 		primary_action(values) {
-			frappe.call({
-				method: 'zeit_projekt.site_visit.site_visit.create_sales_order',
-				args: {
-					customer: frm.doc.customer,
-					company: frm.doc.company,
-					project: frm.doc.project,
-					po_no: values.po_no,
-					items: frm.doc.extra_items.map((row) => ({
-						item_code: row.item_code,
-						qty: row.qty,
-						uom: row.uom,
-						rate: row.rate,
-					})),
-				},
-				freeze: true,
-				freeze_message: __('Creating Sales Order...'),
-				callback(r) {
-					if (!r.message) return;
-					dialog.hide();
-					frm.set_value('sales_order', r.message).then(() => {
-						// Diese Zeilen stecken schon im neuen Auftrag - beim
-						// Buchen nicht nochmal uebernehmen (added_to_order,
-						// siehe site_visit.py -> _sync_extra_items_to_sales_order).
-						(frm.doc.extra_items || []).forEach((row) => {
-							frappe.model.set_value(row.doctype, row.name, 'added_to_order', 1);
-						});
-					});
-				},
-			});
+			// Der Server liest Kunde, Projekt und Artikel aus dem gespeicherten
+			// Site Visit - deshalb vorher speichern.
+			const saved = frm.is_new() || frm.is_dirty() ? frm.save() : Promise.resolve();
+			saved.then(() =>
+				frappe.call({
+					method: 'zeit_projekt.site_visit.site_visit.create_sales_order',
+					args: { site_visit: frm.doc.name, po_no: values.po_no },
+					freeze: true,
+					freeze_message: __('Creating Sales Order...'),
+					callback(r) {
+						if (!r.message) return;
+						dialog.hide();
+						frm.reload_doc();
+					},
+				})
+			);
 		},
 	});
 	dialog.show();
