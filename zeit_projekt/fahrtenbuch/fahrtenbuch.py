@@ -15,7 +15,7 @@ def _as_administrator():
 	das den umgebenden Request (das Buchen der Fahrt selbst, das nach diesem
 	Hook weiterlaeuft) seiner eigenen Parameter berauben. Deshalb hier
 	explizit gesichert und danach wiederhergestellt (1:1 uebernommen aus
-	site_visit.site_visit.site_visit - dort ausfuehrlicher kommentiert)."""
+	zeit_projekt.site_visit.site_visit - dort ausfuehrlicher kommentiert)."""
 	current_user = frappe.session.user
 	form_dict_backup = copy.deepcopy(frappe.local.form_dict)
 	frappe.set_user("Administrator")
