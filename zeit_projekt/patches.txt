@@ -1,2 +1,1 @@
 # Patches werden hier in Ausfuehrungsreihenfolge eingetragen
-zeit_projekt.patches.set_project_trip_toggle_defaults
