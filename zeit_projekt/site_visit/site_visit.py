@@ -26,16 +26,16 @@ def before_submit(doc, method=None):
 		return
 
 	if not doc.customer:
-		frappe.throw(_("Please select a Customer before submitting."))
+		frappe.throw(_("Please select a Customer before submitting.", context="Site Visit"))
 	if not doc.activity_type:
-		frappe.throw(_("Please select an Activity Type before submitting."))
+		frappe.throw(_("Please select an Activity Type before submitting.", context="Site Visit"))
 	if not doc.sales_order:
-		frappe.throw(_("Please select a Sales Order before submitting."))
+		frappe.throw(_("Please select a Sales Order before submitting.", context="Site Visit"))
 	if not doc.to_time:
-		frappe.throw(_("Please enter an end time before submitting."))
+		frappe.throw(_("Please enter an end time before submitting.", context="Site Visit"))
 
 	if get_datetime(doc.to_time) <= get_datetime(doc.from_time):
-		frappe.throw(_("End time must be after the start time."))
+		frappe.throw(_("End time must be after the start time.", context="Site Visit"))
 
 	check_sales_order(doc.sales_order, doc.customer)
 
@@ -67,13 +67,13 @@ def before_submit(doc, method=None):
 		ts.submit()
 	except OverlapError:
 		frappe.throw(
-			_("This time range overlaps an existing time entry for {0}.").format(doc.employee),
-			title=_("Overlapping Time"),
+			_("This time range overlaps an existing time entry for {0}.", context="Site Visit").format(doc.employee),
+			title=_("Overlapping Time", context="Site Visit"),
 		)
 
 	doc.timesheet = ts.name
 	frappe.msgprint(
-		_("Timesheet {0} created and submitted.").format(f"<b>{ts.name}</b>"),
+		_("Timesheet {0} created and submitted.", context="Site Visit").format(f"<b>{ts.name}</b>"),
 		indicator="green",
 		alert=True,
 	)
@@ -106,7 +106,7 @@ def _item_description(doc, row):
 	Beschreibung im selben Auftrag ab, solange Mehrfachartikel in den
 	Verkaufseinstellungen aus sind."""
 	item_name = row.item_name or frappe.db.get_value("Item", row.item_code, "item_name") or row.item_code
-	return _("{0} (Site Visit {1}, row {2})").format(item_name, doc.name, row.idx)
+	return _("{0} (Site Visit {1}, row {2})", context="Site Visit").format(item_name, doc.name, row.idx)
 
 
 @frappe.whitelist()
@@ -120,15 +120,15 @@ def create_sales_order(site_visit, po_no=None):
 	doc.check_permission("write")
 
 	if doc.docstatus != 0:
-		frappe.throw(_("Only draft Site Visits can create a Sales Order."))
+		frappe.throw(_("Only draft Site Visits can create a Sales Order.", context="Site Visit"))
 	if doc.sales_order:
-		frappe.throw(_("This Site Visit is already linked to Sales Order {0}.").format(doc.sales_order))
+		frappe.throw(_("This Site Visit is already linked to Sales Order {0}.", context="Site Visit").format(doc.sales_order))
 	if not doc.customer:
-		frappe.throw(_("Please select a Customer first."))
+		frappe.throw(_("Please select a Customer first.", context="Site Visit"))
 
 	pending = [row for row in doc.extra_items if not row.added_to_order]
 	if not pending:
-		frappe.throw(_("Add at least one item before creating a new Sales Order."))
+		frappe.throw(_("Add at least one item before creating a new Sales Order.", context="Site Visit"))
 
 	delivery_date = max(getdate(doc.date or nowdate()), getdate(nowdate()))
 	rows = [
@@ -169,7 +169,7 @@ def on_cancel(doc, method=None):
 		for row in ts.time_logs:
 			if row.sales_invoice:
 				frappe.throw(
-					_("Timesheet {0} was already invoiced on {1} and can no longer be cancelled.").format(
+					_("Timesheet {0} was already invoiced on {1} and can no longer be cancelled.", context="Site Visit").format(
 						ts.name, row.sales_invoice
 					)
 				)

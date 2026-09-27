@@ -81,15 +81,15 @@ frappe.ui.form.on('Site Visit', {
 		frm.dashboard.clear_headline();
 		update_timer_toolbar(frm);
 		if (frm.doc.docstatus === 0 && !frm.doc.customer_signature) {
-			frm.dashboard.set_headline_alert(__('No customer signature captured yet.'), 'orange');
+			frm.dashboard.set_headline_alert(__('No customer signature captured yet.', null, 'Site Visit'), 'orange');
 		}
 		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
-			frm.add_custom_button(__('Open Timesheet'), () => {
+			frm.add_custom_button(__('Open Timesheet', null, 'Site Visit'), () => {
 				frappe.set_route('Form', 'Timesheet', frm.doc.timesheet);
 			});
 		}
 		if (frm.doc.docstatus === 0 && !frm.doc.sales_order) {
-			frm.add_custom_button(__('New Sales Order'), () => show_create_sales_order_dialog(frm));
+			frm.add_custom_button(__('New Sales Order', null, 'Site Visit'), () => show_create_sales_order_dialog(frm));
 		}
 	},
 });
@@ -110,11 +110,11 @@ function update_timer_toolbar(frm) {
 	if (frm.doc.docstatus !== 0) return;
 
 	if (!frm.doc.from_time) {
-		frm.page.add_button(__('Start Timer'), () => {
+		frm.page.add_button(__('Start Timer', null, 'Site Visit'), () => {
 			frm.set_value('from_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 	} else if (!frm.doc.to_time) {
-		frm.page.add_button(__('Stop Timer'), () => {
+		frm.page.add_button(__('Stop Timer', null, 'Site Visit'), () => {
 			frm.set_value('to_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 		start_ticking(frm);
@@ -132,7 +132,7 @@ function start_ticking(frm) {
 		// jedem Aufruf nur einen neuen Block an, statt den alten zu ersetzen -
 		// ohne das Clear stapeln sich die Meldungen im Sekundentakt.
 		frm.dashboard.clear_headline();
-		frm.dashboard.set_headline_alert(__('Timer running: {0}', [`${h}:${m}:${s}`]), 'orange');
+		frm.dashboard.set_headline_alert(__('Timer running: {0}', [`${h}:${m}:${s}`], 'Site Visit'), 'orange');
 	};
 	tick();
 	frm.__site_visit_timer = setInterval(tick, 1000);
@@ -150,16 +150,16 @@ function stop_ticking(frm) {
 
 function show_create_sales_order_dialog(frm) {
 	if (!frm.doc.customer) {
-		frappe.msgprint(__('Please select a Customer first.'));
+		frappe.msgprint(__('Please select a Customer first.', null, 'Site Visit'));
 		return;
 	}
 	if (!(frm.doc.extra_items || []).length) {
-		frappe.msgprint(__('Add at least one item below before creating a new Sales Order.'));
+		frappe.msgprint(__('Add at least one item below before creating a new Sales Order.', null, 'Site Visit'));
 		return;
 	}
 	const dialog = new frappe.ui.Dialog({
-		title: __('New Sales Order'),
-		fields: [{ fieldname: 'po_no', fieldtype: 'Data', label: __('Customer Reference') }],
+		title: __('New Sales Order', null, 'Site Visit'),
+		fields: [{ fieldname: 'po_no', fieldtype: 'Data', label: __('Customer Reference', null, 'Site Visit') }],
 		primary_action_label: __('Create'),
 		primary_action(values) {
 			// Der Server liest Kunde, Projekt und Artikel aus dem gespeicherten
@@ -170,7 +170,7 @@ function show_create_sales_order_dialog(frm) {
 					method: 'zeit_projekt.site_visit.site_visit.create_sales_order',
 					args: { site_visit: frm.doc.name, po_no: values.po_no },
 					freeze: true,
-					freeze_message: __('Creating Sales Order...'),
+					freeze_message: __('Creating Sales Order...', null, 'Site Visit'),
 					callback(r) {
 						if (!r.message) return;
 						dialog.hide();
