@@ -51,9 +51,14 @@ ALTE_CLIENT_SCRIPTS = [
 ]
 
 
+SITE_VISIT_DOCUMENT_TYPE = "Site Visit"
+SITE_VISIT_PRINT_FORMAT = "Site Visit Report"
+
+
 def after_install():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True)
 	_deaktiviere_alte_client_scripts()
+	_site_visit_pdf_on_submit_enable()
 	click.secho("Zeit & Projekt: Felder angelegt.", fg="green")
 
 
@@ -78,6 +83,7 @@ def before_uninstall():
 		"gebuchte Rechnungen bleiben unveraendert bestehen.",
 		fg="yellow",
 	)
+	_site_visit_pdf_on_submit_disable()
 
 
 def _deaktiviere_alte_client_scripts():
@@ -89,3 +95,45 @@ def _deaktiviere_alte_client_scripts():
 				"(Funktion kommt jetzt aus der App). Loeschen kannst du es selbst.",
 				fg="yellow",
 			)
+
+
+def _site_visit_pdf_on_submit_enable():
+	"""Traegt Site Visit automatisch in PDF on Submit Settings ein, damit
+	beim Buchen automatisch ein PDF am Einsatz haengt - nur falls die
+	optionale App pdf_on_submit ueberhaupt installiert ist (siehe
+	README.md "Automatische PDF-Erzeugung")."""
+	if "pdf_on_submit" not in frappe.get_installed_apps():
+		return
+
+	settings = frappe.get_single("PDF on Submit Settings")
+	if any(row.document_type == SITE_VISIT_DOCUMENT_TYPE for row in settings.enabled_for):
+		return
+
+	settings.append(
+		"enabled_for",
+		{"document_type": SITE_VISIT_DOCUMENT_TYPE, "print_format": SITE_VISIT_PRINT_FORMAT},
+	)
+	settings.save(ignore_permissions=True)
+	click.secho(
+		f"Zeit & Projekt: Site Visit in PDF on Submit Settings eingetragen "
+		f"({SITE_VISIT_DOCUMENT_TYPE} / {SITE_VISIT_PRINT_FORMAT}).",
+		fg="green",
+	)
+
+
+def _site_visit_pdf_on_submit_disable():
+	if "pdf_on_submit" not in frappe.get_installed_apps():
+		return
+	if not frappe.db.exists("DocType", "PDF on Submit Settings"):
+		return
+
+	settings = frappe.get_single("PDF on Submit Settings")
+	remaining = [row for row in settings.enabled_for if row.document_type != SITE_VISIT_DOCUMENT_TYPE]
+	if len(remaining) == len(settings.enabled_for):
+		return
+
+	settings.enabled_for = []
+	for row in remaining:
+		settings.append("enabled_for", row)
+	settings.save(ignore_permissions=True)
+	click.secho("Zeit & Projekt: Eintrag Site Visit in PDF on Submit Settings entfernt.", fg="yellow")

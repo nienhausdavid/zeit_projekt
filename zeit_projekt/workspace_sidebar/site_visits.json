@@ -1,0 +1,41 @@
+{
+ "app": "zeit_projekt",
+ "creation": "2026-09-13 09:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "clipboard-check",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "clipboard-check",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Site Visit",
+   "link_to": "Site Visit",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "calendar-clock",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Timesheet",
+   "link_to": "Timesheet",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-09-13 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Site Visit",
+ "name": "Site Visits",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Site Visits"
+}

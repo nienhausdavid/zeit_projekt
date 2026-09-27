@@ -3,7 +3,7 @@ name = "zeit_projekt"
 authors = [
     { name = "Dein Name", email = "info@example.com" },
 ]
-description = "Zeiterfassung als Einzelpositionen, automatische Projektanlage aus dem Auftrag und Fahrtenbuch"
+description = "Zeiterfassung als Einzelpositionen, automatische Projektanlage aus dem Auftrag, Fahrtenbuch und Site Visit"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
