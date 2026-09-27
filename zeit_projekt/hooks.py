@@ -76,23 +76,20 @@ override_doctype_dashboards = {
 before_request = ["zeit_projekt.zeit_projekt.pdf.force_chrome_pdf"]
 
 # ---------------------------------------------------------------------------
-# Fahrtenbuch/Site Visit im Apps-Uebersicht (/apps) - eigene Kacheln mit
-# Sprung in die jeweilige Liste, wie in den urspruenglichen Einzel-Apps.
+# Desk: eine Kachel auf /apps und ein App-Symbol "Zeit & Projekt" mit den
+# Seitenleisten "Fahrtenbuch" und "Site Visits" darunter (mitgeliefert unter
+# desktop_icon/ und workspace_sidebar/, Frappe synchronisiert sie bei
+# install/migrate).
 # ---------------------------------------------------------------------------
+app_logo_url = "/assets/zeit_projekt/images/zeit_projekt-logo.svg"
+
 add_to_apps_screen = [
 	{
-		"name": "fahrtenbuch",
-		"logo": "/assets/zeit_projekt/images/fahrtenbuch-logo.svg",
-		"title": "Fahrtenbuch",
-		"route": "/app/fahrt",
-		"has_permission": "zeit_projekt.fahrtenbuch.fahrtenbuch.check_app_permission",
-	},
-	{
-		"name": "site_visit",
-		"logo": "/assets/zeit_projekt/images/site_visit-logo.svg",
-		"title": "Site Visit",
-		"route": "/app/site-visit",
-		"has_permission": "zeit_projekt.site_visit.site_visit.check_app_permission",
+		"name": "zeit_projekt",
+		"logo": app_logo_url,
+		"title": app_title,
+		"route": "/desk/fahrt?sidebar=Fahrtenbuch",
+		"has_permission": "zeit_projekt.zeit_projekt.desk.check_app_permission",
 	},
 ]
 

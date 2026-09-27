@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Zeit &amp; Projekt">
+  <rect width="64" height="64" rx="14" fill="#0f766e"/>
+  <circle cx="27" cy="29" r="15" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <path d="M27 20v10l6 4" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40 50h14M44 44l6 6-6 6" fill="none" stroke="#99f6e4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

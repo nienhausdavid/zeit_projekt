@@ -127,11 +127,3 @@ def get_available_models(api_url=None, api_key=None):
 	frappe.only_for("System Manager")
 
 	return list_models(api_url=api_url, api_key=api_key)
-
-
-def check_app_permission():
-	"""Fuer add_to_apps_screen in hooks.py: wer die App-Kachel im Desk sehen darf."""
-	if frappe.session.user == "Administrator":
-		return True
-	roles = frappe.get_roles()
-	return any(role in roles for role in ("System Manager", "Projects Manager", "Employee"))

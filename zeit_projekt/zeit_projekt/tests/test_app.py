@@ -53,3 +53,15 @@ class TestApp(IntegrationTestCase):
 		frappe.db.value_cache.clear()
 		force_chrome_pdf()
 		self.assertEqual(frappe.local.form_dict.get("pdf_generator"), "chrome")
+
+	def test_desk(self):
+		from frappe.apps import get_apps
+
+		self.assertEqual(frappe.db.get_value("Desktop Icon", "Zeit & Projekt", "icon_type"), "App")
+		kinder = frappe.get_all("Desktop Icon", filters={"parent_icon": "Zeit & Projekt"}, pluck="link_to")
+		self.assertEqual(sorted(kinder), ["Fahrtenbuch", "Site Visits"])
+		for sidebar in kinder:
+			self.assertTrue(frappe.db.exists("Workspace Sidebar", sidebar))
+		kacheln = [a for a in get_apps() if a["name"] == "zeit_projekt"]
+		self.assertEqual(len(kacheln), 1)
+		self.assertTrue(kacheln[0]["route"].startswith("/desk/"))
