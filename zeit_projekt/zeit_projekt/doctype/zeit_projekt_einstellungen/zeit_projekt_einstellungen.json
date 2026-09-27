@@ -6,7 +6,9 @@
  "field_order": [
   "rechnung_section",
   "positionsbezeichnung",
-  "lieferdatum_quelle"
+  "lieferdatum_quelle",
+  "pdf_section",
+  "force_chrome_pdf"
  ],
  "fields": [
   {
@@ -20,7 +22,7 @@
    "fieldname": "positionsbezeichnung",
    "fieldtype": "Select",
    "label": "Erste Zeile der Positionsbeschreibung",
-   "options": "Nur Datum und Uhrzeit\nAktivit\u00e4tsart voranstellen\nBezeichnung f\u00fcr Rechnung, sonst Aktivit\u00e4tsart"
+   "options": "Nur Datum und Uhrzeit\nAktivitätsart voranstellen\nBezeichnung für Rechnung, sonst Aktivitätsart"
   },
   {
    "default": "Beginn der Zeitbuchung",
@@ -29,12 +31,24 @@
    "fieldtype": "Select",
    "label": "Liefertermin der Position",
    "options": "Beginn der Zeitbuchung\nEnde der Zeitbuchung"
+  },
+  {
+   "fieldname": "pdf_section",
+   "fieldtype": "Section Break",
+   "label": "PDF-Erzeugung"
+  },
+  {
+   "default": "0",
+   "description": "Nur aktivieren, wenn wkhtmltopdf auf dem Server grundsätzlich scheitert. Gilt für alle PDFs der Site (Download, Druckansicht und automatische PDFs von pdf_on_submit) und setzt voraus, dass Chromium für Frappe eingerichtet ist.",
+   "fieldname": "force_chrome_pdf",
+   "fieldtype": "Check",
+   "label": "PDFs immer mit Chrome erzeugen"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-10 12:00:00.000000",
+ "modified": "2026-09-27 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",

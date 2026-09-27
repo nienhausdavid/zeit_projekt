@@ -62,11 +62,10 @@ override_doctype_dashboards = {
 }
 
 # ---------------------------------------------------------------------------
-# PDF-Generator serverweit auf "chrome" erzwingen (nur relevant, falls
-# wkhtmltopdf auf dem Server grundsaetzlich scheitert - siehe force_chrome_pdf
-# in zeit_projekt/site_visit/site_visit.py fuer den Hintergrund).
+# PDF-Generator auf "chrome" erzwingen - nur wenn in "Zeit Projekt
+# Einstellungen" aktiviert (siehe zeit_projekt/zeit_projekt/pdf.py).
 # ---------------------------------------------------------------------------
-before_request = ["zeit_projekt.site_visit.site_visit.force_chrome_pdf"]
+before_request = ["zeit_projekt.zeit_projekt.pdf.force_chrome_pdf"]
 
 # ---------------------------------------------------------------------------
 # Fahrtenbuch/Site Visit im Apps-Uebersicht (/apps) - eigene Kacheln mit

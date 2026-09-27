@@ -4,22 +4,15 @@ __version__ = "0.0.1"
 def _patch_pdf_on_submit_for_chrome():
 	"""pdf_on_submit.attach_pdf.get_pdf_data() ruft frappe.utils.pdf.get_pdf()
 	direkt auf - den rohen wkhtmltopdf-Pfad, ohne den pdf_generator-Mechanismus
-	von frappe.get_print() (siehe zeit_projekt.site_visit.site_visit.force_chrome_pdf
-	fuer den Hintergrund: wkhtmltopdf scheitert auf diesem Server grundsaetzlich).
-	Betrifft damit auch die automatische PDF-Anlage beim Buchen, die
-	force_chrome_pdf nicht abdeckt (kein HTTP-Request an download_pdf/
-	printview, laeuft ggf. sogar in einem Queue-Worker ganz ohne
-	Request-Kontext).
+	von frappe.get_print(). Die automatische PDF-Anlage beim Buchen deckt
+	force_chrome_pdf (zeit_projekt/zeit_projekt/pdf.py) nicht ab, weil sie
+	ohne HTTP-Request (ggf. im Queue-Worker) laeuft.
 
-	pdf_on_submit ist ein Drittanbieter-Modul - hier gezielt nur die eine
-	Funktion ersetzt, statt es zu forken. Steht bewusst hier statt in
-	hooks.py: Frappe importiert hooks.py nur lazy, sobald ein konkreter Hook
-	abgefragt wird (bestaetigt per bench console - attach_pdf.get_pdf_data
-	blieb unveraendert, bis zeit_projekt.hooks explizit importiert wurde). Das
-	Paket-__init__.py dagegen muss Python zwingend zuerst importieren, bevor
-	irgendein Untermodul dieser App ueberhaupt referenzierbar ist - das
-	garantiert den Patch in jedem Prozesstyp (Web, Queue-Worker, Scheduler),
-	nicht nur dort, wo zufaellig zuerst ein zeit_projekt-Hook gezogen wird."""
+	Der Chrome-Weg greift nur, wenn "PDFs immer mit Chrome erzeugen" in
+	"Zeit Projekt Einstellungen" aktiv ist - sonst bleibt pdf_on_submit
+	unveraendert. Steht bewusst hier statt in hooks.py: Frappe importiert
+	hooks.py nur lazy, das Paket-__init__.py dagegen in jedem Prozesstyp (Web,
+	Queue-Worker, Scheduler), bevor irgendein Untermodul geladen wird."""
 	try:
 		from pdf_on_submit import attach_pdf
 	except ImportError:
@@ -27,7 +20,13 @@ def _patch_pdf_on_submit_for_chrome():
 
 	import frappe
 
+	original = attach_pdf.get_pdf_data
+
 	def get_pdf_data(doctype, name, print_format=None, letterhead=None):
+		from zeit_projekt.zeit_projekt.pdf import chrome_enabled
+
+		if not chrome_enabled():
+			return original(doctype, name, print_format, letterhead)
 		return frappe.get_print(
 			doctype, name, print_format, letterhead=letterhead, as_pdf=True, pdf_generator="chrome"
 		)

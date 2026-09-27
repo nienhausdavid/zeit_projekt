@@ -193,22 +193,3 @@ def check_app_permission():
 	roles = frappe.get_roles()
 	return any(role in roles for role in ("System Manager", "Projects Manager", "Employee"))
 
-
-def force_chrome_pdf():
-	"""Vor download_pdf/printview: erzwingt pdf_generator=chrome fuer alle
-	Doctypes auf diesem Server.
-
-	wkhtmltopdf (der Frappe-Standard) scheitert hier grundsaetzlich an jeder
-	frisch gerenderten Druckvorlage - schon das von Frappe selbst
-	eingebundene <link ...print.bundle...css> ist eine relative URL ohne
-	Basis-Adresse, die wkhtmltopdf im from_string-Modus nicht aufloesen kann
-	("ProtocolUnknownError"). frappe.utils.print_format.download_pdf faellt
-	ohne expliziten Parameter hart auf wkhtmltopdf zurueck und ignoriert das
-	pdf_generator-Feld des Print Format."""
-	request = getattr(frappe.local, "request", None)
-	if not request or request.path not in (
-		"/api/method/frappe.utils.print_format.download_pdf",
-		"/printview",
-	):
-		return
-	frappe.local.form_dict.pdf_generator = "chrome"
