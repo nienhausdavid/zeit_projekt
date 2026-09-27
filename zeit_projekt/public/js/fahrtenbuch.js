@@ -158,25 +158,53 @@ function stop_ticking(frm) {
 	}
 }
 
+// Kilometerstand-Erkennung läuft als Hintergrund-Job (bis zu 45 s) - das
+// Formular bleibt bedienbar, das Ergebnis kommt per Realtime-Event zurück.
+// Global statt im Skript-Scope: das Formular-Skript kann mehrfach ausgeführt
+// werden, der Realtime-Listener soll trotzdem nur einmal existieren.
+window.zeit_projekt_ocr = window.zeit_projekt_ocr || { offen: {}, listener: false };
+const offene_erkennungen = window.zeit_projekt_ocr.offen;
+
+if (!window.zeit_projekt_ocr.listener) {
+	window.zeit_projekt_ocr.listener = true;
+	frappe.realtime.on('zeit_projekt_odometer', (data) => {
+		const auftrag = window.zeit_projekt_ocr.offen[data.request_id];
+		if (!auftrag) return;
+		delete window.zeit_projekt_ocr.offen[data.request_id];
+		zeige_erkennung(auftrag, data);
+	});
+}
+
+function zeige_erkennung(auftrag, data) {
+	const frm = cur_frm;
+	// Formular inzwischen verlassen, anderes Foto oder Wert schon von Hand
+	// eingetragen? (Der Name einer neuen Fahrt ändert sich beim Speichern,
+	// deshalb wird am Foto erkannt, ob es noch dieselbe Fahrt ist.)
+	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
+	if (data.reading && !frm.doc[data.fieldname]) {
+		frm.set_value(data.fieldname, data.reading);
+		frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [data.reading]), indicator: 'green' });
+	} else if (!data.reading) {
+		frappe.show_alert({
+			message: __('Konnte den Kilometerstand nicht erkennen, bitte manuell eintragen.'),
+			indicator: 'orange',
+		});
+	}
+}
+
 function fetch_odometer_reading(frm, photo_field, odometer_field) {
 	const file_url = frm.doc[photo_field];
 	if (!file_url) return;
 
-	frappe.call({
-		method: 'zeit_projekt.fahrtenbuch.fahrtenbuch.get_odometer_reading',
-		args: { file_url },
-		freeze: true,
-		freeze_message: __('Kilometerstand wird erkannt...'),
-		callback(r) {
-			if (r.message) {
-				frm.set_value(odometer_field, r.message);
-				frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [r.message]), indicator: 'green' });
-			} else {
-				frappe.show_alert({
-					message: __('Konnte den Kilometerstand nicht erkennen, bitte manuell eintragen.'),
-					indicator: 'orange',
-				});
-			}
-		},
-	});
+	frappe
+		.call({
+			method: 'zeit_projekt.fahrtenbuch.fahrtenbuch.get_odometer_reading',
+			args: { file_url, fieldname: odometer_field },
+		})
+		.then((r) => {
+			const res = r.message || {};
+			if (!res.queued) return; // Erkennung nicht eingerichtet
+			offene_erkennungen[res.request_id] = { photo_field, file_url };
+			frappe.show_alert({ message: __('Kilometerstand wird im Hintergrund erkannt …'), indicator: 'blue' });
+		});
 }

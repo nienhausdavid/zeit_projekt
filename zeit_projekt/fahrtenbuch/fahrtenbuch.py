@@ -68,23 +68,52 @@ def get_fahrt_defaults():
 
 
 @frappe.whitelist()
-def get_odometer_reading(file_url):
-	"""Fuer den Foto-Upload im Formular: liest den Kilometerstand per
-	Vision-Modell aus (siehe ocr.py). None, wenn nichts Eindeutiges erkannt
-	wurde oder das Modell nicht erreichbar ist - der Techniker traegt dann
-	manuell ein."""
-	from zeit_projekt.fahrtenbuch.ocr import read_odometer
+def get_odometer_reading(file_url, fieldname):
+	"""Fuer den Foto-Upload im Formular: stoesst die Kilometerstand-Erkennung
+	per Vision-Modell (siehe ocr.py) als Hintergrund-Job an - die Anfrage kann
+	bis zu 45 s dauern und soll das Formular nicht blockieren. Das Ergebnis
+	kommt per Realtime-Event "zeit_projekt_odometer" an den Nutzer zurueck.
+
+	Rueckgabe: {"request_id": ...} oder {"queued": False}, wenn die Erkennung
+	nicht eingerichtet ist (dann traegt der Techniker manuell ein)."""
+	from zeit_projekt.fahrtenbuch.ocr import is_configured
 
 	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
 		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+	if not is_configured():
+		return {"queued": False}
 
 	# Nur Dateien, die der Nutzer selbst lesen darf - sonst liesse sich jede
 	# private Datei an die externe Erkennungs-API schicken.
 	for name in frappe.get_all("File", filters={"file_url": file_url}, pluck="name"):
-		file_doc = frappe.get_doc("File", name)
-		if file_doc.has_permission("read"):
-			return read_odometer(file_doc)
+		if frappe.get_doc("File", name).has_permission("read"):
+			request_id = frappe.generate_hash(length=12)
+			frappe.enqueue(
+				"zeit_projekt.fahrtenbuch.fahrtenbuch.run_odometer_ocr",
+				queue="short",
+				timeout=120,
+				enqueue_after_commit=True,
+				file_name=name,
+				fieldname=fieldname,
+				request_id=request_id,
+				user=frappe.session.user,
+			)
+			return {"queued": True, "request_id": request_id}
 	frappe.throw(_("Keine Berechtigung für diese Datei."), frappe.PermissionError)
+
+
+def run_odometer_ocr(file_name, fieldname, request_id, user):
+	"""Hintergrund-Job: Erkennung ausfuehren und das Ergebnis (oder None) an
+	das offene Formular des Nutzers melden."""
+	from zeit_projekt.fahrtenbuch.ocr import read_odometer
+
+	reading = read_odometer(frappe.get_doc("File", file_name))
+	frappe.publish_realtime(
+		"zeit_projekt_odometer",
+		{"request_id": request_id, "fieldname": fieldname, "reading": reading},
+		user=user,
+		after_commit=False,
+	)
 
 
 @frappe.whitelist()
