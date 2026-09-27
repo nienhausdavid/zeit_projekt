@@ -8,10 +8,10 @@ Bench: `<BENCHNAME>` — Site: `<SITENAME>`
 Vier Funktionen in drei Modulen (aus den ursprünglich getrennten Apps `zeit_projekt`, `fahrtenbuch` und `site_visit` zu einer App zusammengeführt, siehe README.md "Herkunft"):
 1. (Modul „Zeit Projekt") Knopf in der Ausgangsrechnung, der Zeiterfassungen als einzelne Rechnungspositionen importiert (Artikel aus der Aktivitätsart, Preis aus dem Artikel, Beschreibung und Liefertermin konfigurierbar).
 2. (Modul „Zeit Projekt") Haken im Auftrag, der beim Bestätigen automatisch ein Projekt anlegt und verknüpft.
-3. (Modul „Fahrtenbuch") Fahrten dokumentieren, Kilometerstand per Fotoerkennung erfassen, optional automatisch abrechnen.
+3. (Modul „Fahrtenbuch") Fahrten dokumentieren, Kilometerstand per Fotoerkennung erfassen; beim Buchen entsteht ein Zeitblatt (Fahrzeit), Kilometer kommen über den Zeitimport der Ausgangsrechnung.
 4. (Modul „Site Visit") Kundeneinsätze dokumentieren (Zeit, Fotos, Unterschrift), daraus automatisch ein abrechenbares Zeitblatt erzeugen.
 
-Details zu Funktionsweise, Feldern und Einstellungen stehen in `README.md` — vor der ersten Änderung lesen.
+Details zu Funktionsweise, Feldern und Einstellungen stehen in `README.md` und `docs/` — vor der ersten Änderung lesen.
 
 ## Umgebung
 
@@ -33,6 +33,7 @@ Frappe- und ERPNext-Quellcode zum Nachschlagen (nur lesen, nie ändern):
 | App installieren | `fm shell <BENCHNAME> -c "bench --site <SITENAME> install-app zeit_projekt"` |
 | App entfernen | `fm shell <BENCHNAME> -c "bench --site <SITENAME> uninstall-app zeit_projekt --yes"` |
 | Logs | `fm logs <BENCHNAME> --follow` |
+| Tests | `fm shell <BENCHNAME> -c "bench --site <SITENAME> run-tests --app zeit_projekt"` (einmalig vorher `set-config allow_tests true`) |
 
 ## Regeln
 
