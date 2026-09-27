@@ -39,11 +39,16 @@ def before_submit(doc, method=None):
 
 	check_sales_order(doc.sales_order, doc.customer)
 
+	# Die Berechtigung ist die auf den Site Visit selbst: die Rolle "Employee"
+	# darf Zeitblaetter in ERPNext anlegen, aber nicht buchen, und "Projects
+	# Manager" hat gar keine Zeitblatt-Rechte (fuer das Stornieren).
 	ts = frappe.get_doc(
 		{
 			"doctype": "Timesheet",
 			"employee": doc.employee,
 			"company": doc.company,
+			"customer": doc.customer,
+			"parent_project": doc.project or None,
 			"time_logs": [
 				{
 					"activity_type": doc.activity_type,
@@ -56,6 +61,7 @@ def before_submit(doc, method=None):
 			],
 		}
 	)
+	ts.flags.ignore_permissions = True
 	ts.insert()
 	try:
 		ts.submit()
@@ -176,6 +182,7 @@ def on_cancel(doc, method=None):
 		frappe.db.set_value("Site Visit Item", row.name, {"added_to_order": 0, "sales_order_item": None})
 
 	if ts and ts.docstatus == 1:
+		ts.flags.ignore_permissions = True
 		ts.cancel()
 
 

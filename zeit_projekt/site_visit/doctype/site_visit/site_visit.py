@@ -14,7 +14,22 @@ class SiteVisit(Document):
 			# duplizierten (neuen) Einsatz muessen sie dagegen neu hinein.
 			for row in self.extra_items:
 				row.added_to_order = 0
+		self.set_link_names()
 		self.set_extra_item_rates()
+
+	def set_link_names(self):
+		"""Ersatz fuer fetch_from: das holt im Browser mit den Rechten des
+		Nutzers, und Techniker duerfen Kunde/Artikel nicht lesen."""
+		self.customer_name = (
+			frappe.db.get_value("Customer", self.customer, "customer_name") if self.customer else None
+		)
+		for row in self.extra_items:
+			if row.item_code:
+				item_name, stock_uom = frappe.db.get_value(
+					"Item", row.item_code, ["item_name", "stock_uom"]
+				) or (None, None)
+				row.item_name = item_name
+				row.uom = row.uom or stock_uom
 
 	def set_extra_item_rates(self):
 		"""Preis der Zusatzartikel kommt aus ERPNext (Preisliste/Preisregeln

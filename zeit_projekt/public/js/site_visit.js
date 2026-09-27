@@ -4,21 +4,30 @@
 // dorthin - keine async Calls vor dem Buchen, um die Race Condition aus
 // zeit_projekt/sales_order.js nicht zu wiederholen.
 
+// Techniker (Rolle "Employee") duerfen Kunde, Auftrag und Artikel nicht lesen
+// - Suche und Vorbelegung laufen deshalb ueber eingeschraenkte
+// Server-Methoden (zeit_projekt/zeit_projekt/technician.py).
+const TECHNICIAN_API = 'zeit_projekt.zeit_projekt.technician';
+
+function link_details(doctype, name) {
+	return frappe
+		.call({ method: `${TECHNICIAN_API}.get_link_details`, args: { doctype, name } })
+		.then((r) => r.message || {});
+}
+
 frappe.ui.form.on('Site Visit', {
 	onload(frm) {
-		// Auftrag-Auswahl auf Auftraege des gewaehlten Kunden (und, falls
-		// gesetzt, Projekts) einschraenken. Dynamischer Filter - wird bei
-		// jedem Oeffnen des Dropdowns neu anhand des aktuellen frm.doc
-		// ausgewertet. Ohne customer-Filter wurden hier bislang Auftraege
-		// beliebiger Kunden angezeigt, sobald kein Projekt gesetzt war (oder
-		// generell, da der Filter selbst bei gesetztem Projekt nie auf den
-		// Kunden eingeschraenkt hat).
+		// Auftrag-Auswahl auf offene Auftraege des gewaehlten Kunden (und,
+		// falls gesetzt, Projekts) einschraenken. Dynamischer Filter - wird
+		// bei jedem Oeffnen des Dropdowns neu anhand von frm.doc ausgewertet.
+		frm.set_query('customer', () => ({ query: `${TECHNICIAN_API}.customer_query` }));
 		frm.set_query('sales_order', () => {
 			const filters = {};
 			if (frm.doc.customer) filters.customer = frm.doc.customer;
 			if (frm.doc.project) filters.project = frm.doc.project;
-			return { filters };
+			return { query: `${TECHNICIAN_API}.sales_order_query`, filters };
 		});
+		frm.set_query('item_code', 'extra_items', () => ({ query: `${TECHNICIAN_API}.item_query` }));
 
 		if (!frm.is_new()) return;
 		if (!frm.doc.employee) {
@@ -51,10 +60,20 @@ frappe.ui.form.on('Site Visit', {
 		// uebernehmen - derselbe Grund wie bei project(): der Techniker soll
 		// das nicht doppelt eintragen muessen.
 		if (!frm.doc.sales_order) return;
-		frappe.db.get_value('Sales Order', frm.doc.sales_order, ['customer', 'project']).then((r) => {
-			if (!r.message) return;
-			if (r.message.customer) frm.set_value('customer', r.message.customer);
-			if (r.message.project && !frm.doc.project) frm.set_value('project', r.message.project);
+		link_details('Sales Order', frm.doc.sales_order).then((d) => {
+			if (d.customer) frm.set_value('customer', d.customer);
+			if (d.project && !frm.doc.project) frm.set_value('project', d.project);
+		});
+	},
+
+	customer(frm) {
+		// Ersatz fuer fetch_from (liest im Browser mit Nutzerrechten).
+		if (!frm.doc.customer) {
+			frm.set_value('customer_name', '');
+			return;
+		}
+		link_details('Customer', frm.doc.customer).then((d) => {
+			frm.set_value('customer_name', d.customer_name || '');
 		});
 	},
 
@@ -164,22 +183,36 @@ function show_create_sales_order_dialog(frm) {
 	dialog.show();
 }
 
+// Ersatz fuer fetch_from bei Artikelname/Einheit (s. customer() oben).
+frappe.ui.form.on('Site Visit Item', {
+	item_code(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (!row.item_code) return;
+		link_details('Item', row.item_code).then((d) => {
+			frappe.model.set_value(cdt, cdn, 'item_name', d.item_name || '');
+			frappe.model.set_value(cdt, cdn, 'uom', d.stock_uom || '');
+		});
+	},
+});
+
 function fill_from_project(frm) {
 	if (!frm.doc.customer) {
-		frappe.db.get_value('Project', frm.doc.project, 'customer').then((r) => {
-			if (r.message && r.message.customer) frm.set_value('customer', r.message.customer);
+		link_details('Project', frm.doc.project).then((d) => {
+			if (d.customer) frm.set_value('customer', d.customer);
 		});
 	}
-	// Genau ein passender Auftrag zum gewaehlten Projekt? Dann gleich
+	// Genau ein offener Auftrag zum gewaehlten Projekt? Dann gleich
 	// uebernehmen. Bei mehreren zeigt der Filter aus onload() nur noch die
 	// passenden im Dropdown - der Techniker waehlt dann selbst.
 	if (!frm.doc.sales_order) {
-		frappe.db.get_list('Sales Order', {
-			filters: { project: frm.doc.project, docstatus: ['!=', 2] },
-			fields: ['name'],
-			limit: 2,
-		}).then((rows) => {
-			if (rows.length === 1) frm.set_value('sales_order', rows[0].name);
-		});
+		frappe
+			.call({
+				method: `${TECHNICIAN_API}.get_open_sales_orders`,
+				args: { project: frm.doc.project, customer: frm.doc.customer || null },
+			})
+			.then((r) => {
+				const names = r.message || [];
+				if (names.length === 1) frm.set_value('sales_order', names[0]);
+			});
 	}
 }

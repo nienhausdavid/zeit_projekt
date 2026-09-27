@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import format_date
+from frappe.utils import cint, format_date
 
 from zeit_projekt.zeit_projekt.billing import add_rows_to_sales_order, remove_rows_from_sales_order
 
@@ -36,6 +36,22 @@ def _positionstext(doc, art):
 	if doc.start_location or doc.end_location:
 		teile.append(f"{doc.start_location or '?'} → {doc.end_location or '?'}")
 	return ", ".join(teile)
+
+
+@frappe.whitelist()
+def get_fahrt_defaults():
+	"""Vorbelegungen fuer das Fahrt-Formular. "Fahrtenbuch Einstellungen" darf
+	nur der System Manager lesen (API-Schluessel) - Techniker bekommen hier nur
+	die drei unkritischen Werte. get_cached_doc liefert bei nie gespeicherten
+	Einstellungen die Feld-Defaults (beide Haken an)."""
+	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
+		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
+	return {
+		"time_item": settings.time_item,
+		"auto_start_timer": cint(settings.auto_start_timer),
+		"auto_open_camera": cint(settings.auto_open_camera),
+	}
 
 
 @frappe.whitelist()
