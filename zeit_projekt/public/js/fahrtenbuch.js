@@ -5,12 +5,24 @@
 // async Calls vor dem Buchen, um die Race Condition aus
 // zeit_projekt/sales_order.js nicht zu wiederholen.
 
+// Techniker (Rolle "Employee") duerfen Kunde, Auftrag, Artikel und Fahrzeug
+// nicht lesen - Suche und Vorbelegung laufen deshalb ueber eingeschraenkte
+// Server-Methoden (zeit_projekt/zeit_projekt/technician.py).
+const TECHNICIAN_API = 'zeit_projekt.zeit_projekt.technician';
+
+function link_details(doctype, name) {
+	return frappe
+		.call({ method: `${TECHNICIAN_API}.get_link_details`, args: { doctype, name } })
+		.then((r) => r.message || {});
+}
+
 frappe.ui.form.on('Fahrt', {
 	onload(frm) {
 		// Auftrag/Projekt auf den gewaehlten Kunden einschraenken (Auftrag
 		// zusaetzlich auf das gewaehlte Projekt, falls gesetzt). Dynamischer
 		// Filter - wird bei jedem Oeffnen des Dropdowns neu anhand des
 		// aktuellen frm.doc ausgewertet.
+		frm.set_query('customer', () => ({ query: `${TECHNICIAN_API}.customer_query` }));
 		frm.set_query('project', () => {
 			return frm.doc.customer ? { filters: { customer: frm.doc.customer } } : {};
 		});
@@ -18,11 +30,14 @@ frappe.ui.form.on('Fahrt', {
 			const filters = {};
 			if (frm.doc.customer) filters.customer = frm.doc.customer;
 			if (frm.doc.project) filters.project = frm.doc.project;
-			return { filters };
+			return { query: `${TECHNICIAN_API}.sales_order_query`, filters };
 		});
 		frm.set_query('site_visit', () => {
 			return frm.doc.customer ? { filters: { customer: frm.doc.customer } } : {};
 		});
+		frm.set_query('time_item', () => ({ query: `${TECHNICIAN_API}.item_query` }));
+		frm.set_query('km_item', () => ({ query: `${TECHNICIAN_API}.item_query` }));
+		frm.set_query('vehicle', () => ({ query: `${TECHNICIAN_API}.vehicle_query` }));
 
 		if (!frm.is_new()) return;
 		if (!frm.doc.employee) {
@@ -32,35 +47,31 @@ frappe.ui.form.on('Fahrt', {
 				});
 		}
 		if (!frm.doc.time_item) {
-			frappe.db.get_single_value('Fahrtenbuch Einstellungen', 'time_item').then((value) => {
-				if (value) frm.set_value('time_item', value);
+			frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
+				if (r.message && r.message.time_item) frm.set_value('time_item', r.message.time_item);
 			});
 		}
-		// Kein automatischer Default fuer start_time mehr - das uebernimmt
-		// jetzt der Timer (oder die manuelle Eingabe). Ein Default hier wuerde
-		// bei Formularoeffnung den falschen Zeitpunkt festlegen, falls der
+		// Kein automatischer Default fuer start_time - das uebernimmt der
+		// Timer (oder die manuelle Eingabe). Ein Default hier wuerde bei
+		// Formularoeffnung den falschen Zeitpunkt festlegen, falls der
 		// Techniker erst spaeter tatsaechlich losfaehrt.
 	},
 
 	site_visit(frm) {
 		if (!frm.doc.site_visit) return;
-		frappe.db.get_value('Site Visit', frm.doc.site_visit, ['customer', 'project', 'sales_order'])
-			.then((r) => {
-				if (!r.message) return;
-				if (r.message.customer && !frm.doc.customer) frm.set_value('customer', r.message.customer);
-				if (r.message.project && !frm.doc.project) frm.set_value('project', r.message.project);
-				if (r.message.sales_order && !frm.doc.sales_order) {
-					frm.set_value('sales_order', r.message.sales_order);
-				}
-			});
+		link_details('Site Visit', frm.doc.site_visit).then((d) => {
+			if (d.customer && !frm.doc.customer) frm.set_value('customer', d.customer);
+			if (d.project && !frm.doc.project) frm.set_value('project', d.project);
+			if (d.sales_order && !frm.doc.sales_order) frm.set_value('sales_order', d.sales_order);
+		});
 	},
 
 	project(frm) {
 		// Kunde aus dem gewaehlten Projekt uebernehmen, falls noch leer -
 		// der Techniker soll das nicht doppelt eintragen muessen.
 		if (!frm.doc.project || frm.doc.customer) return;
-		frappe.db.get_value('Project', frm.doc.project, 'customer').then((r) => {
-			if (r.message && r.message.customer) frm.set_value('customer', r.message.customer);
+		link_details('Project', frm.doc.project).then((d) => {
+			if (d.customer) frm.set_value('customer', d.customer);
 		});
 	},
 
@@ -68,10 +79,9 @@ frappe.ui.form.on('Fahrt', {
 		// Kunde (und, falls noch leer, Projekt) aus dem gewaehlten Auftrag
 		// uebernehmen - derselbe Grund wie bei project().
 		if (!frm.doc.sales_order) return;
-		frappe.db.get_value('Sales Order', frm.doc.sales_order, ['customer', 'project']).then((r) => {
-			if (!r.message) return;
-			if (r.message.customer && !frm.doc.customer) frm.set_value('customer', r.message.customer);
-			if (r.message.project && !frm.doc.project) frm.set_value('project', r.message.project);
+		link_details('Sales Order', frm.doc.sales_order).then((d) => {
+			if (d.customer && !frm.doc.customer) frm.set_value('customer', d.customer);
+			if (d.project && !frm.doc.project) frm.set_value('project', d.project);
 		});
 	},
 

@@ -78,16 +78,19 @@ zeit_projekt/
     ├── workspace_sidebar/
     │   └── site_visits.json   # Eigene Sidebar (nur Site Visit + Timesheet)
     ├── zeit_projekt/          # Modul "Zeit Projekt"
-    │   ├── project_dashboard.py   # verkettet Fahrtenbuch- und Site-Visit-Verknüpfungen
+    │   ├── billing.py             # Positionen in Aufträge übernehmen/entfernen (Preis aus ERPNext)
+    │   ├── technician.py          # eingeschränkte Link-Suchen für Techniker
+    │   ├── sales_invoice.py       # Zeitimport nur für den Rechnungskunden
     │   ├── sales_order.py         # Projektanlage in before_submit
+    │   ├── pdf.py                 # optional: Chrome als PDF-Generator erzwingen
     │   └── doctype/zeit_projekt_einstellungen/
     ├── fahrtenbuch/           # Modul "Fahrtenbuch"
-    │   ├── fahrtenbuch.py         # before_submit (Abrechnung), get_odometer_reading, ...
+    │   ├── fahrtenbuch.py         # before_submit/on_cancel (Abrechnung), get_odometer_reading, ...
     │   ├── ocr.py                 # Kilometerstand per OpenAI-kompatibler Vision-API
     │   ├── project_dashboard.py
     │   └── doctype/{fahrt,fahrtenbuch_einstellungen}/
     └── site_visit/            # Modul "Site Visit"
-        ├── site_visit.py          # before_submit/on_cancel/create_sales_order/force_chrome_pdf
+        ├── site_visit.py          # before_submit/on_cancel/create_sales_order
         ├── project_dashboard.py
         ├── doctype/{site_visit,site_visit_item,site_visit_photo}/
         ├── print_format/site_visit_report/
@@ -106,16 +109,20 @@ Client-Script-Cache im Browser.
   Site Visit verknüpfen (Feld `site_visit` auf „Fahrt") – Kunde, Projekt und
   Auftrag werden dann automatisch übernommen.
 - **Site Visit → Zeit Projekt:** Das beim Buchen eines Site Visit
-  automatisch erzeugte, gebuchte Timesheet (`is_billable=1`) taucht direkt
-  im „Zeiten aus Zeiterfassung importieren"-Dialog der Ausgangsrechnung auf
-  – keine zusätzliche Konfiguration nötig, nur die gemeinsame Nutzung der
-  Kern-Doctype „Activity Type".
+  automatisch erzeugte, gebuchte Timesheet (`is_billable=1`, mit Kunde und
+  Projekt) taucht im „Zeiten aus Zeiterfassung importieren"-Dialog der
+  Ausgangsrechnung dieses Kunden auf.
 - **Fahrtenbuch/Site Visit → Projekt-Formular:** Beide ergänzen die
-  „Verknüpfungen"-Liste im Projekt-Formular (Fahrten bzw. Site Visits).
-  Da Frappes `override_doctype_dashboards`-Hook pro Doctype nur einen
-  einzigen Pfad zulässt, verketten `zeit_projekt.zeit_projekt.project_dashboard.get_data`
-  jetzt beide Erweiterungen in einer Funktion (bei getrennten Apps hätte
-  Frappe das automatisch über die App-Reihenfolge erledigt).
+  „Verknüpfungen"-Liste im Projekt-Formular (Fahrten bzw. Site Visits) über
+  `override_doctype_dashboards`; Frappe ruft beide Einträge nacheinander auf.
+- **Fahrtenbuch/Site Visit → Auftrag:** Beide übernehmen Positionen in den
+  verknüpften Auftrag über dieselbe Logik (`zeit_projekt/billing.py`), siehe
+  „Abrechnung über den Auftrag" unten.
+
+Die früheren Einzel-Apps `fahrtenbuch` und `site_visit` dürfen **nicht**
+zusätzlich installiert sein: sie bringen dieselben Module und Doctypes mit,
+die Hooks liefen doppelt. `before_install` bzw. `before_app_install` brechen
+die Installation in diesem Fall ab.
 
 ---
 
@@ -172,6 +179,8 @@ bench --site <deine-site> uninstall-app zeit_projekt
 - die Formular-Skripte, da sie reiner Code sind
 - die Zeile „Site Visit" in `PDF on Submit Settings` (nur falls
   `pdf_on_submit` installiert ist)
+- das Desktop-Symbol „Zeit & Projekt" samt untergeordneten Symbolen
+  (Frappe selbst sucht es unter dem App-Namen und fände es nicht)
 
 **Was bewusst bestehen bleibt:**
 
@@ -218,6 +227,17 @@ Der Freitext aus der Zeitbuchung steht in allen drei Varianten darunter.
 **Liefertermin der Position:** Beginn (Standard) oder Ende der Zeitbuchung.
 Relevant nur bei Buchungen über Mitternacht.
 
+Der Import holt nur Zeiten des **Rechnungskunden**: Kunde des Projekts der
+Zeitbuchung, sonst Kunde des Zeitblatts. Zeiten ohne Kunde und Projekt
+werden ausgelassen und gemeldet. „Vorhandene Positionen ersetzen" ist
+standardmäßig aus.
+
+**PDFs immer mit Chrome erzeugen** (Standard: aus): nur für Server, auf
+denen wkhtmltopdf grundsätzlich scheitert. Setzt für PDF-Download,
+Druckansicht und die automatischen PDFs von `pdf_on_submit` den
+Chrome-Generator – für **alle** Doctypes der Site. Chromium muss für Frappe
+eingerichtet sein, sonst scheitern alle PDFs.
+
 ### Fahrtenbuch Einstellungen
 
 Doctype **"Fahrtenbuch Einstellungen"** öffnen (Suche im Awesomebar):
@@ -258,10 +278,16 @@ Dann noch einrichten:
    Standard-Verkaufspreisliste hinterlegen
 3. Prüfen, dass der Projekttyp **External** existiert
 4. Für die Fahrtenbuch-Abrechnung einen Artikel für die **Fahrzeit**
-   (Pflicht) und optional einen Artikel für **Kilometergeld** hinterlegen
-5. Optional: **Fahrtenbuch Einstellungen** ausfüllen für die
+   (Pflicht) und optional einen Artikel für **Kilometergeld** hinterlegen –
+   beide mit Verkaufspreis. Gleiches gilt für alle Artikel, die als
+   Zusatzartikel im Site Visit verwendet werden: ohne Preis lässt sich der
+   Beleg nicht buchen.
+5. Neue Auftragspositionen brauchen ein **Lager** (ERPNext-Vorgabe für
+   Aufträge, auch bei Dienstleistungen): Standardlager am Artikel, am
+   Auftrag („Set Source Warehouse") oder in den Lagereinstellungen setzen.
+6. Optional: **Fahrtenbuch Einstellungen** ausfüllen für die
    Kilometerstand-Erkennung per Foto (siehe oben)
-6. Optional: [`pdf_on_submit`](https://github.com/alyf-de/erpnext_pdf-on-submit)
+7. Optional: [`pdf_on_submit`](https://github.com/alyf-de/erpnext_pdf-on-submit)
    installieren, damit Site Visits beim Buchen automatisch ein PDF erhalten
    (siehe "Automatische PDF-Erzeugung" unten)
 
@@ -301,7 +327,8 @@ Schließen der Seite verloren.
 Damit ein Entwurf mit nur laufendem Timer überhaupt speicherbar ist, sind
 Endzeit, beide Kilometerstände, Auftrag und Artikel Fahrzeit **nicht mehr
 auf Feldebene Pflicht** – sie werden erst beim Buchen selbst geprüft
-(`Fahrt.before_submit` in `fahrt.py`).
+(`Fahrt.before_submit` in `fahrt.py`). Leere Kilometerstände speichert
+Frappe als 0; die Prüfung behandelt 0 deshalb als „nicht eingetragen".
 
 ### Einrichtung
 
@@ -326,16 +353,21 @@ angelegt, gebucht und verknüpft – bereit zur Abrechnung.
 
 `sales_order` ist Pflichtfeld – jeder Einsatz muss einem Auftrag zugeordnet
 sein. Gibt es noch keinen, öffnet der Button **"New Sales Order"** im
-Formular einen Dialog: Kunde/Firma/Projekt kommen vom Site Visit, dazu lässt
-sich die **Kundenreferenz** eintragen. Der neue Auftrag entsteht als
-**Entwurf** und übernimmt die bereits eingetragenen Zusatzartikel als
-Startpositionen.
+Formular einen Dialog, in dem sich die **Kundenreferenz** eintragen lässt.
+Der Site Visit wird vorher gespeichert; Kunde, Firma, Projekt und Artikel
+liest der Server aus dem gespeicherten Beleg, die Preise aus ERPNext.
+Der neue Auftrag entsteht als **Entwurf** (Liefertermin = Einsatzdatum,
+frühestens heute) und übernimmt die Zusatzartikel als Startpositionen.
 
 **Zusätzliche Artikel** (`extra_items`): vor Ort zusätzlich benötigtes
-Material. Beim Buchen des Site Visit werden neue (noch nicht übernommene)
-Zeilen automatisch in die Positionen des verknüpften Auftrags aufgenommen –
-auch wenn der Auftrag bereits gebucht ist (über
-`erpnext.controllers.accounts_controller.update_child_qty_rate`).
+Material. Der Preis ist schreibgeschützt und wird beim Speichern aus der
+Preisliste des Kunden bzw. des Auftrags ermittelt. Beim Buchen des Site
+Visit werden neue (noch nicht übernommene) Zeilen in den verknüpften
+Auftrag aufgenommen – siehe „Abrechnung über den Auftrag".
+
+Das automatisch erzeugte Zeitblatt wird ohne Rollenprüfung angelegt und
+gebucht (maßgeblich ist die Berechtigung auf den Site Visit): die Rolle
+„Employee" darf Zeitblätter in ERPNext nicht buchen.
 
 ### Timer
 
@@ -355,11 +387,34 @@ Zeitpunkt der Installation bereits vorhanden, trägt `install.py`
 automatisch die Zeile „Site Visit" in dessen **PDF on Submit Settings**
 ein.
 
-`zeit_projekt/__init__.py` patcht zusätzlich `pdf_on_submit.attach_pdf.get_pdf_data()`,
-damit die automatische PDF-Erzeugung über `frappe.get_print(...,
-pdf_generator="chrome")` läuft statt über deren eigenen wkhtmltopdf-Aufruf –
-relevant nur auf Servern, auf denen wkhtmltopdf grundsätzlich fehlschlägt.
-Der Patch greift nur, wenn `pdf_on_submit` tatsächlich installiert ist.
+Ist in „Zeit Projekt Einstellungen" **PDFs immer mit Chrome erzeugen**
+aktiv, läuft auch die automatische PDF-Erzeugung von `pdf_on_submit` über
+Chrome (`zeit_projekt/__init__.py` ersetzt dazu
+`pdf_on_submit.attach_pdf.get_pdf_data()`); sonst bleibt `pdf_on_submit`
+unverändert.
+
+---
+
+## Abrechnung über den Auftrag
+
+Fahrt (Fahrzeit, optional Kilometer) und Site Visit (Zusatzartikel)
+übernehmen beim Buchen Positionen in den verknüpften Auftrag – auch in einen
+bereits gebuchten, über
+`erpnext.controllers.accounts_controller.update_child_qty_rate` (dieselbe
+Funktion wie der „Update Items"-Dialog). Gemeinsame Logik in
+`zeit_projekt/zeit_projekt/billing.py`:
+
+- **Preis** kommt aus ERPNext (Preisliste, Preisregeln, Währung des
+  Auftrags). Ohne Preis bricht das Buchen mit einer klaren Meldung ab –
+  sonst landete die Position mit 0 im Auftrag.
+- **Beschreibung** ist je Beleg eindeutig (z. B. „Fahrzeit FB-2026-00001,
+  27.09.2026, Werkstatt → Kunde"), damit mehrere Fahrten im selben Auftrag
+  nicht an ERPNexts Duplikatsprüfung scheitern.
+- Der **Auftrag muss offen sein und zum Kunden des Belegs gehören**.
+- **Stornieren** entfernt genau die beim Buchen angelegten Positionen
+  wieder (bereits gelieferte/fakturierte Positionen lehnt ERPNext ab – dann
+  bleibt auch das Stornieren blockiert). Ein berichtigter Beleg übernimmt
+  sie beim erneuten Buchen neu, ohne Dubletten.
 
 ---
 
@@ -379,9 +434,17 @@ Standardbegriffe, die bereits über Frappe/ERPNext selbst übersetzt sind
 (z. B. "Customer", "Employee", "Sales Order", "Timesheet"), sind bewusst
 **nicht** noch einmal in den CSV-Dateien enthalten.
 
+App-Übersetzungen gelten in Frappe für die **ganze Site**. Damit Einträge
+wie „Duration" → „Zeitraum" nicht überall in ERPNext greifen, trägt jede
+Zeile in `de.csv` den DocType als dritte Spalte (Kontext). Frappe übersetzt
+Feldbezeichnungen automatisch mit diesem Kontext; Meldungen im Code geben
+ihn explizit mit (`_("…", context="Site Visit")`,
+`__("…", null, "Site Visit")`). Nur die eindeutigen DocType-Namen stehen
+ohne Kontext.
+
 Nach Änderungen an Texten im Code: neue/geänderte Strings in der
-passenden CSV ergänzen, sonst bleiben sie in der jeweiligen Zielsprache
-unübersetzt (Ausgangssprache als Fallback).
+passenden CSV ergänzen (bei `de.csv` mit Kontext), sonst bleiben sie in der
+jeweiligen Zielsprache unübersetzt (Ausgangssprache als Fallback).
 
 ---
 
@@ -395,6 +458,17 @@ Fahrt-Liste, Site Visit mit einer eigenen Workspace (Verknüpfungen zu
 "Site Visit" und "Timesheet"). Das Modul „Zeit Projekt" selbst hat keine
 eigene Kachel – es wirkt rein als Ergänzung auf Sales-Invoice-/
 Sales-Order-Formularen.
+
+Auf dem **Desk von v16** (App-Symbole) legt Frappe beim Installieren **ein**
+Symbol je App an: „Zeit & Projekt", mit Logo und Ziel des **ersten**
+`add_to_apps_screen`-Eintrags (Fahrtenbuch → Fahrt-Liste); „Site Visits"
+erscheint als untergeordnetes Symbol. Diese Symbole entstehen nur bei
+`install-app`, nicht bei `migrate`. Auf einer Site, auf der die App schon
+vor dieser Version installiert war, einmalig nachholen:
+
+```bash
+bench --site <deine-site> execute frappe.utils.install.auto_generate_icons_and_sidebar
+```
 
 ## Berechtigungen
 
@@ -411,10 +485,25 @@ Sales-Order-Formularen.
 Ein gebuchter, unterschriebener Site Visit gilt als Bestätigung gegenüber
 dem Kunden – nur Projects Manager/System Manager können ihn stornieren.
 
+**Techniker mit nur der Rolle „Employee"** dürfen in ERPNext Kunde,
+Auftrag, Artikel und Fahrzeug nicht lesen. Damit sie Fahrten und Site
+Visits trotzdem ausfüllen können, nutzen die Formulare eigene Link-Suchen
+und Detail-Abfragen (`zeit_projekt/zeit_projekt/technician.py`): nur Name
+und Bezeichnung, nur offene Aufträge, nur verkaufsfähige Artikel – und nur
+für Nutzer mit Anlege- oder Schreibrecht auf Fahrt bzw. Site Visit. Die
+Übernahme in den Auftrag läuft serverseitig als Administrator; geprüft wird
+dabei, dass der Auftrag offen ist und zum Kunden des Belegs gehört.
+
 **Zeit Projekt Einstellungen / Fahrtenbuch Einstellungen**
 
 Nur System Manager kann schreiben; Zeit Projekt Einstellungen ist zusätzlich
-für Accounts User/Accounts Manager/Projects User lesbar.
+für Accounts User/Accounts Manager/Projects User lesbar. Fahrtenbuch
+Einstellungen enthalten den API-Schlüssel und sind nur für System Manager
+lesbar; das Fahrt-Formular holt die drei unkritischen Vorbelegungen über
+`get_fahrt_defaults`. „Verfügbare Modelle abrufen" steht nur System
+Managern zur Verfügung (der Server ruft dabei eine frei angegebene URL ab),
+die Kilometerstand-Erkennung nur für Dateien, die der Nutzer selbst lesen
+darf.
 
 Es gibt bewusst keine eigene, engere Techniker-Rolle als Fixture (Rollen
 sind nicht modulgebunden und würden beim Deinstallieren als Karteileiche

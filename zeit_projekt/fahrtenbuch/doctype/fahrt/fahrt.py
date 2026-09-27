@@ -1,44 +1,40 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, get_datetime, time_diff_in_hours
+from frappe.utils import cint, flt, get_datetime, time_diff_in_hours
 
 
 class Fahrt(Document):
 	def validate(self):
-		"""End/Kilometerstand sind erst beim Buchen Pflicht (siehe
-		before_submit) - beim blossen Speichern als Entwurf, z. B. durch den
-		Timer ("Timer starten" speichert sofort, damit die Startzeit einen
-		Reload uebersteht), sind sie oft noch leer. Deshalb hier nur rechnen/
-		pruefen, wenn beide Werte eines Paars tatsaechlich vorliegen."""
+		"""Ende/Kilometerstand sind erst beim Buchen Pflicht (siehe
+		before_submit) - beim Speichern als Entwurf, z. B. durch den Timer,
+		sind sie oft noch leer. Hier nur rechnen, wenn die Werte vorliegen.
+
+		Leere Int-Felder speichert Frappe als 0 (Spalte NOT NULL DEFAULT 0),
+		"leer" ist hier also immer 0, nie None."""
 		if self.start_time and self.end_time:
 			if get_datetime(self.end_time) <= get_datetime(self.start_time):
 				frappe.throw(_("Das Ende muss nach dem Beginn liegen."))
 			self.duration_hours = flt(time_diff_in_hours(self.end_time, self.start_time), 2)
 
-		if self.start_odometer is not None and self.end_odometer is not None:
-			# Kein frappe.throw hier, wenn end < start: waehrend eines Entwurfs
-			# (z. B. nach einem falschen OCR-Treffer, den man noch korrigieren
-			# will) darf das Speichern nicht blockiert sein - nur das Buchen
-			# selbst (siehe before_submit unten). Trotzdem darf hier keine
-			# negative Zahl im Feld stehen bleiben - bis der Endstand korrigiert
-			# ist, bleibt distance_km einfach leer statt falsch/negativ.
-			if self.end_odometer >= self.start_odometer:
-				self.distance_km = self.end_odometer - self.start_odometer
-			else:
-				self.distance_km = None
+		# Kein throw bei end < start: ein falscher OCR-Treffer soll speicherbar
+		# bleiben, bis er korrigiert ist - nur das Buchen blockiert (unten).
+		start, end = cint(self.start_odometer), cint(self.end_odometer)
+		self.distance_km = end - start if start and end and end >= start else 0
 
 	def before_submit(self):
-		"""Was zum Buchen fehlen darf, aber nicht zum Buchen selbst: hier statt
-		als reqd im Feld, damit ein Entwurf (z. B. per Timer gestartet, noch
-		mitten in der Fahrt) jederzeit speicherbar bleibt."""
+		"""Was zum Speichern fehlen darf, aber nicht zum Buchen."""
 		if not self.end_time:
 			frappe.throw(_("Bitte vor dem Buchen eine Endzeit eintragen."))
-		if self.start_odometer is None or self.end_odometer is None:
+		if not cint(self.start_odometer) or not cint(self.end_odometer):
 			frappe.throw(_("Bitte vor dem Buchen beide Kilometerstände eintragen."))
-		if self.end_odometer < self.start_odometer:
+		if cint(self.end_odometer) < cint(self.start_odometer):
 			frappe.throw(_("Der Kilometerstand am Ende darf nicht kleiner als am Anfang sein."))
+		if self.bill_km and not self.distance_km:
+			frappe.throw(_("Die Strecke ist 0 km - Kilometer können nicht abgerechnet werden."))
 		if not self.sales_order:
 			frappe.throw(_("Bitte vor dem Buchen einen Auftrag wählen."))
 		if not self.time_item:
 			frappe.throw(_("Bitte vor dem Buchen einen Artikel für die Fahrzeit wählen."))
+		if not flt(self.duration_hours):
+			frappe.throw(_("Die Fahrzeit ist 0 Stunden."))

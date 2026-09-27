@@ -15,7 +15,7 @@
 //    Verknuepfung nur das Projekt-Feld vorbelegen, keine Startzeit setzen.
 frappe.ui.form.on('Project', {
 	refresh(frm) {
-		if (frm.is_new()) return;
+		if (frm.is_new() || !frappe.model.can_create('Fahrt')) return;
 
 		frm.page.add_button(__('Fahrt mit Timer starten'), () => start_fahrt_aus_projekt(frm));
 
@@ -25,10 +25,10 @@ frappe.ui.form.on('Project', {
 });
 
 function start_fahrt_aus_projekt(frm) {
-	Promise.all([
-		frappe.db.get_single_value('Fahrtenbuch Einstellungen', 'auto_start_timer'),
-		frappe.db.get_single_value('Fahrtenbuch Einstellungen', 'auto_open_camera'),
-	]).then(([auto_start_timer, auto_open_camera]) => {
+	// Nicht frappe.db.get_single_value: "Fahrtenbuch Einstellungen" darf nur der
+	// System Manager lesen, Techniker bekaemen einen Rechte-Fehler.
+	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
+		const { auto_start_timer, auto_open_camera } = r.message || {};
 		const values = { project: frm.doc.name, customer: frm.doc.customer };
 		if (auto_start_timer) {
 			values.start_time = frappe.datetime.now_datetime();

@@ -37,6 +37,7 @@
   "column_break_5",
   "bill_km",
   "km_item",
+  "sales_order_items",
   "amended_from"
  ],
  "fields": [
@@ -223,6 +224,16 @@
    "options": "Item"
   },
   {
+   "description": "Beim Buchen angelegte Auftragspositionen - werden beim Stornieren wieder entfernt",
+   "fieldname": "sales_order_items",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Auftragspositionen",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -236,7 +247,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-13 09:00:00.000000",
+ "modified": "2026-09-27 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrt",

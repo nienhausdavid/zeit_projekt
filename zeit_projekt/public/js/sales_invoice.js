@@ -3,15 +3,23 @@
 
 (function () {
 	function zeit_import_dialog(frm) {
+		if (!frm.doc.customer) {
+			frappe.msgprint('Bitte zuerst den Kunden der Rechnung wählen - importiert werden nur dessen Zeiten.');
+			return;
+		}
 		var heute = frappe.datetime.get_today();
 		var dlg = new frappe.ui.Dialog({
 			title: 'Zeiten aus Zeiterfassung importieren',
 			fields: [
 				{ fieldname: 'from_date', fieldtype: 'Date', label: 'Von (Datum)', reqd: 1, default: frappe.datetime.add_months(heute, -12) },
 				{ fieldname: 'to_date', fieldtype: 'Date', label: 'Bis (Datum)', reqd: 1, default: heute },
-				{ fieldname: 'project', fieldtype: 'Link', options: 'Project', label: 'Projekt', default: frm.doc.project },
+				{
+					fieldname: 'project', fieldtype: 'Link', options: 'Project', label: 'Projekt', default: frm.doc.project,
+					get_query: function () { return { filters: { customer: frm.doc.customer } }; }
+				},
 				{ fieldname: 'fallback_item', fieldtype: 'Link', options: 'Item', label: 'Ersatz-Artikel (nur fuer Aktivitaetsarten ohne Dienstleistungsartikel)' },
-				{ fieldname: 'replace', fieldtype: 'Check', label: 'Vorhandene Positionen ersetzen', default: 1 }
+				// Standard aus: ein versehentlicher Import soll keine bestehenden Positionen loeschen
+				{ fieldname: 'replace', fieldtype: 'Check', label: 'Vorhandene Positionen ersetzen', default: 0 }
 			],
 			primary_action_label: 'Importieren',
 			primary_action: function (v) {
@@ -36,20 +44,24 @@
 			var bez_modus = cfg.positionsbezeichnung || 'Nur Datum und Uhrzeit';
 			var termin_ende = (cfg.lieferdatum_quelle || '').indexOf('Ende') === 0;
 
+			// Nur Zeiten des Rechnungskunden (Kunde des Projekts bzw. des Zeitblatts)
 			var r = await frappe.call({
-				method: 'erpnext.projects.doctype.timesheet.timesheet.get_projectwise_timesheet_data',
+				method: 'zeit_projekt.zeit_projekt.sales_invoice.get_billable_time_logs',
 				args: {
+					customer: frm.doc.customer,
 					project: v.project || undefined,
 					from_time: v.from_date + ' 00:00:00',
 					to_time: v.to_date + ' 23:59:59'
 				}
 			});
-			var zeiten = r.message || [];
+			var zeiten = (r.message && r.message.rows) || [];
+			var uebersprungen = (r.message && r.message.skipped) || 0;
 			if (!zeiten.length) {
 				frappe.dom.unfreeze();
 				frappe.msgprint({
 					title: 'Keine Zeiten gefunden', indicator: 'orange',
-					message: 'Im gewaehlten Zeitraum gibt es keine abrechenbaren, noch nicht abgerechneten Zeiterfassungen.'
+					message: 'Im gewaehlten Zeitraum gibt es fuer diesen Kunden keine abrechenbaren, noch nicht abgerechneten Zeiterfassungen.'
+						+ (uebersprungen ? ' ' + uebersprungen + ' Zeiten anderer Kunden bzw. ohne Kunde/Projekt wurden ausgelassen.' : '')
 				});
 				return;
 			}
@@ -174,6 +186,9 @@
 			frappe.dom.unfreeze();
 
 			var hinweise = [];
+			if (uebersprungen) {
+				hinweise.push(uebersprungen + ' Zeiten anderer Kunden bzw. ohne Kunde/Projekt wurden nicht uebernommen.');
+			}
 			if (ohne_artikel.length) {
 				hinweise.push('<b>Kein Dienstleistungsartikel hinterlegt</b> fuer: ' + [...new Set(ohne_artikel)].join(', ')
 					+ '. Diese Zeiten wurden nicht als Position uebernommen. Bitte in der Aktivitaetsart einen Dienstleistungsartikel eintragen oder beim Import einen Ersatz-Artikel waehlen.');

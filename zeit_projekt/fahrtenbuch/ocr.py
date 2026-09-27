@@ -69,7 +69,7 @@ def list_models(api_url: str | None = None, api_key: str | None = None) -> list[
 	return sorted(m["id"] for m in data.get("data", []) if m.get("id"))
 
 
-def read_odometer(file_url: str) -> int | None:
+def read_odometer(file_doc) -> int | None:
 	"""Liest den Kilometerstand ueber eine OpenAI-kompatible Chat-Completions-
 	API (Ollama, LM Studio, echtes OpenAI, ...) - konfiguriert in
 	"Fahrtenbuch Einstellungen", keine Standard-URL/kein Standard-Modell
@@ -84,10 +84,13 @@ def read_odometer(file_url: str) -> int | None:
 	if not settings.api_url or not settings.model:
 		return None
 
-	file_doc = frappe.get_doc("File", {"file_url": file_url})
 	with open(file_doc.get_full_path(), "rb") as f:
 		image_bytes = f.read()
-	image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes)).decode()
+	try:
+		image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes)).decode()
+	except (OSError, Image.DecompressionBombError):
+		# Kein (lesbares) Bild - wie "nichts erkannt" behandeln
+		return None
 
 	headers = {"Content-Type": "application/json", **_auth_headers(settings)}
 

@@ -39,6 +39,7 @@ doc_events = {
 	},
 	"Fahrt": {
 		"before_submit": "zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit",
+		"on_cancel": "zeit_projekt.fahrtenbuch.fahrtenbuch.on_cancel",
 	},
 	"Site Visit": {
 		"before_submit": "zeit_projekt.site_visit.site_visit.before_submit",
@@ -49,23 +50,24 @@ doc_events = {
 # ---------------------------------------------------------------------------
 # Fahrt/Site Visit in der Verknuepfungen-Liste des Projekt-Formulars
 #
-# Frappes override_doctype_dashboards nimmt pro Doctype nur einen einzigen
-# dotted path entgegen - siehe zeit_projekt.zeit_projekt.project_dashboard
-# fuer die Verkettung beider Erweiterungen. fieldname bleibt jeweils
-# "project" (Standard aus erpnext.projects.doctype.project.project_dashboard),
-# das reicht fuer die automatische Vorbelegung beim Anlegen ueber die
-# "+"-Verknuepfung, da das Feld auf Fahrt/Site Visit ebenfalls "project" heisst.
+# Frappe ruft alle Eintraege der Liste nacheinander auf und reicht das
+# Ergebnis weiter (frappe/model/meta.py, get_dashboard_data). fieldname
+# bleibt jeweils "project" (Standard aus
+# erpnext.projects.doctype.project.project_dashboard), das reicht fuer die
+# automatische Vorbelegung beim Anlegen ueber die "+"-Verknuepfung.
 # ---------------------------------------------------------------------------
 override_doctype_dashboards = {
-	"Project": "zeit_projekt.zeit_projekt.project_dashboard.get_data",
+	"Project": [
+		"zeit_projekt.fahrtenbuch.project_dashboard.get_data",
+		"zeit_projekt.site_visit.project_dashboard.get_data",
+	],
 }
 
 # ---------------------------------------------------------------------------
-# PDF-Generator serverweit auf "chrome" erzwingen (nur relevant, falls
-# wkhtmltopdf auf dem Server grundsaetzlich scheitert - siehe force_chrome_pdf
-# in zeit_projekt/site_visit/site_visit.py fuer den Hintergrund).
+# PDF-Generator auf "chrome" erzwingen - nur wenn in "Zeit Projekt
+# Einstellungen" aktiviert (siehe zeit_projekt/zeit_projekt/pdf.py).
 # ---------------------------------------------------------------------------
-before_request = ["zeit_projekt.site_visit.site_visit.force_chrome_pdf"]
+before_request = ["zeit_projekt.zeit_projekt.pdf.force_chrome_pdf"]
 
 # ---------------------------------------------------------------------------
 # Fahrtenbuch/Site Visit im Apps-Uebersicht (/apps) - eigene Kacheln mit
@@ -95,5 +97,10 @@ add_to_apps_screen = [
 # wieder. Damit ist der Zustand vor der Installation vollstaendig
 # wiederhergestellt (Nutzdaten ausgenommen, siehe README).
 # ---------------------------------------------------------------------------
+before_install = "zeit_projekt.install.before_install"
 after_install = "zeit_projekt.install.after_install"
 before_uninstall = "zeit_projekt.install.before_uninstall"
+
+# Wird von Frappe bei der Installation jeder anderen App aufgerufen - verhindert,
+# dass fahrtenbuch/site_visit nachtraeglich parallel installiert werden.
+before_app_install = "zeit_projekt.install.before_app_install"

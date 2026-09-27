@@ -54,6 +54,29 @@ ALTE_CLIENT_SCRIPTS = [
 SITE_VISIT_DOCUMENT_TYPE = "Site Visit"
 SITE_VISIT_PRINT_FORMAT = "Site Visit Report"
 
+# Die frueheren Einzel-Apps bringen dieselben Module und Doctypes mit. Parallel
+# installiert gewinnt nur eine der beiden Definitionen, die Hooks laufen aber
+# doppelt (z. B. Fahrzeit zweimal im Auftrag).
+KONFLIKT_APPS = ("fahrtenbuch", "site_visit")
+
+
+def before_install():
+	installiert = [app for app in KONFLIKT_APPS if app in frappe.get_installed_apps()]
+	if installiert:
+		frappe.throw(
+			"Zeit & Projekt enthält die Module der Apps {0} bereits. Bitte diese zuerst "
+			"entfernen. Achtung: uninstall-app löscht dabei deren Tabellen samt Daten."
+			.format(", ".join(installiert))
+		)
+
+
+def before_app_install(app_name):
+	if app_name in KONFLIKT_APPS:
+		frappe.throw(
+			f"Die App {app_name} ist bereits vollständig in Zeit & Projekt enthalten "
+			"und darf nicht zusätzlich installiert werden."
+		)
+
 
 def after_install():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True)
@@ -84,6 +107,7 @@ def before_uninstall():
 		fg="yellow",
 	)
 	_site_visit_pdf_on_submit_disable()
+	_entferne_desktop_symbole()
 
 
 def _deaktiviere_alte_client_scripts():
@@ -95,6 +119,27 @@ def _deaktiviere_alte_client_scripts():
 				"(Funktion kommt jetzt aus der App). Loeschen kannst du es selbst.",
 				fg="yellow",
 			)
+
+
+def _entferne_desktop_symbole():
+	"""Frappe legt beim Installieren ein App-Symbol mit dem Titel "Zeit &
+	Projekt" an, sucht es beim Deinstallieren aber unter dem App-Namen
+	"zeit_projekt" (frappe/utils/install.py, delete_desktop_icon_and_sidebar) -
+	es bliebe als toter Link auf dem Desk stehen. Untergeordnete Symbole
+	zuerst, sie verweisen per parent_icon auf das App-Symbol."""
+	if not frappe.db.table_exists("Desktop Icon"):
+		return
+	app_title = frappe.get_hooks("app_title", app_name="zeit_projekt")[0]
+	kinder = frappe.get_all("Desktop Icon", filters={"parent_icon": app_title}, pluck="name")
+	eigene = frappe.get_all(
+		"Desktop Icon",
+		or_filters=[["app", "=", "zeit_projekt"], ["name", "=", app_title]],
+		pluck="name",
+	)
+	for name in kinder + [n for n in eigene if n not in kinder]:
+		frappe.delete_doc("Desktop Icon", name, ignore_permissions=True, force=True)
+	if kinder or eigene:
+		click.secho("Zeit & Projekt: Desktop-Symbole entfernt.", fg="yellow")
 
 
 def _site_visit_pdf_on_submit_enable():

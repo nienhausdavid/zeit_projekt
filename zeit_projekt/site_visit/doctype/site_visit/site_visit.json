@@ -43,7 +43,6 @@
    "options": "Customer"
   },
   {
-   "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
    "fieldtype": "Data",
    "label": "Customer Name",
@@ -203,7 +202,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-13 09:00:00.000000",
+ "modified": "2026-09-27 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Site Visit",
  "name": "Site Visit",

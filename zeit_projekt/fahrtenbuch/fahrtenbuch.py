@@ -1,75 +1,88 @@
-import copy
-from contextlib import contextmanager
-
 import frappe
+from frappe import _
+from frappe.utils import cint, format_date
 
-
-@contextmanager
-def _as_administrator():
-	"""Fuehrt den with-Block als Administrator aus - fuer den Abrechnungs-
-	Schritt, auf den der Techniker (Employee) i. d. R. keine eigenen
-	Sales-Order-Rechte hat. Die eigentliche Berechtigungspruefung ist die auf
-	die Fahrt selbst.
-
-	frappe.set_user() leert local.form_dict komplett - ohne Sicherung wuerde
-	das den umgebenden Request (das Buchen der Fahrt selbst, das nach diesem
-	Hook weiterlaeuft) seiner eigenen Parameter berauben. Deshalb hier
-	explizit gesichert und danach wiederhergestellt (1:1 uebernommen aus
-	zeit_projekt.site_visit.site_visit - dort ausfuehrlicher kommentiert)."""
-	current_user = frappe.session.user
-	form_dict_backup = copy.deepcopy(frappe.local.form_dict)
-	frappe.set_user("Administrator")
-	try:
-		yield
-	finally:
-		frappe.set_user(current_user)
-		frappe.local.form_dict = form_dict_backup
+from zeit_projekt.zeit_projekt.billing import add_rows_to_sales_order, remove_rows_from_sales_order
 
 
 def before_submit(doc, method=None):
 	"""Uebernimmt Fahrzeit (immer) und Kilometer (nur falls bill_km) als
 	Positionen in den verknuepften Auftrag - im selben Request wie das Buchen
-	der Fahrt selbst, aus demselben Grund wie in site_visit (siehe
-	_as_administrator oben).
+	der Fahrt selbst. Die Namen der neuen Auftragspositionen werden gemerkt,
+	damit on_cancel genau diese wieder entfernen kann."""
+	if not doc.customer:
+		doc.customer = frappe.db.get_value("Sales Order", doc.sales_order, "customer")
 
-	Nutzt erpnext.controllers.accounts_controller.update_child_qty_rate -
-	dieselbe Funktion, die auch der "Update Items"-Dialog im Auftrag selbst
-	verwendet: das uebernimmt auch bei bereits gebuchten Auftraegen korrekt
-	Steuer-/Summenneuberechnung, Kreditlimitpruefung usw."""
-	from erpnext.controllers.accounts_controller import update_child_qty_rate
-
-	so = frappe.get_doc("Sales Order", doc.sales_order)
-	trans_items = []
-	for row in so.items:
-		item = row.as_dict()
-		item["docname"] = row.name
-		trans_items.append(item)
-
-	trans_items.append({"item_code": doc.time_item, "qty": doc.duration_hours})
+	rows = [
+		{"item_code": doc.time_item, "qty": doc.duration_hours, "description": _positionstext(doc, _("Fahrzeit"))}
+	]
 	if doc.bill_km:
-		trans_items.append({"item_code": doc.km_item, "qty": doc.distance_km})
+		rows.append(
+			{"item_code": doc.km_item, "qty": doc.distance_km, "description": _positionstext(doc, _("Kilometer"))}
+		)
 
-	with _as_administrator():
-		update_child_qty_rate("Sales Order", frappe.as_json(trans_items), so.name)
+	doc.sales_order_items = "\n".join(add_rows_to_sales_order(doc.sales_order, doc.customer, rows))
+
+
+def on_cancel(doc, method=None):
+	remove_rows_from_sales_order(doc.sales_order, (doc.sales_order_items or "").split())
+
+
+def _positionstext(doc, art):
+	"""Eindeutig je Fahrt: ERPNext lehnt sonst eine zweite Position mit gleichem
+	Artikel und gleicher Beschreibung im selben Auftrag ab ("entered multiple
+	times"), solange Mehrfachartikel in den Verkaufseinstellungen aus sind."""
+	teile = [f"{art} {doc.name}", format_date(doc.date)]
+	if doc.start_location or doc.end_location:
+		teile.append(f"{doc.start_location or '?'} → {doc.end_location or '?'}")
+	return ", ".join(teile)
+
+
+@frappe.whitelist()
+def get_fahrt_defaults():
+	"""Vorbelegungen fuer das Fahrt-Formular. "Fahrtenbuch Einstellungen" darf
+	nur der System Manager lesen (API-Schluessel) - Techniker bekommen hier nur
+	die drei unkritischen Werte. get_cached_doc liefert bei nie gespeicherten
+	Einstellungen die Feld-Defaults (beide Haken an)."""
+	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
+		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
+	return {
+		"time_item": settings.time_item,
+		"auto_start_timer": cint(settings.auto_start_timer),
+		"auto_open_camera": cint(settings.auto_open_camera),
+	}
 
 
 @frappe.whitelist()
 def get_odometer_reading(file_url):
 	"""Fuer den Foto-Upload im Formular: liest den Kilometerstand per
-	Ollama-Vision-Modell aus (siehe ocr.py). None, wenn nichts Eindeutiges
-	erkannt wurde oder das Modell nicht erreichbar ist - der Techniker
-	traegt dann manuell ein."""
+	Vision-Modell aus (siehe ocr.py). None, wenn nichts Eindeutiges erkannt
+	wurde oder das Modell nicht erreichbar ist - der Techniker traegt dann
+	manuell ein."""
 	from zeit_projekt.fahrtenbuch.ocr import read_odometer
 
-	return read_odometer(file_url)
+	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
+		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+
+	# Nur Dateien, die der Nutzer selbst lesen darf - sonst liesse sich jede
+	# private Datei an die externe Erkennungs-API schicken.
+	for name in frappe.get_all("File", filters={"file_url": file_url}, pluck="name"):
+		file_doc = frappe.get_doc("File", name)
+		if file_doc.has_permission("read"):
+			return read_odometer(file_doc)
+	frappe.throw(_("Keine Berechtigung für diese Datei."), frappe.PermissionError)
 
 
 @frappe.whitelist()
 def get_available_models(api_url=None, api_key=None):
 	"""Fuer den "Modelle abrufen"-Button in Fahrtenbuch Einstellungen -
 	api_url/api_key optional, damit ein gerade eingetipptes, noch nicht
-	gespeichertes Feld direkt getestet werden kann."""
+	gespeichertes Feld direkt getestet werden kann. Nur System Manager: der
+	Server ruft dabei eine frei angegebene URL ab."""
 	from zeit_projekt.fahrtenbuch.ocr import list_models
+
+	frappe.only_for("System Manager")
 
 	return list_models(api_url=api_url, api_key=api_key)
 
