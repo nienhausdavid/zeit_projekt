@@ -1,7 +1,7 @@
 app_name = "zeit_projekt"
 app_title = "Zeit & Projekt"
 app_publisher = "Dein Name"
-app_description = "Zeiterfassung als Einzelpositionen in der Ausgangsrechnung und automatische Projektanlage aus dem Auftrag"
+app_description = "Zeiterfassung als Einzelpositionen, automatische Projektanlage aus dem Auftrag, Fahrtenbuch und Site Visit"
 app_email = "info@example.com"
 app_license = "mit"
 
@@ -17,22 +17,76 @@ required_apps = ["frappe/erpnext"]
 doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js",
 	"Sales Order": "public/js/sales_order.js",
+	"Fahrt": "public/js/fahrtenbuch.js",
+	"Fahrtenbuch Einstellungen": "public/js/fahrtenbuch_einstellungen.js",
+	"Project": "public/js/project.js",
+	"Site Visit": "public/js/site_visit.js",
 }
 
 # ---------------------------------------------------------------------------
-# Projektanlage aus dem Auftrag
+# Projektanlage aus dem Auftrag / Abrechnung aus der Fahrt / Zeitblatt aus
+# dem Site Visit
 #
-# Laeuft serverseitig, innerhalb derselben Transaktion wie das Buchen selbst
-# (kein separater Request mehr davor). Verhindert den "has been modified
-# after you have opened it"-Konflikt, der bei einem eigenen frappe.call vor
-# dem Buchen-Request auftreten konnte, und greift auch bei API-Zugriffen und
-# Massenbuchungen.
+# Laeuft jeweils serverseitig, innerhalb derselben Transaktion wie das Buchen
+# selbst (kein separater Request mehr davor). Verhindert den "has been
+# modified after you have opened it"-Konflikt, der bei einem eigenen
+# frappe.call vor dem Buchen-Request auftreten konnte, und greift auch bei
+# API-Zugriffen und Massenbuchungen.
 # ---------------------------------------------------------------------------
 doc_events = {
 	"Sales Order": {
 		"before_submit": "zeit_projekt.zeit_projekt.sales_order.before_submit",
 	},
+	"Fahrt": {
+		"before_submit": "zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit",
+	},
+	"Site Visit": {
+		"before_submit": "zeit_projekt.site_visit.site_visit.before_submit",
+		"on_cancel": "zeit_projekt.site_visit.site_visit.on_cancel",
+	},
 }
+
+# ---------------------------------------------------------------------------
+# Fahrt/Site Visit in der Verknuepfungen-Liste des Projekt-Formulars
+#
+# Frappes override_doctype_dashboards nimmt pro Doctype nur einen einzigen
+# dotted path entgegen - siehe zeit_projekt.zeit_projekt.project_dashboard
+# fuer die Verkettung beider Erweiterungen. fieldname bleibt jeweils
+# "project" (Standard aus erpnext.projects.doctype.project.project_dashboard),
+# das reicht fuer die automatische Vorbelegung beim Anlegen ueber die
+# "+"-Verknuepfung, da das Feld auf Fahrt/Site Visit ebenfalls "project" heisst.
+# ---------------------------------------------------------------------------
+override_doctype_dashboards = {
+	"Project": "zeit_projekt.zeit_projekt.project_dashboard.get_data",
+}
+
+# ---------------------------------------------------------------------------
+# PDF-Generator serverweit auf "chrome" erzwingen (nur relevant, falls
+# wkhtmltopdf auf dem Server grundsaetzlich scheitert - siehe force_chrome_pdf
+# in zeit_projekt/site_visit/site_visit.py fuer den Hintergrund).
+# ---------------------------------------------------------------------------
+before_request = ["zeit_projekt.site_visit.site_visit.force_chrome_pdf"]
+
+# ---------------------------------------------------------------------------
+# Fahrtenbuch/Site Visit im Apps-Uebersicht (/apps) - eigene Kacheln mit
+# Sprung in die jeweilige Liste, wie in den urspruenglichen Einzel-Apps.
+# ---------------------------------------------------------------------------
+add_to_apps_screen = [
+	{
+		"name": "fahrtenbuch",
+		"logo": "/assets/zeit_projekt/images/fahrtenbuch-logo.svg",
+		"title": "Fahrtenbuch",
+		"route": "/app/fahrt",
+		"has_permission": "zeit_projekt.fahrtenbuch.fahrtenbuch.check_app_permission",
+	},
+	{
+		"name": "site_visit",
+		"logo": "/assets/zeit_projekt/images/site_visit-logo.svg",
+		"title": "Site Visit",
+		"route": "/app/site-visit",
+		"has_permission": "zeit_projekt.site_visit.site_visit.check_app_permission",
+	},
+]
 
 # ---------------------------------------------------------------------------
 # Installation / Deinstallation

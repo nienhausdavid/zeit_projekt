@@ -1,0 +1,262 @@
+{
+ "actions": [],
+ "autoname": "SV-.YYYY.-.#####",
+ "creation": "2026-09-13 09:00:00.000000",
+ "default_print_format": "Site Visit Report",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "customer_name",
+  "company",
+  "column_break_1",
+  "project",
+  "sales_order",
+  "section_break_zeit",
+  "employee",
+  "employee_name",
+  "activity_type",
+  "column_break_2",
+  "date",
+  "from_time",
+  "to_time",
+  "section_break_description",
+  "description",
+  "section_break_items",
+  "extra_items",
+  "section_break_fotos",
+  "photos",
+  "section_break_unterschrift",
+  "customer_signature",
+  "signee_name",
+  "section_break_verknuepfung",
+  "timesheet",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "description": "Must be set before submitting - not required yet when saving as a draft (e.g. via the timer)",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "description": "Defaults to the default Company if left empty (see validate() in site_visit.py)",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Optional: Einsatz einem Projekt zuordnen",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "description": "Must be set before submitting - not required yet when saving as a draft (e.g. via the timer). If there isn't one yet, use \"+ New Sales Order\" right in this field.",
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "section_break_zeit",
+   "fieldtype": "Section Break",
+   "label": "Duration"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "description": "Controls the billing rate in the automatically created Timesheet. Must be set before submitting - not required yet when saving as a draft (e.g. via the timer).",
+   "fieldname": "activity_type",
+   "fieldtype": "Link",
+   "label": "Activity Type",
+   "options": "Activity Type"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "from_time",
+   "fieldtype": "Datetime",
+   "label": "From Time",
+   "reqd": 1
+  },
+  {
+   "description": "Must be set before submitting - not required yet when saving as a draft (e.g. via the timer)",
+   "fieldname": "to_time",
+   "fieldtype": "Datetime",
+   "label": "To Time"
+  },
+  {
+   "fieldname": "section_break_description",
+   "fieldtype": "Section Break",
+   "label": "Work Performed"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "description": "Vor Ort zusaetzlich benoetigtes Material (z. B. Adapter, Kabel) - wird beim Buchen in den verknuepften Auftrag uebernommen.",
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Additional Items"
+  },
+  {
+   "fieldname": "extra_items",
+   "fieldtype": "Table",
+   "label": "Additional Items",
+   "options": "Site Visit Item"
+  },
+  {
+   "fieldname": "section_break_fotos",
+   "fieldtype": "Section Break",
+   "label": "Photos"
+  },
+  {
+   "fieldname": "photos",
+   "fieldtype": "Table",
+   "label": "Photos",
+   "options": "Site Visit Photo"
+  },
+  {
+   "fieldname": "section_break_unterschrift",
+   "fieldtype": "Section Break",
+   "label": "Customer Signature"
+  },
+  {
+   "description": "Unterschrift per Finger/Stift/Maus auf dem Geraet des Technikers. Nicht pflicht, da der Kunde abwesend oder nicht bereit sein kann.",
+   "fieldname": "customer_signature",
+   "fieldtype": "Signature",
+   "label": "Customer Signature"
+  },
+  {
+   "fieldname": "signee_name",
+   "fieldtype": "Data",
+   "label": "Signee Name"
+  },
+  {
+   "fieldname": "section_break_verknuepfung",
+   "fieldtype": "Section Break",
+   "label": "Billing"
+  },
+  {
+   "allow_on_submit": 0,
+   "description": "Wird beim Buchen automatisch angelegt und verknuepft",
+   "fieldname": "timesheet",
+   "fieldtype": "Link",
+   "label": "Timesheet",
+   "no_copy": 1,
+   "options": "Timesheet",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Site Visit",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-09-13 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Site Visit",
+ "name": "Site Visit",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Projects User"
+  },
+  {
+   "read": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

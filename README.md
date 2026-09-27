@@ -1,9 +1,48 @@
 # Zeit & Projekt
 
-Frappe-App für ERPNext v15/v16 mit zwei Funktionen:
+Frappe-App für ERPNext v15/v16. Enthält drei zuvor getrennte Apps als
+Module in **einer** App (siehe "Herkunft" unten):
 
-1. **Zeiterfassung als Einzelpositionen** – Knopf in der Ausgangsrechnung, der abrechenbare Zeiten holt und pro Zeitbuchung eine eigene Rechnungsposition erzeugt (Artikel aus der Aktivitätsart, Preis aus dem Artikel, Beschreibung mit Datum/Uhrzeit, Liefertermin = Leistungstag).
-2. **Projekt aus Auftrag** – Haken im Auftrag, der beim Bestätigen automatisch ein Projekt anlegt, verknüpft und direkt dorthin springt.
+1. **Zeiterfassung als Einzelpositionen** (Modul „Zeit Projekt") – Knopf in
+   der Ausgangsrechnung, der abrechenbare Zeiten holt und pro Zeitbuchung
+   eine eigene Rechnungsposition erzeugt (Artikel aus der Aktivitätsart,
+   Preis aus dem Artikel, Beschreibung mit Datum/Uhrzeit, Liefertermin =
+   Leistungstag).
+2. **Projekt aus Auftrag** (Modul „Zeit Projekt") – Haken im Auftrag, der
+   beim Bestätigen automatisch ein Projekt anlegt, verknüpft und direkt
+   dorthin springt.
+3. **Fahrtenbuch** (Modul „Fahrtenbuch") – Fahrten zum Kunden dokumentieren,
+   Kilometerstand per Fotoerkennung erfassen und optional automatisch
+   abrechnen.
+4. **Site Visit** (Modul „Site Visit") – Kundeneinsätze vor Ort
+   dokumentieren (Zeit, Fotos, Unterschrift, Zusatzartikel) und daraus
+   automatisch ein abrechenbares Zeitblatt erzeugen.
+
+Die vier Funktionen sind über gemeinsame Kern-Doctypes (Activity Type,
+Project, Sales Order, Timesheet) locker verzahnt – siehe "Zusammenspiel der
+Module" unten.
+
+---
+
+## Herkunft
+
+Diese App ist aus drei ursprünglich unabhängigen, locker gekoppelten
+Schwester-Apps zu **einer** App zusammengeführt:
+
+- [`zeit_projekt`](https://github.com/nienhausdavid/zeit_projekt) (Basis
+  dieser App, Modul „Zeit Projekt")
+- [`fahrtenbuch`](https://github.com/nienhausdavid/fahrtenbuch) (Modul
+  „Fahrtenbuch")
+- [`site_visit`](https://github.com/nienhausdavid/site_visit) (Modul
+  „Site Visit")
+
+Die drei Repositories bleiben als eigenständige, installierbare Apps
+bestehen; diese Zusammenführung ist eine bewusste Alternative dazu, alle
+drei getrennt auf derselben Site zu installieren (dort funktioniert die
+Kopplung ohne jede Code-Änderung, siehe die READMEs der Einzel-Apps). Wer
+die drei Funktionsbereiche **unabhängig voneinander** installieren oder
+deinstallieren will, ist mit den getrennten Apps besser bedient – in dieser
+zusammengeführten App gehören alle drei zu ein und derselben Installation.
 
 ---
 
@@ -15,26 +54,79 @@ zeit_projekt/
 ├── license.txt
 ├── README.md
 └── zeit_projekt/
-    ├── __init__.py           # Versionsnummer
-    ├── hooks.py              # doctype_js + doc_events + Install-Hooks
-    ├── install.py            # Custom Fields anlegen / entfernen
-    ├── sales_order.py        # Projektanlage in before_submit (serverseitig)
-    ├── modules.txt           # Modulname "Zeit Projekt"
+    ├── __init__.py            # Versionsnummer + pdf_on_submit-Chrome-Patch
+    ├── hooks.py               # doctype_js + doc_events + Install-Hooks + Dashboards
+    ├── install.py             # Custom Fields anlegen/entfernen, PDF-on-Submit-Kopplung
+    ├── modules.txt            # "Zeit Projekt", "Fahrtenbuch", "Site Visit"
     ├── patches.txt
-    ├── public/js/
-    │   ├── sales_invoice.js  # Import-Knopf und Positionslogik
-    │   └── sales_order.js    # Hinweise + Sprung zum Projekt nach dem Buchen
-    └── zeit_projekt/         # Modulordner (für DocTypes)
-        └── __init__.py
+    ├── patches/
+    │   └── set_project_trip_toggle_defaults.py
+    ├── public/
+    │   ├── js/
+    │   │   ├── sales_invoice.js         # Import-Knopf und Positionslogik
+    │   │   ├── sales_order.js           # Hinweise + Sprung zum Projekt nach dem Buchen
+    │   │   ├── fahrtenbuch.js           # Fahrt-Formular: Defaults, Timer, OCR-Trigger
+    │   │   ├── fahrtenbuch_einstellungen.js  # "Modelle abrufen"-Button
+    │   │   ├── project.js               # "Fahrt mit Timer starten"-Button im Projekt
+    │   │   └── site_visit.js            # Site-Visit-Formular: Defaults, Timer, Neuer-Auftrag-Dialog
+    │   └── images/
+    │       ├── fahrtenbuch-logo.svg
+    │       └── site_visit-logo.svg
+    ├── translations/
+    │   ├── en.csv             # Englische Übersetzung (Quelle: Deutsch, aus Fahrtenbuch)
+    │   └── de.csv             # Deutsche Übersetzung (Quelle: Englisch, aus Site Visit)
+    ├── workspace_sidebar/
+    │   └── site_visits.json   # Eigene Sidebar (nur Site Visit + Timesheet)
+    ├── zeit_projekt/          # Modul "Zeit Projekt"
+    │   ├── project_dashboard.py   # verkettet Fahrtenbuch- und Site-Visit-Verknüpfungen
+    │   ├── sales_order.py         # Projektanlage in before_submit
+    │   └── doctype/zeit_projekt_einstellungen/
+    ├── fahrtenbuch/           # Modul "Fahrtenbuch"
+    │   ├── fahrtenbuch.py         # before_submit (Abrechnung), get_odometer_reading, ...
+    │   ├── ocr.py                 # Kilometerstand per OpenAI-kompatibler Vision-API
+    │   ├── project_dashboard.py
+    │   └── doctype/{fahrt,fahrtenbuch_einstellungen}/
+    └── site_visit/            # Modul "Site Visit"
+        ├── site_visit.py          # before_submit/on_cancel/create_sales_order/force_chrome_pdf
+        ├── project_dashboard.py
+        ├── doctype/{site_visit,site_visit_item,site_visit_photo}/
+        ├── print_format/site_visit_report/
+        └── workspace/site_visits/
 ```
 
-Die Formular-Skripte sind **Dateien**, keine Client-Script-Datensätze. Sie verschwinden restlos mit der App und unterliegen nicht dem Client-Script-Cache im Browser.
+Die Formular-Skripte sind **Dateien**, keine Client-Script-Datensätze. Sie
+verschwinden restlos mit der App und unterliegen nicht dem
+Client-Script-Cache im Browser.
+
+---
+
+## Zusammenspiel der Module
+
+- **Fahrtenbuch → Site Visit:** Eine Fahrt lässt sich optional mit einem
+  Site Visit verknüpfen (Feld `site_visit` auf „Fahrt") – Kunde, Projekt und
+  Auftrag werden dann automatisch übernommen.
+- **Site Visit → Zeit Projekt:** Das beim Buchen eines Site Visit
+  automatisch erzeugte, gebuchte Timesheet (`is_billable=1`) taucht direkt
+  im „Zeiten aus Zeiterfassung importieren"-Dialog der Ausgangsrechnung auf
+  – keine zusätzliche Konfiguration nötig, nur die gemeinsame Nutzung der
+  Kern-Doctype „Activity Type".
+- **Fahrtenbuch/Site Visit → Projekt-Formular:** Beide ergänzen die
+  „Verknüpfungen"-Liste im Projekt-Formular (Fahrten bzw. Site Visits).
+  Da Frappes `override_doctype_dashboards`-Hook pro Doctype nur einen
+  einzigen Pfad zulässt, verketten `zeit_projekt.zeit_projekt.project_dashboard.get_data`
+  jetzt beide Erweiterungen in einer Funktion (bei getrennten Apps hätte
+  Frappe das automatisch über die App-Reihenfolge erledigt).
 
 ---
 
 ## Vor der Installation anpassen
 
-In `pyproject.toml` und `zeit_projekt/hooks.py` Name, E-Mail und Beschreibung eintragen. Willst du die App anders nennen, muss der Name an vier Stellen konsistent sein: Ordnername, Paketordner, `app_name` in `hooks.py` und `name` in `pyproject.toml` – dazu die Pfade in `after_install` / `before_uninstall`.
+In `pyproject.toml` und `zeit_projekt/hooks.py` Name, E-Mail und
+Beschreibung eintragen. Willst du die App anders nennen, muss der Name an
+vier Stellen konsistent sein: Ordnername, Paketordner, `app_name` in
+`hooks.py` und `name` in `pyproject.toml` – dazu alle dotted paths in
+`hooks.py`/`install.py`/den `public/js/*.js`-Dateien, die mit `zeit_projekt.`
+beginnen.
 
 ---
 
@@ -48,9 +140,14 @@ bench build --app zeit_projekt
 bench --site <deine-site> clear-cache
 ```
 
+Die App bringt `Pillow` als Python-Abhängigkeit mit (für die
+Kilometerstand-Erkennung im Fahrtenbuch-Modul, siehe `fahrtenbuch/ocr.py`) –
+wird von `bench get-app`/`install-app` automatisch installiert.
+
 ## Installation (Frappe Cloud)
 
-Eigene Apps brauchen dort ein Git-Repository und eine eigene Bench-Gruppe (auf den kleinen Shared-Plänen nicht möglich).
+Eigene Apps brauchen dort ein Git-Repository und eine eigene Bench-Gruppe
+(auf den kleinen Shared-Plänen nicht möglich).
 
 1. Repository auf GitHub anlegen und den Inhalt dieses Ordners hochladen
 2. In Frappe Cloud: Bench-Gruppe → *Apps* → *Add App* → *From GitHub*
@@ -68,22 +165,40 @@ bench --site <deine-site> uninstall-app zeit_projekt
 **Was dabei entfernt wird:**
 
 - die drei Custom Fields (`before_uninstall`)
-- das Modul „Zeit Projekt" und alles, was daran hängt
+- die Doctypes „Fahrt", „Fahrtenbuch Einstellungen", „Site Visit", „Site
+  Visit Item", „Site Visit Photo"
+- die Module „Zeit Projekt", „Fahrtenbuch", „Site Visit" und alles, was
+  daran hängt (inkl. Print Format, Workspace)
 - die Formular-Skripte, da sie reiner Code sind
+- die Zeile „Site Visit" in `PDF on Submit Settings` (nur falls
+  `pdf_on_submit` installiert ist)
 
 **Was bewusst bestehen bleibt:**
 
 - alle angelegten Projekte
 - alle geschriebenen Rechnungspositionen, auch in gebuchten Belegen
 - die Verknüpfungen zwischen Auftrag und Projekt
+- bereits gebuchte Fahrten und Site Visits (inkl. Fotos/Unterschrift als
+  Daten, auch wenn die Doctype-Definition entfernt wird)
+- bereits angelegte und gebuchte Timesheets, auch aus einem später
+  stornierten Site Visit
+- bereits in Aufträge übernommene Positionen (Fahrzeit, Kilometer,
+  Zusatzartikel) – die Auftragspositionen selbst gehören nicht zu dieser App
 
-**Achtung:** Beim Löschen eines Custom Fields wird die Spalte aus der Tabelle entfernt. Die Zuordnungen *Aktivitätsart → Dienstleistungsartikel* sind danach weg. Frappe legt vor dem Deinstallieren automatisch ein Backup an (außer mit `--no-backup`).
+**Achtung:** Beim Löschen eines Custom Fields wird die Spalte aus der
+Tabelle entfernt. Die Zuordnungen *Aktivitätsart → Dienstleistungsartikel*
+sind danach weg. Frappe legt vor dem Deinstallieren automatisch ein Backup
+an (außer mit `--no-backup`).
 
 ---
 
 ## Einstellungen
 
-Unter **Zeit Projekt Einstellungen** (Suchleiste oder `/app/zeit-projekt-einstellungen`) lässt sich das Verhalten des Imports umstellen:
+### Zeit Projekt Einstellungen
+
+Unter **Zeit Projekt Einstellungen** (Suchleiste oder
+`/app/zeit-projekt-einstellungen`) lässt sich das Verhalten des Imports
+umstellen:
 
 **Erste Zeile der Positionsbeschreibung**
 
@@ -93,26 +208,236 @@ Unter **Zeit Projekt Einstellungen** (Suchleiste oder `/app/zeit-projekt-einstel
 | *Aktivitätsart voranstellen* | `Ausführung – 05.05.2026 09:51-13:51 Uhr` |
 | *Bezeichnung für Rechnung, sonst Aktivitätsart* | nutzt das Feld `custom_rechnungstext` der Aktivitätsart, sonst deren Namen |
 
-Die dritte Variante lohnt nur, wenn mehrere Aktivitätsarten auf denselben Artikel zeigen – dann ist die Bezeichnung die einzige Unterscheidung auf der Rechnung. In den ersten beiden Modi kann das Feld *Bezeichnung für Rechnung* leer bleiben.
+Die dritte Variante lohnt nur, wenn mehrere Aktivitätsarten auf denselben
+Artikel zeigen – dann ist die Bezeichnung die einzige Unterscheidung auf der
+Rechnung. In den ersten beiden Modi kann das Feld *Bezeichnung für
+Rechnung* leer bleiben.
 
 Der Freitext aus der Zeitbuchung steht in allen drei Varianten darunter.
 
-**Liefertermin der Position:** Beginn (Standard) oder Ende der Zeitbuchung. Relevant nur bei Buchungen über Mitternacht.
+**Liefertermin der Position:** Beginn (Standard) oder Ende der Zeitbuchung.
+Relevant nur bei Buchungen über Mitternacht.
+
+### Fahrtenbuch Einstellungen
+
+Doctype **"Fahrtenbuch Einstellungen"** öffnen (Suche im Awesomebar):
+
+- **API-URL**: Basis-URL einer OpenAI-kompatiblen API ohne
+  `/chat/completions` am Ende, z. B. `http://<ip-des-servers>:11434/v1` für
+  [Ollama](https://ollama.com/) oder `https://api.openai.com/v1`
+- **Modell**: z. B. `qwen3.5:9b` – Button **"Verfügbare Modelle abrufen"**
+  fragt die eingetragene API direkt nach den dort tatsächlich vorhandenen
+  Modellen (`GET .../models`) und zeigt sie zur Auswahl an, testet dabei
+  auch eine gerade eingetippte, noch nicht gespeicherte API-URL
+- **API-Schlüssel**: nur nötig, falls die API einen verlangt (bei den
+  meisten lokal/selbst gehosteten Servern leer lassen)
+- **Artikel Fahrzeit**: Vorbelegung für das gleichnamige Pflichtfeld auf
+  einer neuen Fahrt – bleibt dort weiterhin pro Fahrt änderbar
+- **Timer automatisch starten** / **Kamera automatisch öffnen**: steuert das
+  Verhalten beim Anlegen einer Fahrt über die "+"-Verknüpfung bzw. den
+  Button im Projekt-Formular (Standard: beide an)
+
+**Keine Standardwerte hinterlegt** – ohne Eintrag bleibt die automatische
+Kilometerstand-Erkennung schlicht deaktiviert; die Fahrt lässt sich immer
+ganz normal von Hand ausfüllen und buchen.
+
+---
 
 ## Nach der Installation
 
-Die App deaktiviert vorhandene Client Scripts mit den Namen „Zeiterfassung als Einzelpositionen", „Auftrag: Projekt erstellen" und „Auftrag: Kommission und Projekt", damit die Funktionen nicht doppelt laufen. Löschen musst du sie selbst.
+Die App deaktiviert vorhandene Client Scripts mit den Namen „Zeiterfassung
+als Einzelpositionen", „Auftrag: Projekt erstellen" und „Auftrag: Kommission
+und Projekt", damit die Funktionen nicht doppelt laufen. Löschen musst du
+sie selbst.
 
 Dann noch einrichten:
 
-1. Je Aktivitätsart einen **Dienstleistungsartikel** eintragen
-2. Für jeden dieser Artikel einen **Verkaufspreis** in der Standard-Verkaufspreisliste hinterlegen
+1. Je Aktivitätsart einen **Dienstleistungsartikel** eintragen (Zeit
+   Projekt) und einen sinnvollen **Stundensatz** hinterlegen (Site Visit)
+2. Für jeden Dienstleistungsartikel einen **Verkaufspreis** in der
+   Standard-Verkaufspreisliste hinterlegen
 3. Prüfen, dass der Projekttyp **External** existiert
+4. Für die Fahrtenbuch-Abrechnung einen Artikel für die **Fahrzeit**
+   (Pflicht) und optional einen Artikel für **Kilometergeld** hinterlegen
+5. Optional: **Fahrtenbuch Einstellungen** ausfüllen für die
+   Kilometerstand-Erkennung per Foto (siehe oben)
+6. Optional: [`pdf_on_submit`](https://github.com/alyf-de/erpnext_pdf-on-submit)
+   installieren, damit Site Visits beim Buchen automatisch ein PDF erhalten
+   (siehe "Automatische PDF-Erzeugung" unten)
+
+---
+
+## Fahrtenbuch
+
+Ein Techniker legt pro Fahrt eine **Fahrt** an: Zeitraum, Start/Ziel, Fotos
+vom Tacho am Anfang und am Ende. Der Kilometerstand wird dabei per
+KI-Bilderkennung automatisch vorgeschlagen, lässt sich aber jederzeit von
+Hand eintragen oder korrigieren. Beim Buchen wird die Fahrzeit immer, die
+gefahrene Strecke optional als Position in einen Auftrag übernommen.
+
+Kein Finanzamt-taugliches Fahrtenbuch: keine Geschäftlich/Privat-Kennzeichnung,
+keine lückenlose Erfassung. Ein praktisches Log für Kundenbesuche.
+
+### Kilometerstand-Erkennung
+
+Die App liest den Kilometerstand aus einem Tacho-Foto über eine beliebige
+**OpenAI-kompatible API** aus (`fahrtenbuch/ocr.py`, Chat-Completions-Format
+mit Bild) – funktioniert damit z. B. mit Ollama, LM Studio oder echtem
+OpenAI. Ist die API nicht erreichbar/nicht konfiguriert oder erkennt nichts
+Eindeutiges, bleibt das Kilometerstand-Feld einfach leer bzw. unverändert –
+die Erkennung ist reine Komfortfunktion.
+
+Echte Handy-Fotos werden vor dem Versand automatisch auf max. 1024px
+Kantenlänge herunterskaliert (`MAX_IMAGE_DIMENSION` in `ocr.py`).
+
+### Timer
+
+"Timer starten"/"Timer stoppen" (im Formular und beim Anlegen aus dem
+Projekt heraus) setzen nicht nur `start_time`/`end_time`, sondern
+**speichern sofort** – genau wie ERPNexts eigener Timesheet-Timer. Ohne das
+sofortige Speichern ginge ein laufender Timer bei einem Reload oder
+Schließen der Seite verloren.
+
+Damit ein Entwurf mit nur laufendem Timer überhaupt speicherbar ist, sind
+Endzeit, beide Kilometerstände, Auftrag und Artikel Fahrzeit **nicht mehr
+auf Feldebene Pflicht** – sie werden erst beim Buchen selbst geprüft
+(`Fahrt.before_submit` in `fahrt.py`).
+
+### Einrichtung
+
+- Im Projekt-Formular gibt es unter "Verknüpfungen" eine Gruppe "Fahrten".
+  Die "+"-Verknüpfung dort legt eine neue Fahrt an (über `frm.make_methods`).
+  Zusätzlich ein eigenständig sichtbarer Button **"Fahrt mit Timer
+  starten"** oben im Formular.
+- Beide Wege legen die Fahrt standardmäßig mit bereits laufendem Timer an
+  (Projekt/Kunde vorbelegt, Startzeit = jetzt, sofort gespeichert) **und**
+  öffnen direkt danach die Kamera für das Start-Kilometerstand-Foto.
+
+---
+
+## Site Visit
+
+Ein Techniker legt pro Einsatz einen **Site Visit** an: Zeitraum,
+Aktivitätsart, Fotos, optional die Unterschrift des Kunden direkt auf dem
+eigenen Gerät. Beim Buchen (Submit) wird automatisch ein **Timesheet**
+angelegt, gebucht und verknüpft – bereit zur Abrechnung.
+
+### Auftrag
+
+`sales_order` ist Pflichtfeld – jeder Einsatz muss einem Auftrag zugeordnet
+sein. Gibt es noch keinen, öffnet der Button **"New Sales Order"** im
+Formular einen Dialog: Kunde/Firma/Projekt kommen vom Site Visit, dazu lässt
+sich die **Kundenreferenz** eintragen. Der neue Auftrag entsteht als
+**Entwurf** und übernimmt die bereits eingetragenen Zusatzartikel als
+Startpositionen.
+
+**Zusätzliche Artikel** (`extra_items`): vor Ort zusätzlich benötigtes
+Material. Beim Buchen des Site Visit werden neue (noch nicht übernommene)
+Zeilen automatisch in die Positionen des verknüpften Auftrags aufgenommen –
+auch wenn der Auftrag bereits gebucht ist (über
+`erpnext.controllers.accounts_controller.update_child_qty_rate`).
+
+### Timer
+
+Wie beim Fahrtenbuch: "Start Timer"/"Stop Timer" speichern sofort, Kunde/
+Aktivitätsart/Auftrag/Endzeit sind deshalb erst beim Buchen
+(`before_submit` in `site_visit.py`) Pflicht, nicht auf Feldebene.
+
+### Automatische PDF-Erzeugung beim Buchen
+
+Die App liefert ein eigenes Print Format **"Site Visit Report"** mit
+(Kopfbereich, Kundendaten, Fotogalerie, Unterschriftsblock). Für die
+**automatische** PDF-Anlage beim Buchen braucht es zusätzlich einen
+PDF-Automatisierungsmechanismus wie
+[`pdf_on_submit`](https://github.com/alyf-de/erpnext_pdf-on-submit) (bewusst
+keine harte Abhängigkeit, funktioniert auch ohne). Ist `pdf_on_submit` zum
+Zeitpunkt der Installation bereits vorhanden, trägt `install.py`
+automatisch die Zeile „Site Visit" in dessen **PDF on Submit Settings**
+ein.
+
+`zeit_projekt/__init__.py` patcht zusätzlich `pdf_on_submit.attach_pdf.get_pdf_data()`,
+damit die automatische PDF-Erzeugung über `frappe.get_print(...,
+pdf_generator="chrome")` läuft statt über deren eigenen wkhtmltopdf-Aufruf –
+relevant nur auf Servern, auf denen wkhtmltopdf grundsätzlich fehlschlägt.
+Der Patch greift nur, wenn `pdf_on_submit` tatsächlich installiert ist.
+
+---
+
+## Sprache
+
+Die App liefert zwei Übersetzungsdateien mit, je nach Herkunfts-Modul in
+unterschiedlicher Richtung:
+
+- `translations/en.csv`: Quelle Deutsch (Module „Zeit Projekt" und
+  „Fahrtenbuch", auf Deutsch geschrieben), übersetzt für Nutzer mit Sprache
+  "Englisch".
+- `translations/de.csv`: Quelle Englisch (Modul „Site Visit", auf Englisch
+  geschrieben), übersetzt für Nutzer mit Sprache "Deutsch".
+
+Frappe wählt die passende Datei automatisch anhand der Nutzersprache.
+Standardbegriffe, die bereits über Frappe/ERPNext selbst übersetzt sind
+(z. B. "Customer", "Employee", "Sales Order", "Timesheet"), sind bewusst
+**nicht** noch einmal in den CSV-Dateien enthalten.
+
+Nach Änderungen an Texten im Code: neue/geänderte Strings in der
+passenden CSV ergänzen, sonst bleiben sie in der jeweiligen Zielsprache
+unübersetzt (Ausgangssprache als Fallback).
+
+---
+
+## Eigene App im Desk
+
+Fahrtenbuch und Site Visit bringen je ein eigenes Logo mit
+(`public/images/*-logo.svg`) und registrieren sich über
+`add_to_apps_screen` in `hooks.py` als eigene Kacheln auf der
+Apps-Übersicht (`/apps`): Fahrtenbuch mit direktem Sprung in die
+Fahrt-Liste, Site Visit mit einer eigenen Workspace (Verknüpfungen zu
+"Site Visit" und "Timesheet"). Das Modul „Zeit Projekt" selbst hat keine
+eigene Kachel – es wirkt rein als Ergänzung auf Sales-Invoice-/
+Sales-Order-Formularen.
+
+## Berechtigungen
+
+**Fahrt / Site Visit**
+
+| Rolle | Lesen | Schreiben | Anlegen | Buchen | Stornieren |
+|---|---|---|---|---|---|
+| System Manager | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Projects Manager | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Employee | eigene | eigene | ✓ | eigene | – |
+| Projects User | ✓ | – | – | – | – |
+| Accounts User | ✓ | – | – | – | – |
+
+Ein gebuchter, unterschriebener Site Visit gilt als Bestätigung gegenüber
+dem Kunden – nur Projects Manager/System Manager können ihn stornieren.
+
+**Zeit Projekt Einstellungen / Fahrtenbuch Einstellungen**
+
+Nur System Manager kann schreiben; Zeit Projekt Einstellungen ist zusätzlich
+für Accounts User/Accounts Manager/Projects User lesbar.
+
+Es gibt bewusst keine eigene, engere Techniker-Rolle als Fixture (Rollen
+sind nicht modulgebunden und würden beim Deinstallieren als Karteileiche
+zurückbleiben); wer den Zugriff über die Standardrolle "Employee" hinaus
+einschränken will, legt manuell eine eigene Rolle an.
 
 ---
 
 ## Erweiterungsideen
 
-- Custom Fields, die du später über die Oberfläche anlegst, gehören nicht automatisch der App. Trage sie in `CUSTOM_FIELDS` in `install.py` nach, dann werden sie beim Deinstallieren mitentfernt.
-- Für Property Setter (geänderte Feldeigenschaften am Standard) gilt dasselbe: entweder im `after_install` erzeugen oder als Fixture exportieren und dabei das Modul auf „Zeit Projekt" setzen.
-- ~~Serverseitige Logik (etwa die Projektanlage) ließe sich später von JavaScript nach `doc_events` verschieben.~~ Erledigt: Die Projektanlage läuft in `sales_order.py` als `before_submit`-Hook, im selben Request wie das Buchen. Grund: Die alte JS-Variante rief `frappe.client.insert` in einem eigenen Request auf, *bevor* der eigentliche Buchen-Request lief - bei einem doppelten Klick auf Buchen (z. B. auf dem Handy) konnte der zweite Request dann mit einem veralteten Zeitstempel auf "has been modified after you have opened it" laufen, obwohl das Projekt schon korrekt angelegt war. Serverseitig in `before_submit` gibt es diesen zweiten Request nicht mehr, dadurch entfällt das Zeitfenster für den Konflikt vollständig - und es greift jetzt auch bei API-Zugriffen und Massenbuchungen.
+- **"Neuer Auftrag"-Dialog** direkt aus der Fahrt heraus (wie bei Site
+  Visit), statt nur einen bestehenden Auftrag wählen zu können.
+- **GPS/Adress-basierte automatische km-Berechnung** als Alternative/
+  Ergänzung zum Kilometerstand-Foto.
+- **Mehrere Fahrten/Einsätze pro Tag zusammenfassen** statt Einzelbuchung.
+- **Externes USB/Bluetooth-Signaturpad** statt Finger/Stift auf dem
+  Touch-Bildschirm für die Site-Visit-Unterschrift.
+- Mehrere Zeitsegmente/Pausen pro Site Visit statt eines durchgehenden
+  Blocks.
+- GPS/Standort-Erfassung beim Anlegen von Fahrt/Site Visit.
+- Direkte Rechnungs-/Angebotserstellung aus dem Site Visit heraus.
+- Custom Fields, die du später über die Oberfläche anlegst, gehören nicht
+  automatisch der App. Trage sie in `CUSTOM_FIELDS` in `install.py` nach,
+  dann werden sie beim Deinstallieren mitentfernt. Für Property Setter gilt
+  dasselbe (im `after_install` erzeugen oder als Fixture exportieren, Modul
+  auf eines der drei Module setzen).

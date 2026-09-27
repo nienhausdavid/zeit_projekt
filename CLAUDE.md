@@ -5,9 +5,11 @@ App `zeit_projekt` für ERPNext v16, entwickelt auf einem Server mit Frappe Mana
 Bench: `<BENCHNAME>` — Site: `<SITENAME>`
 (beim ersten Start bitte ersetzen, z. B. `erpdev` / `erpdev.localhost`)
 
-Zwei Funktionen:
-1. Knopf in der Ausgangsrechnung, der Zeiterfassungen als einzelne Rechnungspositionen importiert (Artikel aus der Aktivitätsart, Preis aus dem Artikel, Beschreibung und Liefertermin konfigurierbar).
-2. Haken im Auftrag, der beim Bestätigen automatisch ein Projekt anlegt und verknüpft.
+Vier Funktionen in drei Modulen (aus den ursprünglich getrennten Apps `zeit_projekt`, `fahrtenbuch` und `site_visit` zu einer App zusammengeführt, siehe README.md "Herkunft"):
+1. (Modul „Zeit Projekt") Knopf in der Ausgangsrechnung, der Zeiterfassungen als einzelne Rechnungspositionen importiert (Artikel aus der Aktivitätsart, Preis aus dem Artikel, Beschreibung und Liefertermin konfigurierbar).
+2. (Modul „Zeit Projekt") Haken im Auftrag, der beim Bestätigen automatisch ein Projekt anlegt und verknüpft.
+3. (Modul „Fahrtenbuch") Fahrten dokumentieren, Kilometerstand per Fotoerkennung erfassen, optional automatisch abrechnen.
+4. (Modul „Site Visit") Kundeneinsätze dokumentieren (Zeit, Fotos, Unterschrift), daraus automatisch ein abrechenbares Zeitblatt erzeugen.
 
 Details zu Funktionsweise, Feldern und Einstellungen stehen in `README.md` — vor der ersten Änderung lesen.
 
@@ -53,6 +55,11 @@ fm shell <BENCHNAME> -c "bench --site <SITENAME> list-apps"
 
 # Sind die Einstellungen erreichbar?
 fm shell <BENCHNAME> --bench-console -c "print(frappe.get_doc('Zeit Projekt Einstellungen').as_dict())"
+fm shell <BENCHNAME> --bench-console -c "print(frappe.get_doc('Fahrtenbuch Einstellungen').as_dict())"
+
+# Sind alle drei Module registriert und die neuen Doctypes da?
+fm shell <BENCHNAME> --bench-console -c "print(frappe.get_all('Module Def', filters={'app_name':'zeit_projekt'}, pluck='name'))"
+fm shell <BENCHNAME> --bench-console -c "print(frappe.db.exists('DocType', 'Fahrt'), frappe.db.exists('DocType', 'Site Visit'))"
 ```
 
 Browserseitiges Verhalten (Knopf, Dialog, Sprung auf den Reiter Verknüpfungen) lässt sich nicht automatisiert prüfen — dafür eine kurze Klickliste vorschlagen und das Ergebnis vom Nutzer zurückmelden lassen.

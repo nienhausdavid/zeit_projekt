@@ -1,0 +1,295 @@
+{
+ "actions": [],
+ "autoname": "FB-.YYYY.-.#####",
+ "creation": "2026-09-13 09:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "icon": "car",
+ "field_order": [
+  "employee",
+  "date",
+  "column_break_1",
+  "vehicle",
+  "customer",
+  "project",
+  "site_visit",
+  "section_break_zeit",
+  "start_time",
+  "end_time",
+  "column_break_2",
+  "duration_hours",
+  "section_break_route",
+  "start_location",
+  "column_break_3",
+  "end_location",
+  "section_break_km",
+  "start_odometer_photo",
+  "start_odometer",
+  "column_break_4",
+  "end_odometer_photo",
+  "end_odometer",
+  "distance_km",
+  "section_break_beschreibung",
+  "description",
+  "section_break_abrechnung",
+  "sales_order",
+  "time_item",
+  "column_break_5",
+  "bill_km",
+  "km_item",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Optional: welches Fahrzeug wurde genutzt",
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "label": "Vehicle",
+   "options": "Vehicle"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "description": "Optional: Fahrt einem Kundeneinsatz zuordnen - fuellt Kunde/Projekt/Auftrag automatisch",
+   "fieldname": "site_visit",
+   "fieldtype": "Link",
+   "label": "Site Visit",
+   "options": "Site Visit"
+  },
+  {
+   "fieldname": "section_break_zeit",
+   "fieldtype": "Section Break",
+   "label": "Zeitraum"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Datetime",
+   "label": "Beginn",
+   "reqd": 1
+  },
+  {
+   "description": "Muss vor dem Buchen gesetzt sein - beim Speichern als Entwurf (z. B. per Timer) noch nicht erforderlich",
+   "fieldname": "end_time",
+   "fieldtype": "Datetime",
+   "label": "Ende"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "duration_hours",
+   "fieldtype": "Float",
+   "label": "Dauer (Std.)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_route",
+   "fieldtype": "Section Break",
+   "label": "Start/Ziel"
+  },
+  {
+   "description": "Einfacher Text, keine GPS-Erfassung",
+   "fieldname": "start_location",
+   "fieldtype": "Data",
+   "label": "Start"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "end_location",
+   "fieldtype": "Data",
+   "label": "Ziel"
+  },
+  {
+   "fieldname": "section_break_km",
+   "fieldtype": "Section Break",
+   "label": "Kilometerstand"
+  },
+  {
+   "description": "Foto vom Tacho - der Kilometerstand wird automatisch erkannt und kann danach jederzeit von Hand korrigiert werden",
+   "fieldname": "start_odometer_photo",
+   "fieldtype": "Attach Image",
+   "label": "Foto Kilometerstand Start"
+  },
+  {
+   "description": "Muss vor dem Buchen gesetzt sein",
+   "fieldname": "start_odometer",
+   "fieldtype": "Int",
+   "label": "Kilometerstand Start"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Foto vom Tacho - der Kilometerstand wird automatisch erkannt und kann danach jederzeit von Hand korrigiert werden",
+   "fieldname": "end_odometer_photo",
+   "fieldtype": "Attach Image",
+   "label": "Foto Kilometerstand Ende"
+  },
+  {
+   "description": "Muss vor dem Buchen gesetzt sein",
+   "fieldname": "end_odometer",
+   "fieldtype": "Int",
+   "label": "Kilometerstand Ende"
+  },
+  {
+   "fieldname": "distance_km",
+   "fieldtype": "Int",
+   "label": "Strecke (km)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_beschreibung",
+   "fieldtype": "Section Break",
+   "label": "Beschreibung"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Beschreibung"
+  },
+  {
+   "fieldname": "section_break_abrechnung",
+   "fieldtype": "Section Break",
+   "label": "Abrechnung"
+  },
+  {
+   "description": "Muss vor dem Buchen gesetzt sein - die Fahrzeit wird immer darueber abgerechnet",
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "description": "Muss vor dem Buchen gesetzt sein - wird dann immer mit der Dauer (Std.) als Menge in den Auftrag uebernommen",
+   "fieldname": "time_item",
+   "fieldtype": "Link",
+   "label": "Artikel Fahrzeit",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Nimmt zusaetzlich die Strecke (km) als eigene Position in den Auftrag auf",
+   "fieldname": "bill_km",
+   "fieldtype": "Check",
+   "label": "Kilometer abrechnen"
+  },
+  {
+   "depends_on": "eval:doc.bill_km",
+   "fieldname": "km_item",
+   "fieldtype": "Link",
+   "label": "Artikel Kilometer",
+   "mandatory_depends_on": "eval:doc.bill_km",
+   "options": "Item"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Fahrt",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-09-13 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Fahrtenbuch",
+ "name": "Fahrt",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Projects User"
+  },
+  {
+   "read": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
