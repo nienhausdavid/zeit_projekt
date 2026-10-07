@@ -89,11 +89,20 @@ Symbole und Seitenleisten liegen als JSON in `desktop_icon/` und
 Dateiname muss `frappe.scrub(<Bezeichnung>)` entsprechen, sonst löscht
 `migrate` das Symbol als verwaist.
 
+Frappe überspringt dabei Datensätze, die jünger als die Datei sind – etwa
+die Symbole, die eine frühere Version der App automatisch erzeugen ließ.
+`after_install`/`after_migrate` laden deshalb jeden Eintrag neu aus der
+Datei, dessen Zeitstempel nicht mit ihr übereinstimmt. Nach einer Änderung an
+einer dieser Dateien also immer `modified` hochsetzen.
+
 Sichtbar ist das App-Symbol für System Manager, Projects Manager, Projects
 User, Accounts User und Employee (`desk.check_app_permission`); die einzelnen
 Einträge der Seitenleisten blendet Frappe nach Leserecht aus.
-`before_uninstall` entfernt die Symbole, weil Frappe sie unter dem App-Namen
-sucht und „Zeit & Projekt" nicht fände.
+`before_uninstall` entfernt Symbole und Seitenleisten selbst: Frappe sucht
+die Symbole unter dem App-Namen und fände „Zeit & Projekt" nicht, und das
+Löschen der Seitenleisten schreibt Frappe nur bei `--dry-run` fest. Gelöscht
+wird ohne `on_trash`, das im `developer_mode` sonst auch die JSON-Dateien in
+der App entfernen würde.
 
 ## Berechtigungen
 

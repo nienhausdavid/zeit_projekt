@@ -65,3 +65,32 @@ class TestApp(IntegrationTestCase):
 		kacheln = [a for a in get_apps() if a["name"] == "zeit_projekt"]
 		self.assertEqual(len(kacheln), 1)
 		self.assertTrue(kacheln[0]["route"].startswith("/desk/"))
+
+	def test_desk_nach_update_von_alter_version(self):
+		"""Eine fruehere Version liess Frappe "Zeit & Projekt" und "Site Visits"
+		selbst erzeugen - juenger als die Dateien, daher vom migrate uebergangen.
+		after_migrate muss sie trotzdem auf den Stand der App bringen."""
+		from zeit_projekt.install import _desk_abgleichen
+
+		frappe.db.set_value(
+			"Desktop Icon", "Zeit & Projekt", {"link": "/app/fahrt", "standard": 0}, update_modified=True
+		)
+		frappe.db.set_value("Desktop Icon", "Site Visits", {"app": None, "standard": 0}, update_modified=True)
+		frappe.delete_doc("Desktop Icon", "Fahrtenbuch", force=True, for_reload=True)
+
+		_desk_abgleichen()
+
+		symbole = {
+			d.name: d
+			for d in frappe.get_all(
+				"Desktop Icon",
+				filters={"name": ["in", ["Zeit & Projekt", "Fahrtenbuch", "Site Visits"]]},
+				fields=["name", "app", "standard", "link", "parent_icon"],
+			)
+		}
+		self.assertEqual(sorted(symbole), ["Fahrtenbuch", "Site Visits", "Zeit & Projekt"])
+		self.assertEqual(symbole["Zeit & Projekt"].link, "/desk/fahrt?sidebar=Fahrtenbuch")
+		for name in ("Fahrtenbuch", "Site Visits"):
+			self.assertEqual(symbole[name].parent_icon, "Zeit & Projekt")
+		for d in symbole.values():
+			self.assertEqual((d.app, d.standard), ("zeit_projekt", 1))
