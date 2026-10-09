@@ -184,8 +184,15 @@ def add_rows_to_sales_order(sales_order, customer, rows, source):
 		so = frappe.get_doc("Sales Order", sales_order)
 		priced = price_rows(so, rows, throw=not ohne_preis_erlaubt)
 		vorher = {row.name for row in so.items}
-		trans_items = [dict(row.as_dict(), docname=row.name) for row in so.items] + priced
-		update_child_qty_rate("Sales Order", frappe.as_json(trans_items), so.name)
+		if so.docstatus == 0:
+			# Entwurf (z. B. ueber "Neuer Auftrag" angelegt): einfach anhaengen -
+			# update_child_qty_rate ist fuer gebuchte Auftraege gedacht.
+			for row in priced:
+				so.append("items", row)
+			so.save()
+		else:
+			trans_items = [dict(row.as_dict(), docname=row.name) for row in so.items] + priced
+			update_child_qty_rate("Sales Order", frappe.as_json(trans_items), so.name)
 		# Neue Zeilen werden in der Reihenfolge von rows angehaengt -
 		# nach idx sortiert passt die Rueckgabe zeilenweise zu rows.
 		nachher = frappe.get_all(
@@ -241,5 +248,9 @@ def remove_rows_from_sales_order(sales_order, item_names):
 					"Bitte den Auftrag selbst anpassen oder stornieren."
 				).format(frappe.bold(sales_order))
 			)
+		if so.docstatus == 0:
+			so.set("items", rest)
+			so.save()
+			return
 		trans_items = [dict(row.as_dict(), docname=row.name) for row in rest]
 		update_child_qty_rate("Sales Order", frappe.as_json(trans_items), so.name)

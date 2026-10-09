@@ -4,6 +4,7 @@ from frappe.utils import flt
 
 from zeit_projekt.site_visit.site_visit import create_sales_order
 from zeit_projekt.zeit_projekt.tests.utils import (
+	BUCHHALTUNG,
 	KUNDE_A,
 	KUNDE_B,
 	MONTAGE,
@@ -70,9 +71,15 @@ class TestSiteVisit(IntegrationTestCase):
 
 	def test_auftrag_eines_anderen_kunden_abgelehnt(self):
 		fremd = make_sales_order(self.ctx.company, KUNDE_B)
-		sv = self.site_visit(2, fremd.name)
 		with expect_error(self):
-			sv.submit()
+			self.site_visit(2, fremd.name)
+
+	def test_auftrag_ist_pflicht_und_bestimmt_den_kunden(self):
+		with expect_error(self, frappe.MandatoryError):
+			self.site_visit(7)
+		so = make_sales_order(self.ctx.company)
+		sv = self.site_visit(8, so.name, customer=None)
+		self.assertEqual((sv.customer, sv.customer_name), (KUNDE_A, KUNDE_A))
 
 	def test_zusatzartikel_ohne_preis_blockiert_buchen(self):
 		so = make_sales_order(self.ctx.company)
@@ -93,19 +100,42 @@ class TestSiteVisit(IntegrationTestCase):
 		finally:
 			frappe.db.set_single_value("Zeit Projekt Einstellungen", "allow_zero_price", 0)
 
-	def test_neuer_auftrag_aus_site_visit(self):
+	def test_neuer_auftrag_direkt_mit_kommissionsnummer(self):
 		frappe.set_user(TECH)
-		sv = self.site_visit(4, items=[{"item_code": "ZP-ADAPTER", "qty": 1}, {"item_code": "ZP-ADAPTER", "qty": 3}])
-		name = create_sales_order(sv.name, po_no=frappe.generate_hash(length=10))
+		kommission = frappe.generate_hash(length=10)
+		name = create_sales_order(KUNDE_A, MONTAGE, po_no=kommission, date="2031-04-04")
 
 		so = frappe.get_doc("Sales Order", name)
-		self.assertEqual(so.docstatus, 0)
+		self.assertEqual((so.docstatus, so.customer, so.po_no), (0, KUNDE_A, kommission))
 		self.assertTrue(so.delivery_date)
-		self.assertEqual([flt(i.rate) for i in so.items], [15, 15])
-		self.assertEqual({i.custom_site_visit for i in so.items}, {sv.name})
-		sv.reload()
-		self.assertEqual(sv.sales_order, name)
-		self.assertTrue(all(r.added_to_order for r in sv.extra_items))
+		# Platzhalter: Dienstleistungsartikel der Aktivitaetsart mit Preis 0 -
+		# die Zeit selbst wird ueber das Zeitblatt abgerechnet
+		self.assertEqual([(i.item_code, flt(i.rate)) for i in so.items], [("ZP-MONTAGE", 0)])
+
+		sv = self.site_visit(4, name, [{"item_code": "ZP-ADAPTER", "qty": 3}])
+		sv.submit()
+		zeilen = sales_order_rows(name)
+		self.assertEqual([(z.item_code, flt(z.rate), flt(z.qty)) for z in zeilen][-1], ("ZP-ADAPTER", 15, 3))
+		self.assertEqual(frappe.db.get_value("Sales Order", name, "docstatus"), 0)
+
+		frappe.set_user("Administrator")
+		sv.cancel()
+		self.assertEqual([z.item_code for z in sales_order_rows(name)], ["ZP-MONTAGE"])
+
+	def test_neuer_auftrag_braucht_dienstleistungsartikel(self):
+		frappe.set_user(TECH)
+		frappe.db.set_value("Activity Type", MONTAGE, "custom_dienstleistungsartikel", None)
+		try:
+			with expect_error(self):
+				create_sales_order(KUNDE_A, MONTAGE)
+		finally:
+			frappe.set_user("Administrator")
+			frappe.db.set_value("Activity Type", MONTAGE, "custom_dienstleistungsartikel", "ZP-MONTAGE")
+
+	def test_neuer_auftrag_nur_mit_einsatzrechten(self):
+		frappe.set_user(BUCHHALTUNG)
+		with expect_error(self, frappe.PermissionError):
+			create_sales_order(KUNDE_A, MONTAGE)
 
 	def test_stornieren_und_berichtigen(self):
 		so = make_sales_order(self.ctx.company)

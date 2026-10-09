@@ -35,7 +35,7 @@
  ],
  "fields": [
   {
-   "description": "Muss vor dem Buchen gesetzt sein - beim Speichern als Entwurf (z. B. per Timer) noch nicht erforderlich",
+   "description": "Wird aus dem Auftrag übernommen, falls leer",
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -67,11 +67,12 @@
    "options": "Project"
   },
   {
-   "description": "Muss vor dem Buchen gesetzt sein - beim Speichern als Entwurf noch nicht erforderlich. Gibt es noch keinen, über den Knopf „Neuer Auftrag“ anlegen.",
+   "description": "Gibt es noch keinen, oben über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.",
    "fieldname": "sales_order",
    "fieldtype": "Link",
    "label": "Sales Order",
-   "options": "Sales Order"
+   "options": "Sales Order",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_zeit",
@@ -202,7 +203,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-28 12:00:00.000000",
+ "modified": "2026-10-09 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Site Visit",
  "name": "Site Visit",

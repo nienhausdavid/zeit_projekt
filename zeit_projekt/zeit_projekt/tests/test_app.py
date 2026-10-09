@@ -94,3 +94,15 @@ class TestApp(IntegrationTestCase):
 			self.assertEqual(symbole[name].parent_icon, "Zeit & Projekt")
 		for d in symbole.values():
 			self.assertEqual((d.app, d.standard), ("zeit_projekt", 1))
+
+	def test_projekt_aus_auftrag_ohne_eu_einvoice(self):
+		"""buyer_reference gibt es nur mit eu_einvoice - ohne das Feld darf die
+		Projektanlage nicht scheitern."""
+		from zeit_projekt.zeit_projekt.tests.utils import KUNDE_A, ensure_fixtures, make_sales_order
+
+		ctx = ensure_fixtures()
+		so = make_sales_order(ctx.company, submit=False)
+		so.custom_projekt_erstellen = 1
+		so.submit()
+		self.assertTrue(so.project)
+		self.assertEqual(frappe.db.get_value("Project", so.project, "customer"), KUNDE_A)

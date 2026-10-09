@@ -98,10 +98,10 @@ frappe.ui.form.on('Site Visit', {
 // to_time, die ganz normale, jederzeit von Hand editierbare Felder bleiben
 // (kein read-only). "Start"/"Stopp" speichern sofort (wie ERPNexts eigener
 // Timesheet-Timer in erpnext/public/js/projects/timer.js: frm.save() direkt
-// nach dem Setzen von from_time) - deshalb sind customer/company/
-// activity_type/sales_order/to_time nicht mehr reqd im Feld, sondern erst in
-// before_submit (site_visit.py) Pflicht, sonst waere ein Entwurf mit nur
-// laufendem Timer gar nicht speicherbar. Ohne das sofortige Speichern ginge
+// nach dem Setzen von from_time) - deshalb sind activity_type/to_time nicht
+// reqd im Feld, sondern erst in before_submit (site_visit.py) Pflicht, sonst
+// waere ein Entwurf mit nur laufendem Timer gar nicht speicherbar. Der Auftrag
+// ist dagegen schon beim Speichern Pflicht (Kunde kommt aus ihm). Ohne das sofortige Speichern ginge
 // der Timer bei einem Reload/Schliessen der Seite verloren, weil ein neues,
 // ungespeichertes Dokument nur im Browser existiert. 1:1 uebernommen aus
 // fahrtenbuch.js (dort ausfuehrlicher kommentiert).
@@ -111,6 +111,12 @@ function update_timer_toolbar(frm) {
 
 	if (!frm.doc.from_time) {
 		frm.page.add_button(__('Timer starten'), () => {
+			// Ohne Auftrag liesse sich der Einsatz nicht speichern - der Timer
+			// ginge beim Neuladen verloren.
+			if (!frm.doc.sales_order) {
+				frappe.msgprint(__('Bitte zuerst einen Auftrag auswählen oder über „Neuer Auftrag“ anlegen.'));
+				return;
+			}
 			frm.set_value('from_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 	} else if (!frm.doc.to_time) {
@@ -148,39 +154,71 @@ function stop_ticking(frm) {
 // Preis und Betrag der Zusatzartikel ermittelt der Server beim Speichern aus
 // der Preisliste (siehe SiteVisit.set_extra_item_rates) - hier nichts rechnen.
 
+// Der Auftrag ist Pflicht (schon beim Speichern). Gibt es noch keinen, legt
+// der Dialog ihn direkt an - auch aus einem noch nicht gespeicherten Einsatz.
+// Die Kommissionsnummer landet im Auftragsfeld po_no; dessen Beschriftung und
+// Pflicht-Status liefert der Server (je nach Site z. B. "Customer Reference").
 function show_create_sales_order_dialog(frm) {
-	if (!frm.doc.customer) {
-		frappe.msgprint(__('Bitte zuerst einen Kunden auswählen.'));
-		return;
-	}
-	if (!(frm.doc.extra_items || []).length) {
-		frappe.msgprint(__('Bitte zuerst mindestens einen Artikel hinzufügen, bevor ein neuer Auftrag angelegt wird.'));
-		return;
-	}
-	const dialog = new frappe.ui.Dialog({
-		title: __('Neuer Auftrag'),
-		fields: [{ fieldname: 'po_no', fieldtype: 'Data', label: __('Kundenreferenz') }],
-		primary_action_label: __('Create'),
-		primary_action(values) {
-			// Der Server liest Kunde, Projekt und Artikel aus dem gespeicherten
-			// Site Visit - deshalb vorher speichern.
-			const saved = frm.is_new() || frm.is_dirty() ? frm.save() : Promise.resolve();
-			saved.then(() =>
+	frappe.call({ method: 'zeit_projekt.site_visit.site_visit.get_sales_order_form' }).then((r) => {
+		const form = r.message || {};
+		const dialog = new frappe.ui.Dialog({
+			title: __('Neuer Auftrag'),
+			fields: [
+				{
+					fieldname: 'customer',
+					fieldtype: 'Link',
+					options: 'Customer',
+					label: __('Customer'),
+					reqd: 1,
+					default: frm.doc.customer,
+					get_query: () => ({ query: `${TECHNICIAN_API}.customer_query` }),
+				},
+				{
+					fieldname: 'po_no',
+					fieldtype: 'Data',
+					label: __('Kommissionsnummer'),
+					reqd: form.po_no_reqd ? 1 : 0,
+					description: __('Steht im Auftrag im Feld „{0}“.', [form.po_no_label || '']),
+				},
+				{
+					fieldname: 'activity_type',
+					fieldtype: 'Link',
+					options: 'Activity Type',
+					label: __('Activity Type'),
+					reqd: 1,
+					default: frm.doc.activity_type,
+					description: __('Ihr Dienstleistungsartikel wird die erste Position des Auftrags (Preis 0 – die Zeit wird über das Zeitblatt abgerechnet).'),
+				},
+			],
+			primary_action_label: __('Auftrag anlegen'),
+			primary_action(values) {
 				frappe.call({
 					method: 'zeit_projekt.site_visit.site_visit.create_sales_order',
-					args: { site_visit: frm.doc.name, po_no: values.po_no },
+					args: {
+						customer: values.customer,
+						activity_type: values.activity_type,
+						po_no: values.po_no,
+						project: frm.doc.project || null,
+						company: frm.doc.company || null,
+						date: frm.doc.date || null,
+						site_visit: frm.is_new() ? null : frm.doc.name,
+					},
 					freeze: true,
 					freeze_message: __('Auftrag wird angelegt...'),
-					callback(r) {
-						if (!r.message) return;
-						dialog.hide();
-						frm.reload_doc();
-					},
-				})
-			);
-		},
+				}).then((res) => {
+					if (!res.message) return;
+					dialog.hide();
+					const updates = { sales_order: res.message, customer: values.customer };
+					if (!frm.doc.activity_type) updates.activity_type = values.activity_type;
+					frm.set_value(updates).then(() => {
+						frappe.show_alert({ message: __('Auftrag {0} angelegt.', [res.message]), indicator: 'green' });
+						if (!frm.is_new()) frm.save();
+					});
+				});
+			},
+		});
+		dialog.show();
 	});
-	dialog.show();
 }
 
 // Ersatz fuer fetch_from bei Artikelname/Einheit (s. customer() oben).

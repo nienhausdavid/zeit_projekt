@@ -3,7 +3,9 @@ from frappe import _
 
 
 def projektname(doc):
-	ref = (doc.buyer_reference or "").strip()
+	# buyer_reference kommt aus der App eu_einvoice - ohne sie gibt es das Feld
+	# nicht, und doc.buyer_reference waere ein AttributeError.
+	ref = (doc.get("buyer_reference") or "").strip()
 	basis = ref or (doc.customer_name or doc.customer or "")
 	return f"{basis} - {doc.name}"
 

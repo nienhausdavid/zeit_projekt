@@ -1,5 +1,6 @@
 import erpnext
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 
@@ -14,8 +15,25 @@ class SiteVisit(Document):
 			# duplizierten (neuen) Einsatz muessen sie dagegen neu hinein.
 			for row in self.extra_items:
 				row.added_to_order = 0
+		self.set_from_sales_order()
 		self.set_link_names()
 		self.set_extra_item_rates()
+
+	def set_from_sales_order(self):
+		"""Der Auftrag ist Pflicht und bestimmt den Kunden: fehlt der Kunde,
+		kommt er aus dem Auftrag; ein Auftrag eines anderen Kunden wird schon
+		beim Speichern abgelehnt (nicht erst beim Buchen)."""
+		from zeit_projekt.zeit_projekt.billing import check_sales_order
+
+		if not self.sales_order:
+			return
+		so = frappe.db.get_value("Sales Order", self.sales_order, ["customer", "project"], as_dict=True)
+		if not so:
+			frappe.throw(_("Auftrag {0} existiert nicht.").format(self.sales_order))
+		self.customer = self.customer or so.customer
+		self.project = self.project or so.project
+		if self.is_new() or self.has_value_changed("sales_order") or self.has_value_changed("customer"):
+			check_sales_order(self.sales_order, self.customer)
 
 	def set_link_names(self):
 		"""Ersatz fuer fetch_from: das holt im Browser mit den Rechten des
