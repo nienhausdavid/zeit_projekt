@@ -39,6 +39,9 @@ def before_submit(doc, method=None):
 
 	if get_datetime(doc.to_time) <= get_datetime(doc.from_time):
 		frappe.throw(_("Das Ende muss nach dem Beginn liegen."))
+	abschnitte = doc.get_work_segments()
+	if not abschnitte:
+		frappe.throw(_("Nach Abzug der Pausen bleibt keine Arbeitszeit übrig."))
 
 	check_sales_order(doc.sales_order, doc.customer)
 
@@ -51,6 +54,7 @@ def before_submit(doc, method=None):
 		project=doc.project,
 		company=doc.company,
 		description=doc.description or doc.name,
+		segments=abschnitte,
 	)
 	frappe.msgprint(
 		_("Zeitblatt {0} wurde angelegt und gebucht.").format(f"<b>{doc.timesheet}</b>"),

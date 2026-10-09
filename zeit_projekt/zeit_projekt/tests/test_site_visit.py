@@ -155,3 +155,68 @@ class TestSiteVisit(IntegrationTestCase):
 		neu.insert()
 		neu.submit()
 		self.assertEqual(len([z for z in sales_order_rows(so.name) if neu.name in (z.description or "")]), 1)
+
+	def test_pausen_werden_herausgerechnet(self):
+		so = make_sales_order(self.ctx.company)
+		so_b = make_sales_order(self.ctx.company, KUNDE_B)
+		sv = frappe.get_doc(
+			{
+				"doctype": "Site Visit",
+				"sales_order": so.name,
+				"employee": self.ctx.employee,
+				"activity_type": MONTAGE,
+				"date": "2031-05-02",
+				"from_time": "2031-05-02 10:00:00",
+				"to_time": "2031-05-02 14:00:00",
+				"breaks": [
+					{"from_time": "2031-05-02 11:00:00", "to_time": "2031-05-02 11:30:00", "reason": "Pause"},
+					{"from_time": "2031-05-02 12:00:00", "to_time": "2031-05-02 12:45:00", "reason": "Notfall bei anderem Kunden"},
+				],
+			}
+		).insert()
+		self.assertEqual(flt(sv.working_hours, 2), 2.75)
+
+		# Notfall beim anderen Kunden waehrend der Pause - darf nicht kollidieren
+		notfall = self.site_visit(2, so_b.name, customer=KUNDE_B)
+		notfall.update({"date": "2031-05-02", "from_time": "2031-05-02 12:05:00", "to_time": "2031-05-02 12:40:00"})
+		notfall.save()
+		notfall.submit()
+
+		sv.submit()
+		ts = frappe.get_doc("Timesheet", sv.timesheet)
+		self.assertEqual(
+			[(str(log.from_time), str(log.to_time)) for log in ts.time_logs],
+			[
+				("2031-05-02 10:00:00", "2031-05-02 11:00:00"),
+				("2031-05-02 11:30:00", "2031-05-02 12:00:00"),
+				("2031-05-02 12:45:00", "2031-05-02 14:00:00"),
+			],
+		)
+		self.assertEqual(flt(ts.total_billable_hours, 2), 2.75)
+
+	def test_laufende_pause_endet_mit_dem_einsatz(self):
+		so = make_sales_order(self.ctx.company)
+		sv = self.site_visit(9, so.name)
+		sv.to_time = None
+		sv.append("breaks", {"from_time": "2031-04-09 11:00:00", "reason": "Pause"})
+		sv.save()
+		self.assertFalse(sv.breaks[0].to_time)
+		self.assertEqual(flt(sv.working_hours), 0)
+
+		# zweite Pause, solange die erste noch laeuft
+		sv.append("breaks", {"from_time": "2031-04-09 11:10:00", "reason": "Pause"})
+		with expect_error(self):
+			sv.save()
+		sv.reload()
+
+		sv.to_time = "2031-04-09 11:40:00"
+		sv.save()
+		self.assertEqual(str(sv.breaks[0].to_time), "2031-04-09 11:40:00")
+		self.assertEqual(flt(sv.working_hours, 2), 1.0)
+
+	def test_pause_ausserhalb_des_einsatzes_abgelehnt(self):
+		so = make_sales_order(self.ctx.company)
+		sv = self.site_visit(10, so.name)
+		sv.append("breaks", {"from_time": "2031-04-10 09:00:00", "to_time": "2031-04-10 10:30:00"})
+		with expect_error(self):
+			sv.save()

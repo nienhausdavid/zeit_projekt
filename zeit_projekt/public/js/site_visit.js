@@ -120,6 +120,18 @@ function update_timer_toolbar(frm) {
 			frm.set_value('from_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 	} else if (!frm.doc.to_time) {
+		const laufende_pause = open_break(frm);
+		if (laufende_pause) {
+			frm.page.add_button(__('Timer fortsetzen'), () => {
+				frappe.model
+					.set_value(laufende_pause.doctype, laufende_pause.name, 'to_time', frappe.datetime.now_datetime())
+					.then(() => frm.save());
+			});
+		} else {
+			frm.page.add_button(__('Timer pausieren'), () => show_pause_dialog(frm));
+		}
+		// Eine laufende Pause endet serverseitig automatisch mit dem Einsatz
+		// (SiteVisit.validate_breaks).
 		frm.page.add_button(__('Timer stoppen'), () => {
 			frm.set_value('to_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
@@ -127,18 +139,78 @@ function update_timer_toolbar(frm) {
 	}
 }
 
+function open_break(frm) {
+	return (frm.doc.breaks || []).find((row) => row.from_time && !row.to_time);
+}
+
+function show_pause_dialog(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __('Timer pausieren'),
+		fields: [
+			{
+				fieldname: 'reason',
+				fieldtype: 'Select',
+				label: __('Grund'),
+				options: [
+					{ value: 'Pause', label: __('Pause') },
+					{ value: 'Notfall bei anderem Kunden', label: __('Notfall bei anderem Kunden') },
+					{ value: 'Sonstiges', label: __('Sonstiges') },
+				],
+				default: 'Pause',
+				reqd: 1,
+			},
+			{ fieldname: 'note', fieldtype: 'Small Text', label: __('Notiz') },
+		],
+		primary_action_label: __('Pausieren'),
+		primary_action(values) {
+			dialog.hide();
+			frm.add_child('breaks', {
+				from_time: frappe.datetime.now_datetime(),
+				reason: values.reason,
+				note: values.note,
+			});
+			frm.refresh_field('breaks');
+			frm.save();
+		},
+	});
+	dialog.show();
+}
+
+// Netto-Arbeitszeit seit Beginn: abgeschlossene und laufende Pausen abgezogen.
+function worked_seconds(frm, now) {
+	const ms = (value) => frappe.datetime.str_to_obj(value).getTime();
+	let total = now - ms(frm.doc.from_time);
+	for (const row of frm.doc.breaks || []) {
+		if (!row.from_time) continue;
+		total -= (row.to_time ? ms(row.to_time) : now) - ms(row.from_time);
+	}
+	return Math.max(0, Math.floor(total / 1000));
+}
+
+function format_duration(total_seconds) {
+	const h = String(Math.floor(total_seconds / 3600)).padStart(2, '0');
+	const m = String(Math.floor((total_seconds % 3600) / 60)).padStart(2, '0');
+	const s = String(total_seconds % 60).padStart(2, '0');
+	return `${h}:${m}:${s}`;
+}
+
 function start_ticking(frm) {
-	const started_at = frappe.datetime.str_to_obj(frm.doc.from_time).getTime();
 	const tick = () => {
-		const total_seconds = Math.max(0, Math.floor((Date.now() - started_at) / 1000));
-		const h = String(Math.floor(total_seconds / 3600)).padStart(2, '0');
-		const m = String(Math.floor((total_seconds % 3600) / 60)).padStart(2, '0');
-		const s = String(total_seconds % 60).padStart(2, '0');
+		const gearbeitet = format_duration(worked_seconds(frm, Date.now()));
+		const pause = open_break(frm);
 		// clear_headline() zuerst: show_message() im Frappe-Layout haengt bei
 		// jedem Aufruf nur einen neuen Block an, statt den alten zu ersetzen -
 		// ohne das Clear stapeln sich die Meldungen im Sekundentakt.
 		frm.dashboard.clear_headline();
-		frm.dashboard.set_headline_alert(__('Timer läuft: {0}', [`${h}:${m}:${s}`]), 'orange');
+		if (pause) {
+			const seit = frappe.datetime.str_to_user(pause.from_time).split(' ').pop();
+			frm.dashboard.set_headline_alert(
+				__('Pausiert seit {0} – Arbeitszeit bisher {1}', [seit, gearbeitet]),
+				'blue'
+			);
+		} else {
+			frm.dashboard.set_headline_alert(__('Timer läuft: {0}', [gearbeitet]), 'orange');
+		}
 	};
 	tick();
 	frm.__site_visit_timer = setInterval(tick, 1000);

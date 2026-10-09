@@ -2,7 +2,7 @@ import erpnext
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate
+from frappe.utils import flt, get_datetime, nowdate
 
 
 class SiteVisit(Document):
@@ -18,6 +18,58 @@ class SiteVisit(Document):
 		self.set_from_sales_order()
 		self.set_link_names()
 		self.set_extra_item_rates()
+		self.validate_breaks()
+		self.working_hours = (
+			sum((bis - ab).total_seconds() for ab, bis in self.get_work_segments()) / 3600
+			if self.to_time
+			else 0
+		)
+
+	def validate_breaks(self):
+		"""Pausen muessen im Einsatzzeitraum liegen und duerfen sich nicht
+		ueberschneiden. Hoechstens eine darf noch laufen; endet der Einsatz
+		waehrend einer Pause ("Timer stoppen" in der Pause), endet sie mit ihm."""
+		if not self.from_time:
+			return
+		if self.to_time:
+			for row in self.breaks:
+				if not row.to_time:
+					row.to_time = self.to_time
+
+		beginn = get_datetime(self.from_time)
+		ende = get_datetime(self.to_time) if self.to_time else None
+		vorher_bis = None
+		for row in sorted(self.breaks, key=lambda r: get_datetime(r.from_time)):
+			ab = get_datetime(row.from_time)
+			bis = get_datetime(row.to_time) if row.to_time else None
+			if ab < beginn or (ende and (bis or ab) > ende):
+				frappe.throw(_("Zeile {0}: Die Pause muss innerhalb des Einsatzzeitraums liegen.").format(row.idx))
+			if bis and bis < ab:
+				frappe.throw(_("Zeile {0}: Das Ende der Pause muss nach ihrem Beginn liegen.").format(row.idx))
+			if vorher_bis and ab < vorher_bis:
+				frappe.throw(_("Zeile {0}: Die Pause überschneidet sich mit einer anderen.").format(row.idx))
+			# Eine laufende Pause blockiert alles danach - so kann nur die
+			# letzte Pause offen sein.
+			vorher_bis = bis or get_datetime("9999-12-31")
+
+	def get_work_segments(self):
+		"""Einsatzzeitraum ohne Pausen als Liste von (ab, bis) - je Abschnitt
+		eine Zeitblatt-Zeile, damit Pausen weder abgerechnet werden noch mit
+		einer Zeitbuchung kollidieren, die der Techniker waehrend der Pause
+		(z. B. Notfall bei einem anderen Kunden) erfasst."""
+		if not (self.from_time and self.to_time):
+			return []
+		zeiger = get_datetime(self.from_time)
+		ende = get_datetime(self.to_time)
+		abschnitte = []
+		for row in sorted(self.breaks, key=lambda r: get_datetime(r.from_time)):
+			ab, bis = get_datetime(row.from_time), get_datetime(row.to_time)
+			if ab > zeiger:
+				abschnitte.append((zeiger, ab))
+			zeiger = max(zeiger, bis)
+		if zeiger < ende:
+			abschnitte.append((zeiger, ende))
+		return abschnitte
 
 	def set_from_sales_order(self):
 		"""Der Auftrag ist Pflicht und bestimmt den Kunden: fehlt der Kunde,
