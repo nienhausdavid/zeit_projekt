@@ -4,14 +4,16 @@ from frappe.utils import getdate
 
 
 @frappe.whitelist()
-def get_billable_time_logs(customer, project=None, from_time=None, to_time=None):
+def get_billable_time_logs(customer, project=None, from_time=None, to_time=None, sales_order=None):
 	"""Fuer den Zeitimport der Ausgangsrechnung: offene Zeitbuchungen und
 	abzurechnende Fahrt-Kilometer des Rechnungskunden.
 
 	Zeiten wie ERPNexts get_projectwise_timesheet_data (inkl. dessen
 	Rechtepruefung), aber nur die des Rechnungskunden: Kunde des Projekts der
 	Zeitbuchung, sonst Kunde des Zeitblatts. Zeiten ganz ohne Kunde werden
-	nicht uebernommen, nur gezaehlt."""
+	nicht uebernommen, nur gezaehlt. Mit sales_order nur Zeiten und Fahrten
+	dieses Auftrags (Feld custom_sales_order, gesetzt von Kundeneinsatz und
+	Fahrt)."""
 	from erpnext.projects.doctype.timesheet.timesheet import get_projectwise_timesheet_data
 
 	if not customer:
@@ -20,12 +22,50 @@ def get_billable_time_logs(customer, project=None, from_time=None, to_time=None)
 	rows = get_projectwise_timesheet_data(project=project or None, from_time=from_time, to_time=to_time) or []
 	customer_of = _row_customers(rows)
 	passend = [row for row in rows if customer_of.get(row.name) == customer]
+	uebersprungen = len(rows) - len(passend)
+	_set_sales_orders(passend)
+	if sales_order:
+		passend = [row for row in passend if row.custom_sales_order == sales_order]
 
 	return {
 		"rows": passend,
-		"skipped": len(rows) - len(passend),
-		"kilometers": _open_kilometers(customer, project, from_time, to_time),
+		"skipped": uebersprungen,
+		"kilometers": _open_kilometers(customer, project, from_time, to_time, sales_order),
 	}
+
+
+def _set_sales_orders(rows):
+	"""Auftrag je Zeitbuchung. sales_order nur bei gebuchtem Auftrag - die
+	Rechnung uebernimmt ihn in ihre Position (Feld sales_order), und ERPNext
+	vergleicht dabei Kunde, Firma, Projekt und Waehrung mit dem Auftrag. Das
+	Projekt des Auftrags (so_project) prueft das Formular gegen das der
+	Rechnung."""
+	if not rows:
+		return
+	auftrag_of = dict(
+		frappe.get_all(
+			"Timesheet Detail",
+			filters={"name": ["in", [r.name for r in rows]]},
+			fields=["name", "custom_sales_order"],
+			as_list=True,
+		)
+	)
+	auftraege = {a for a in auftrag_of.values() if a}
+	info = (
+		{
+			a.name: a
+			for a in frappe.get_all(
+				"Sales Order", filters={"name": ["in", list(auftraege)]}, fields=["name", "docstatus", "project"]
+			)
+		}
+		if auftraege
+		else {}
+	)
+	for row in rows:
+		row.custom_sales_order = auftrag_of.get(row.name)
+		so = info.get(row.custom_sales_order)
+		row.sales_order = so.name if so and so.docstatus == 1 else None
+		row.so_project = so.project if so else None
 
 
 def _row_customers(rows):
@@ -60,7 +100,7 @@ def _row_customers(rows):
 	}
 
 
-def _open_kilometers(customer, project, from_time, to_time):
+def _open_kilometers(customer, project, from_time, to_time, sales_order=None):
 	"""Gebuchte Fahrten des Kunden mit "Kilometer abrechnen", die noch in
 	keiner gebuchten Rechnung stehen."""
 	from zeit_projekt.fahrtenbuch.fahrtenbuch import positionstext
@@ -74,6 +114,8 @@ def _open_kilometers(customer, project, from_time, to_time):
 	}
 	if project:
 		filters["project"] = project
+	if sales_order:
+		filters["sales_order"] = sales_order
 	if from_time and to_time:
 		filters["date"] = ["between", [getdate(from_time), getdate(to_time)]]
 

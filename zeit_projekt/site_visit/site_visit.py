@@ -55,6 +55,7 @@ def before_submit(doc, method=None):
 		company=doc.company,
 		description=doc.description or doc.name,
 		segments=abschnitte,
+		sales_order=doc.sales_order,
 	)
 	frappe.msgprint(
 		_("Zeitblatt {0} wurde angelegt und gebucht.").format(f"<b>{doc.timesheet}</b>"),

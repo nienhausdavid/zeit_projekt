@@ -20,6 +20,7 @@ def before_submit(doc, method=None):
 		project=doc.project,
 		description=positionstext(doc, _("Fahrzeit")),
 		billing_hours=abrechenbare_stunden(doc.duration_hours),
+		sales_order=doc.sales_order,
 	)
 
 

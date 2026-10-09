@@ -19,6 +19,11 @@
 					fieldname: 'project', fieldtype: 'Link', options: 'Project', label: __('Projekt'), default: frm.doc.project,
 					get_query: () => ({ filters: { customer: frm.doc.customer } }),
 				},
+				{
+					fieldname: 'sales_order', fieldtype: 'Link', options: 'Sales Order', label: __('Auftrag'),
+					description: __('Optional: nur Zeiten und Fahrten dieses Auftrags'),
+					get_query: () => ({ filters: { customer: frm.doc.customer, docstatus: ['<', 2] } }),
+				},
 				{ fieldname: 'fallback_item', fieldtype: 'Link', options: 'Item', label: __('Ersatz-Artikel (nur für Aktivitätsarten ohne Dienstleistungsartikel)') },
 				// Standard aus: ein versehentlicher Import soll keine bestehenden Positionen löschen
 				{ fieldname: 'replace', fieldtype: 'Check', label: __('Vorhandene Positionen ersetzen'), default: 0 },
@@ -53,6 +58,7 @@
 				args: {
 					customer: frm.doc.customer,
 					project: v.project || undefined,
+					sales_order: v.sales_order || undefined,
 					from_time: v.from_date + ' 00:00:00',
 					to_time: v.to_date + ' 23:59:59',
 				},
@@ -184,6 +190,12 @@
 				}
 				if (text) {
 					await frappe.model.set_value(row.doctype, row.name, 'description', text);
+				}
+
+				// Auftragsbezug der Position: nur bei gebuchtem Auftrag mit passendem
+				// Projekt - ERPNext vergleicht Projekt der Rechnung und des Auftrags.
+				if (t.sales_order && (!t.so_project || t.so_project === frm.doc.project)) {
+					await frappe.model.set_value(row.doctype, row.name, 'sales_order', t.sales_order);
 				}
 
 				const termin = termin_ende ? t.to_time || t.from_time || '' : t.from_time || '';

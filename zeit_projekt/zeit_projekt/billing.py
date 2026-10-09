@@ -28,14 +28,15 @@ def as_administrator():
 
 
 def create_timesheet(source, activity_type, from_time, to_time, *, customer, project=None,
-		company=None, description=None, billing_hours=None, segments=None):
+		company=None, description=None, billing_hours=None, segments=None, sales_order=None):
 	"""Legt ein abrechenbares Zeitblatt fuer eine Fahrt bzw. einen Site Visit
 	an und bucht es. Es erscheint danach im Zeitimport der Ausgangsrechnung
 	des Kunden (siehe sales_invoice.get_billable_time_logs).
 
 	segments: optional Liste von (ab, bis) statt from_time/to_time - je
 	Arbeitsabschnitt eine Zeile (Kundeneinsatz mit Pausen). billing_hours gilt
-	nur ohne segments.
+	nur ohne segments. sales_order landet in jeder Zeile (custom_sales_order) -
+	fuer den Auftragsfilter im Zeitimport.
 
 	Ohne Rollenpruefung: die Rolle "Employee" darf Zeitblaetter in ERPNext
 	anlegen, aber nicht buchen - massgeblich ist die Berechtigung auf den
@@ -60,6 +61,7 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 					"description": description or source.name,
 					"is_billable": 1,
 					"billing_hours": (billing_hours or 0) if not segments else 0,
+					"custom_sales_order": sales_order or None,
 				}
 				for ab, bis in (segments or [(from_time, to_time)])
 			],

@@ -53,6 +53,17 @@ CUSTOM_FIELDS = {
 			"module": MODULE,
 		},
 	],
+	"Timesheet Detail": [
+		{
+			"fieldname": "custom_sales_order",
+			"label": "Auftrag",
+			"fieldtype": "Link",
+			"options": "Sales Order",
+			"insert_after": "project",
+			"description": "Vom Kundeneinsatz bzw. der Fahrt gesetzt - Filter im Zeitimport der Ausgangsrechnung",
+			"module": MODULE,
+		},
+	],
 	"Sales Invoice Item": [
 		{
 			"fieldname": "custom_fahrt",
@@ -109,6 +120,7 @@ def after_migrate():
 	anlegen - after_install laeuft nur einmal."""
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True, update=True)
 	_desk_abgleichen()
+	_auftrag_an_zeitbuchungen_nachtragen()
 
 
 def after_install():
@@ -117,6 +129,36 @@ def after_install():
 	_site_visit_pdf_on_submit_enable()
 	_desk_abgleichen()
 	click.secho("Zeit & Projekt: Felder angelegt.", fg="green")
+
+
+def _auftrag_an_zeitbuchungen_nachtragen():
+	"""Zeitblaetter aus frueher gebuchten Kundeneinsaetzen und Fahrten kennen
+	ihren Auftrag noch nicht (Feld custom_sales_order) - einmalig nachtragen,
+	damit der Auftragsfilter im Zeitimport auch sie findet. Idempotent: setzt
+	nur leere Felder."""
+	if not frappe.db.has_column("Timesheet Detail", "custom_sales_order"):
+		return
+	nachgetragen = 0
+	for doctype in ("Site Visit", "Fahrt"):
+		if not frappe.db.table_exists(doctype):
+			continue
+		belege = frappe.get_all(
+			doctype,
+			filters={"docstatus": 1, "timesheet": ["is", "set"], "sales_order": ["is", "set"]},
+			fields=["timesheet", "sales_order"],
+		)
+		for beleg in belege:
+			for zeile in frappe.get_all(
+				"Timesheet Detail",
+				filters={"parent": beleg.timesheet, "custom_sales_order": ["is", "not set"]},
+				pluck="name",
+			):
+				frappe.db.set_value(
+					"Timesheet Detail", zeile, "custom_sales_order", beleg.sales_order, update_modified=False
+				)
+				nachgetragen += 1
+	if nachgetragen:
+		click.secho(f"Zeit & Projekt: Auftrag an {nachgetragen} Zeitbuchung(en) nachgetragen.", fg="green")
 
 
 def _desk_abgleichen():

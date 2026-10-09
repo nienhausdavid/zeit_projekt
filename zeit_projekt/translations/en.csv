@@ -218,3 +218,6 @@
 "Nach Abzug der Pausen bleibt keine Arbeitszeit übrig.","No working time is left after deducting the breaks."
 "Auftrag auswählen","Select Sales Order"
 "Offene Aufträge zu {0}","Open sales orders for {0}"
+"Auftrag","Sales Order"
+"Optional: nur Zeiten und Fahrten dieses Auftrags","Optional: only times and trips of this sales order"
+"Vom Kundeneinsatz bzw. der Fahrt gesetzt - Filter im Zeitimport der Ausgangsrechnung","Set by the site visit or trip - filter in the sales invoice time import"
