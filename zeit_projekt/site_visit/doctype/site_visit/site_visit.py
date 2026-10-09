@@ -17,6 +17,7 @@ class SiteVisit(Document):
 				row.added_to_order = 0
 		self.set_from_sales_order()
 		self.set_link_names()
+		self.validate_extra_item_groups()
 		self.set_extra_item_rates()
 		self.validate_breaks()
 		self.working_hours = (
@@ -100,6 +101,27 @@ class SiteVisit(Document):
 				) or (None, None)
 				row.item_name = item_name
 				row.uom = row.uom or stock_uom
+
+	def validate_extra_item_groups(self):
+		"""Die Artikelsuche blendet ausgeschlossene Gruppen aus - hier dasselbe
+		fuer Eingaben ueber API/Import. Bereits uebernommene Zeilen bleiben."""
+		from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
+			excluded_item_groups,
+		)
+
+		ausgeschlossen = excluded_item_groups()
+		if not ausgeschlossen:
+			return
+		for row in self.extra_items:
+			if not row.item_code or row.added_to_order:
+				continue
+			gruppe = frappe.db.get_value("Item", row.item_code, "item_group")
+			if gruppe in ausgeschlossen:
+				frappe.throw(
+					_("Zeile {0}: Artikel {1} gehört zur Artikelgruppe {2}, die als Zusatzartikel ausgeschlossen ist.").format(
+						row.idx, frappe.bold(row.item_code), frappe.bold(gruppe)
+					)
+				)
 
 	def set_extra_item_rates(self):
 		"""Preis der Zusatzartikel kommt aus ERPNext (Preisliste/Preisregeln

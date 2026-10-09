@@ -221,3 +221,8 @@
 "Auftrag","Sales Order"
 "Optional: nur Zeiten und Fahrten dieses Auftrags","Optional: only times and trips of this sales order"
 "Vom Kundeneinsatz bzw. der Fahrt gesetzt - Filter im Zeitimport der Ausgangsrechnung","Set by the site visit or trip - filter in the sales invoice time import"
+"Ausgeschlossene Artikelgruppen","Excluded Item Groups"
+"Artikelgruppe","Item Group"
+"Artikel aus diesen Gruppen (inkl. Untergruppen) sind im Kundeneinsatz als Zusatzartikel nicht wählbar – meist die Dienstleistungsgruppe(n). Leer = keine Einschränkung.","Items from these groups (incl. subgroups) can't be selected as additional items in a site visit – usually the service group(s). Empty = no restriction."
+"Die oberste Artikelgruppe {0} würde alle Artikel ausschließen.","The top item group {0} would exclude all items."
+"Zeile {0}: Artikel {1} gehört zur Artikelgruppe {2}, die als Zusatzartikel ausgeschlossen ist.","Row {0}: Item {1} belongs to item group {2}, which is excluded for additional items."

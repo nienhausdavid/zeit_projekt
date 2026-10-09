@@ -80,3 +80,45 @@ class TestTechnikerRechte(IntegrationTestCase):
 		auftraege = technician.get_open_sales_orders(projekt.name, KUNDE_A)
 		self.assertEqual(sorted(a.name for a in auftraege), sorted(namen))
 		self.assertTrue(all(a.po_no and a.transaction_date for a in auftraege))
+
+	def test_ausgeschlossene_artikelgruppen(self):
+		wurzel = frappe.db.get_value("Item Group", {"parent_item_group": ["in", ["", None]]}, "name")
+		oben = frappe.get_doc(
+			{"doctype": "Item Group", "item_group_name": "ZP Leistungen", "parent_item_group": wurzel, "is_group": 1}
+		).insert()
+		unten = frappe.get_doc(
+			{"doctype": "Item Group", "item_group_name": "ZP Leistungen Vor Ort", "parent_item_group": oben.name}
+		).insert()
+		frappe.get_doc(
+			{"doctype": "Item", "item_code": "ZP-GESPERRT", "item_name": "ZP-GESPERRT", "item_group": unten.name,
+			 "stock_uom": "Nos", "is_stock_item": 0, "is_sales_item": 1}
+		).insert()
+
+		einstellungen = frappe.get_single("Zeit Projekt Einstellungen")
+		einstellungen.append("excluded_item_groups", {"item_group": wurzel})
+		with self.assertRaises(frappe.ValidationError):
+			einstellungen.save()
+		einstellungen = frappe.get_single("Zeit Projekt Einstellungen")
+		einstellungen.set("excluded_item_groups", [{"item_group": oben.name}])
+		einstellungen.save()
+
+		frappe.set_user(TECH)
+		gefunden = [a[0] for a in self.search(technician.item_query, "Item", "ZP-")]
+		self.assertIn("ZP-ADAPTER", gefunden)
+		self.assertNotIn("ZP-GESPERRT", gefunden)
+
+		frappe.set_user("Administrator")
+		so = make_sales_order(self.ctx.company)
+		sv = frappe.get_doc(
+			{
+				"doctype": "Site Visit",
+				"sales_order": so.name,
+				"employee": self.ctx.employee,
+				"activity_type": "ZP Montage",
+				"date": "2031-07-01",
+				"from_time": "2031-07-01 10:00:00",
+				"extra_items": [{"item_code": "ZP-GESPERRT", "qty": 1}],
+			}
+		)
+		with self.assertRaises(frappe.ValidationError):
+			sv.insert()

@@ -9,6 +9,7 @@
   "lieferdatum_quelle",
   "einsatz_section",
   "allow_zero_price",
+  "excluded_item_groups",
   "pdf_section",
   "force_chrome_pdf"
  ],
@@ -47,6 +48,13 @@
    "label": "Zusatzartikel ohne Verkaufspreis erlauben"
   },
   {
+   "description": "Artikel aus diesen Gruppen (inkl. Untergruppen) sind im Kundeneinsatz als Zusatzartikel nicht wählbar – meist die Dienstleistungsgruppe(n). Leer = keine Einschränkung.",
+   "fieldname": "excluded_item_groups",
+   "fieldtype": "Table MultiSelect",
+   "label": "Ausgeschlossene Artikelgruppen",
+   "options": "Zeit Projekt Artikelgruppe"
+  },
+  {
    "fieldname": "pdf_section",
    "fieldtype": "Section Break",
    "label": "PDF-Erzeugung"
@@ -62,7 +70,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-28 11:00:00.000000",
+ "modified": "2026-10-09 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",

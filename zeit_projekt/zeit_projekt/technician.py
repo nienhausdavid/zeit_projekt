@@ -85,12 +85,20 @@ def sales_order_query(doctype, txt, searchfield, start, page_len, filters, **kwa
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def item_query(doctype, txt, searchfield, start, page_len, filters, **kwargs):
+	from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
+		excluded_item_groups,
+	)
+
 	_check_access()
+	conditions = {"disabled": 0, "is_sales_item": 1, "has_variants": 0}
+	ausgeschlossen = excluded_item_groups()
+	if ausgeschlossen:
+		conditions["item_group"] = ["not in", list(ausgeschlossen)]
 	return _search(
 		"Item",
 		txt,
 		["name", "item_name"],
-		{"disabled": 0, "is_sales_item": 1, "has_variants": 0},
+		conditions,
 		start,
 		page_len,
 		["name", "item_name"],
