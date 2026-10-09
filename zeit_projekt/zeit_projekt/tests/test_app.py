@@ -106,3 +106,39 @@ class TestApp(IntegrationTestCase):
 		so.submit()
 		self.assertTrue(so.project)
 		self.assertEqual(frappe.db.get_value("Project", so.project, "customer"), KUNDE_A)
+
+	def test_aktivitaetsarten_in_den_einstellungen(self):
+		"""Die Tabelle zeigt die Aktivitaetsarten und schreibt beim Speichern
+		in sie zurueck - gespeichert wird sie selbst nicht."""
+		from zeit_projekt.zeit_projekt.tests.utils import MONTAGE, ensure_fixtures
+
+		ensure_fixtures()
+		neu = frappe.get_doc({"doctype": "Activity Type", "activity_type": "ZP Wartung"}).insert()
+
+		einstellungen = frappe.get_single("Zeit Projekt Einstellungen")
+		einstellungen.run_method("onload")
+		zeilen = {z.activity_type: z for z in einstellungen.aktivitaetsarten}
+		self.assertEqual(zeilen[MONTAGE].dienstleistungsartikel, "ZP-MONTAGE")
+		self.assertEqual(frappe.utils.flt(zeilen[MONTAGE].artikelpreis), 95)
+		self.assertFalse(zeilen[neu.name].dienstleistungsartikel)
+
+		zeilen[neu.name].update({"dienstleistungsartikel": "ZP-MONTAGE", "rechnungstext": "Wartung", "billing_rate": 70})
+		einstellungen.save()
+		self.assertEqual(
+			frappe.db.get_value(
+				"Activity Type", neu.name, ["custom_dienstleistungsartikel", "custom_rechnungstext", "billing_rate"]
+			),
+			("ZP-MONTAGE", "Wartung", 70),
+		)
+		self.assertFalse(frappe.get_all("Zeit Projekt Aktivitaetsart", limit=1))
+
+		# Speichern ohne geoeffnetes Formular aendert keine Aktivitaetsart
+		frappe.db.set_value("Activity Type", neu.name, "billing_rate", 75)
+		frappe.get_single("Zeit Projekt Einstellungen").save()
+		self.assertEqual(frappe.db.get_value("Activity Type", neu.name, "billing_rate"), 75)
+
+		einstellungen = frappe.get_single("Zeit Projekt Einstellungen")
+		einstellungen.run_method("onload")
+		einstellungen.aktivitaetsarten[0].dienstleistungsartikel = "ZP-GIBTSNICHT"
+		with self.assertRaises(frappe.ValidationError):
+			einstellungen.save()
