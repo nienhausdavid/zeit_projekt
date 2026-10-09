@@ -36,6 +36,12 @@ doctype_js = {
 doc_events = {
 	"Sales Order": {
 		"before_submit": "zeit_projekt.zeit_projekt.sales_order.before_submit",
+		"on_submit": "zeit_projekt.zeit_projekt.billing_status.on_sales_order_submit",
+	},
+	# Abrechnungsstand des Auftrags inkl. Zeitbuchungen (billing_status.py)
+	"Timesheet": {
+		"on_submit": "zeit_projekt.zeit_projekt.billing_status.on_timesheet_change",
+		"on_cancel": "zeit_projekt.zeit_projekt.billing_status.on_timesheet_change",
 	},
 	"Fahrt": {
 		"before_submit": "zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit",
@@ -45,7 +51,8 @@ doc_events = {
 		"before_submit": "zeit_projekt.site_visit.site_visit.before_submit",
 		"on_cancel": "zeit_projekt.site_visit.site_visit.on_cancel",
 	},
-	# Fahrt-Kilometer aus dem Zeitimport: nur einmal abrechenbar
+	# Fahrt-Kilometer aus dem Zeitimport: nur einmal abrechenbar; danach
+	# Abrechnungsstand der betroffenen Auftraege
 	"Sales Invoice": {
 		"validate": "zeit_projekt.zeit_projekt.sales_invoice.validate",
 		"on_submit": "zeit_projekt.zeit_projekt.sales_invoice.on_submit",

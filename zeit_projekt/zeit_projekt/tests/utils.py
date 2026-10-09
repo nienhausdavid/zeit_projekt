@@ -61,6 +61,10 @@ def ensure_fixtures():
 			frappe.get_doc(
 				{"doctype": "Activity Type", "activity_type": name, "billing_rate": rate, "custom_dienstleistungsartikel": item}
 			).insert()
+		else:
+			# Eine Neuinstallation der App leert die Custom-Field-Spalte - Stand
+			# der Testdaten deshalb jedes Mal herstellen.
+			frappe.db.set_value("Activity Type", name, {"billing_rate": rate, "custom_dienstleistungsartikel": item})
 
 	customer_group = frappe.db.get_value("Customer Group", {"is_group": 0})
 	territory = frappe.db.get_value("Territory", {"is_group": 0})

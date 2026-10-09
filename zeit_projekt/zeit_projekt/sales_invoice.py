@@ -158,11 +158,17 @@ def validate(doc, method=None):
 
 
 def on_submit(doc, method=None):
+	from zeit_projekt.zeit_projekt.billing_status import sales_orders_of_invoice, update_sales_orders
+
 	for item in doc.items:
 		if item.get("custom_fahrt"):
 			frappe.db.set_value("Fahrt", item.custom_fahrt, "km_sales_invoice", doc.name)
+	update_sales_orders(sales_orders_of_invoice(doc))
 
 
 def on_cancel(doc, method=None):
+	from zeit_projekt.zeit_projekt.billing_status import sales_orders_of_invoice, update_sales_orders
+
 	for name in frappe.get_all("Fahrt", filters={"km_sales_invoice": doc.name}, pluck="name"):
 		frappe.db.set_value("Fahrt", name, "km_sales_invoice", None)
+	update_sales_orders(sales_orders_of_invoice(doc))

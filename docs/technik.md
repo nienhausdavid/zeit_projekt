@@ -29,6 +29,7 @@ zeit_projekt/
     │       └── site_visit.js            # Kundeneinsatz: Timer/Pausen, Link-Suchen, "Neuer Auftrag"
     ├── zeit_projekt/              # Modul "Zeit Projekt"
     │   ├── billing.py                 # Zeitblatt anlegen/stornieren, Positionen im Auftrag
+    │   ├── billing_status.py          # "% berechnet" des Auftrags inkl. Zeitbuchungen
     │   ├── sales_invoice.py           # Zeitimport, Kilometer, Prüfung custom_fahrt
     │   ├── sales_order.py             # Projektanlage in before_submit
     │   ├── technician.py              # eingeschränkte Link-Suchen für Techniker

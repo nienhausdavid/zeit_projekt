@@ -79,6 +79,28 @@ Dialog „Update Items" (Steuern, Summen und Kreditlimit werden neu berechnet).
   auch das Stornieren blockiert). Ein berichtigter Einsatz übernimmt sie beim
   erneuten Buchen genau einmal.
 
+## Abrechnungsstand des Auftrags
+
+ERPNext berechnet „% berechnet" eines Auftrags nur aus dem Betrag seiner
+Positionen. Die Einsatzzeit steht aber nicht als Betrag im Auftrag, sondern
+in Zeitbuchungen mit dem Feld *Auftrag*. Ohne Korrektur hieße das: Ein über
+„Neuer Auftrag" angelegter Auftrag (Summe 0) gilt nach der ersten Rechnung
+als „Vollständig berechnet", auch wenn weitere Einsätze offen sind; ein
+Auftrag mit Zusatzartikeln gilt als berechnet, sobald die Artikel berechnet
+sind – egal ob die Zeit schon abgerechnet ist.
+
+Die App zählt deshalb Positionen und Zeitbuchungen zusammen, gewichtet nach
+Betrag: berechnete Positionen plus abgerechnete Zeitbuchungen
+(Abrechnungsbetrag) im Verhältnis zur Summe aus beidem. Aktualisiert wird
+beim Buchen und Stornieren von Rechnungen, Zeitblättern (auch aus
+Kundeneinsatz und Fahrt) und beim Buchen des Auftrags – auch wenn der Auftrag
+beim Abrechnen noch ein Entwurf war. Aufträge ohne Zeitbuchungen rechnet
+weiter ERPNext allein.
+
+Den Lieferstatus ändert das nicht: Ein Auftrag nur mit Dienstleistungen
+bleibt in ERPNext „Zu liefern", solange nicht *Lieferschein überspringen*
+gesetzt ist (in ERPNext nur bei Auftragsart *Maintenance* sichtbar).
+
 ## Projekt aus Auftrag
 
 Custom Field *„Projekt für diesen Auftrag erstellen"* im Auftrag: Beim
