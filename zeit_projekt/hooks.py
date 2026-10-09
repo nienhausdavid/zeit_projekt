@@ -36,6 +36,12 @@ doctype_js = {
 doc_events = {
 	"Sales Order": {
 		"before_submit": "zeit_projekt.zeit_projekt.sales_order.before_submit",
+		"on_submit": "zeit_projekt.zeit_projekt.billing_status.on_sales_order_submit",
+	},
+	# Abrechnungsstand des Auftrags inkl. Zeitbuchungen (billing_status.py)
+	"Timesheet": {
+		"on_submit": "zeit_projekt.zeit_projekt.billing_status.on_timesheet_change",
+		"on_cancel": "zeit_projekt.zeit_projekt.billing_status.on_timesheet_change",
 	},
 	"Fahrt": {
 		"before_submit": "zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit",
@@ -44,6 +50,13 @@ doc_events = {
 	"Site Visit": {
 		"before_submit": "zeit_projekt.site_visit.site_visit.before_submit",
 		"on_cancel": "zeit_projekt.site_visit.site_visit.on_cancel",
+	},
+	# Fahrt-Kilometer aus dem Zeitimport: nur einmal abrechenbar; danach
+	# Abrechnungsstand der betroffenen Auftraege
+	"Sales Invoice": {
+		"validate": "zeit_projekt.zeit_projekt.sales_invoice.validate",
+		"on_submit": "zeit_projekt.zeit_projekt.sales_invoice.on_submit",
+		"on_cancel": "zeit_projekt.zeit_projekt.sales_invoice.on_cancel",
 	},
 }
 
@@ -70,23 +83,20 @@ override_doctype_dashboards = {
 before_request = ["zeit_projekt.zeit_projekt.pdf.force_chrome_pdf"]
 
 # ---------------------------------------------------------------------------
-# Fahrtenbuch/Site Visit im Apps-Uebersicht (/apps) - eigene Kacheln mit
-# Sprung in die jeweilige Liste, wie in den urspruenglichen Einzel-Apps.
+# Desk: eine Kachel auf /apps und ein App-Symbol "Zeit & Projekt" mit den
+# Seitenleisten "Fahrtenbuch" und "Site Visits" darunter (mitgeliefert unter
+# desktop_icon/ und workspace_sidebar/, Frappe synchronisiert sie bei
+# install/migrate).
 # ---------------------------------------------------------------------------
+app_logo_url = "/assets/zeit_projekt/images/zeit_projekt-logo.svg"
+
 add_to_apps_screen = [
 	{
-		"name": "fahrtenbuch",
-		"logo": "/assets/zeit_projekt/images/fahrtenbuch-logo.svg",
-		"title": "Fahrtenbuch",
-		"route": "/app/fahrt",
-		"has_permission": "zeit_projekt.fahrtenbuch.fahrtenbuch.check_app_permission",
-	},
-	{
-		"name": "site_visit",
-		"logo": "/assets/zeit_projekt/images/site_visit-logo.svg",
-		"title": "Site Visit",
-		"route": "/app/site-visit",
-		"has_permission": "zeit_projekt.site_visit.site_visit.check_app_permission",
+		"name": "zeit_projekt",
+		"logo": app_logo_url,
+		"title": app_title,
+		"route": "/desk/fahrt?sidebar=Fahrtenbuch",
+		"has_permission": "zeit_projekt.zeit_projekt.desk.check_app_permission",
 	},
 ]
 
@@ -99,6 +109,7 @@ add_to_apps_screen = [
 # ---------------------------------------------------------------------------
 before_install = "zeit_projekt.install.before_install"
 after_install = "zeit_projekt.install.after_install"
+after_migrate = "zeit_projekt.install.after_migrate"
 before_uninstall = "zeit_projekt.install.before_uninstall"
 
 # Wird von Frappe bei der Installation jeder anderen App aufgerufen - verhindert,

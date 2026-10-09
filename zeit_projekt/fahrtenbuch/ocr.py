@@ -69,6 +69,11 @@ def list_models(api_url: str | None = None, api_key: str | None = None) -> list[
 	return sorted(m["id"] for m in data.get("data", []) if m.get("id"))
 
 
+def is_configured() -> bool:
+	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
+	return bool(settings.api_url and settings.model)
+
+
 def read_odometer(file_doc) -> int | None:
 	"""Liest den Kilometerstand ueber eine OpenAI-kompatible Chat-Completions-
 	API (Ollama, LM Studio, echtes OpenAI, ...) - konfiguriert in

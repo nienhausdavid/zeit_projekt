@@ -81,15 +81,15 @@ frappe.ui.form.on('Site Visit', {
 		frm.dashboard.clear_headline();
 		update_timer_toolbar(frm);
 		if (frm.doc.docstatus === 0 && !frm.doc.customer_signature) {
-			frm.dashboard.set_headline_alert(__('No customer signature captured yet.', null, 'Site Visit'), 'orange');
+			frm.dashboard.set_headline_alert(__('Noch keine Kundenunterschrift erfasst.'), 'orange');
 		}
 		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
-			frm.add_custom_button(__('Open Timesheet', null, 'Site Visit'), () => {
+			frm.add_custom_button(__('Zeitblatt öffnen'), () => {
 				frappe.set_route('Form', 'Timesheet', frm.doc.timesheet);
 			});
 		}
 		if (frm.doc.docstatus === 0 && !frm.doc.sales_order) {
-			frm.add_custom_button(__('New Sales Order', null, 'Site Visit'), () => show_create_sales_order_dialog(frm));
+			frm.add_custom_button(__('Neuer Auftrag'), () => show_create_sales_order_dialog(frm));
 		}
 	},
 });
@@ -98,10 +98,10 @@ frappe.ui.form.on('Site Visit', {
 // to_time, die ganz normale, jederzeit von Hand editierbare Felder bleiben
 // (kein read-only). "Start"/"Stopp" speichern sofort (wie ERPNexts eigener
 // Timesheet-Timer in erpnext/public/js/projects/timer.js: frm.save() direkt
-// nach dem Setzen von from_time) - deshalb sind customer/company/
-// activity_type/sales_order/to_time nicht mehr reqd im Feld, sondern erst in
-// before_submit (site_visit.py) Pflicht, sonst waere ein Entwurf mit nur
-// laufendem Timer gar nicht speicherbar. Ohne das sofortige Speichern ginge
+// nach dem Setzen von from_time) - deshalb sind activity_type/to_time nicht
+// reqd im Feld, sondern erst in before_submit (site_visit.py) Pflicht, sonst
+// waere ein Entwurf mit nur laufendem Timer gar nicht speicherbar. Der Auftrag
+// ist dagegen schon beim Speichern Pflicht (Kunde kommt aus ihm). Ohne das sofortige Speichern ginge
 // der Timer bei einem Reload/Schliessen der Seite verloren, weil ein neues,
 // ungespeichertes Dokument nur im Browser existiert. 1:1 uebernommen aus
 // fahrtenbuch.js (dort ausfuehrlicher kommentiert).
@@ -110,29 +110,107 @@ function update_timer_toolbar(frm) {
 	if (frm.doc.docstatus !== 0) return;
 
 	if (!frm.doc.from_time) {
-		frm.page.add_button(__('Start Timer', null, 'Site Visit'), () => {
+		frm.page.add_button(__('Timer starten'), () => {
+			// Ohne Auftrag liesse sich der Einsatz nicht speichern - der Timer
+			// ginge beim Neuladen verloren.
+			if (!frm.doc.sales_order) {
+				frappe.msgprint(__('Bitte zuerst einen Auftrag auswählen oder über „Neuer Auftrag“ anlegen.'));
+				return;
+			}
 			frm.set_value('from_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 	} else if (!frm.doc.to_time) {
-		frm.page.add_button(__('Stop Timer', null, 'Site Visit'), () => {
+		const laufende_pause = open_break(frm);
+		if (laufende_pause) {
+			frm.page.add_button(__('Timer fortsetzen'), () => {
+				frappe.model
+					.set_value(laufende_pause.doctype, laufende_pause.name, 'to_time', frappe.datetime.now_datetime())
+					.then(() => frm.save());
+			});
+		} else {
+			frm.page.add_button(__('Timer pausieren'), () => show_pause_dialog(frm));
+		}
+		// Eine laufende Pause endet serverseitig automatisch mit dem Einsatz
+		// (SiteVisit.validate_breaks).
+		frm.page.add_button(__('Timer stoppen'), () => {
 			frm.set_value('to_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 		start_ticking(frm);
 	}
 }
 
+function open_break(frm) {
+	return (frm.doc.breaks || []).find((row) => row.from_time && !row.to_time);
+}
+
+function show_pause_dialog(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __('Timer pausieren'),
+		fields: [
+			{
+				fieldname: 'reason',
+				fieldtype: 'Select',
+				label: __('Grund'),
+				options: [
+					{ value: 'Pause', label: __('Pause') },
+					{ value: 'Notfall bei anderem Kunden', label: __('Notfall bei anderem Kunden') },
+					{ value: 'Sonstiges', label: __('Sonstiges') },
+				],
+				default: 'Pause',
+				reqd: 1,
+			},
+			{ fieldname: 'note', fieldtype: 'Small Text', label: __('Notiz') },
+		],
+		primary_action_label: __('Pausieren'),
+		primary_action(values) {
+			dialog.hide();
+			frm.add_child('breaks', {
+				from_time: frappe.datetime.now_datetime(),
+				reason: values.reason,
+				note: values.note,
+			});
+			frm.refresh_field('breaks');
+			frm.save();
+		},
+	});
+	dialog.show();
+}
+
+// Netto-Arbeitszeit seit Beginn: abgeschlossene und laufende Pausen abgezogen.
+function worked_seconds(frm, now) {
+	const ms = (value) => frappe.datetime.str_to_obj(value).getTime();
+	let total = now - ms(frm.doc.from_time);
+	for (const row of frm.doc.breaks || []) {
+		if (!row.from_time) continue;
+		total -= (row.to_time ? ms(row.to_time) : now) - ms(row.from_time);
+	}
+	return Math.max(0, Math.floor(total / 1000));
+}
+
+function format_duration(total_seconds) {
+	const h = String(Math.floor(total_seconds / 3600)).padStart(2, '0');
+	const m = String(Math.floor((total_seconds % 3600) / 60)).padStart(2, '0');
+	const s = String(total_seconds % 60).padStart(2, '0');
+	return `${h}:${m}:${s}`;
+}
+
 function start_ticking(frm) {
-	const started_at = frappe.datetime.str_to_obj(frm.doc.from_time).getTime();
 	const tick = () => {
-		const total_seconds = Math.max(0, Math.floor((Date.now() - started_at) / 1000));
-		const h = String(Math.floor(total_seconds / 3600)).padStart(2, '0');
-		const m = String(Math.floor((total_seconds % 3600) / 60)).padStart(2, '0');
-		const s = String(total_seconds % 60).padStart(2, '0');
+		const gearbeitet = format_duration(worked_seconds(frm, Date.now()));
+		const pause = open_break(frm);
 		// clear_headline() zuerst: show_message() im Frappe-Layout haengt bei
 		// jedem Aufruf nur einen neuen Block an, statt den alten zu ersetzen -
 		// ohne das Clear stapeln sich die Meldungen im Sekundentakt.
 		frm.dashboard.clear_headline();
-		frm.dashboard.set_headline_alert(__('Timer running: {0}', [`${h}:${m}:${s}`], 'Site Visit'), 'orange');
+		if (pause) {
+			const seit = frappe.datetime.str_to_user(pause.from_time).split(' ').pop();
+			frm.dashboard.set_headline_alert(
+				__('Pausiert seit {0} – Arbeitszeit bisher {1}', [seit, gearbeitet]),
+				'blue'
+			);
+		} else {
+			frm.dashboard.set_headline_alert(__('Timer läuft: {0}', [gearbeitet]), 'orange');
+		}
 	};
 	tick();
 	frm.__site_visit_timer = setInterval(tick, 1000);
@@ -148,39 +226,71 @@ function stop_ticking(frm) {
 // Preis und Betrag der Zusatzartikel ermittelt der Server beim Speichern aus
 // der Preisliste (siehe SiteVisit.set_extra_item_rates) - hier nichts rechnen.
 
+// Der Auftrag ist Pflicht (schon beim Speichern). Gibt es noch keinen, legt
+// der Dialog ihn direkt an - auch aus einem noch nicht gespeicherten Einsatz.
+// Die Kommissionsnummer landet im Auftragsfeld po_no; dessen Beschriftung und
+// Pflicht-Status liefert der Server (je nach Site z. B. "Customer Reference").
 function show_create_sales_order_dialog(frm) {
-	if (!frm.doc.customer) {
-		frappe.msgprint(__('Please select a Customer first.', null, 'Site Visit'));
-		return;
-	}
-	if (!(frm.doc.extra_items || []).length) {
-		frappe.msgprint(__('Add at least one item below before creating a new Sales Order.', null, 'Site Visit'));
-		return;
-	}
-	const dialog = new frappe.ui.Dialog({
-		title: __('New Sales Order', null, 'Site Visit'),
-		fields: [{ fieldname: 'po_no', fieldtype: 'Data', label: __('Customer Reference', null, 'Site Visit') }],
-		primary_action_label: __('Create'),
-		primary_action(values) {
-			// Der Server liest Kunde, Projekt und Artikel aus dem gespeicherten
-			// Site Visit - deshalb vorher speichern.
-			const saved = frm.is_new() || frm.is_dirty() ? frm.save() : Promise.resolve();
-			saved.then(() =>
+	frappe.call({ method: 'zeit_projekt.site_visit.site_visit.get_sales_order_form' }).then((r) => {
+		const form = r.message || {};
+		const dialog = new frappe.ui.Dialog({
+			title: __('Neuer Auftrag'),
+			fields: [
+				{
+					fieldname: 'customer',
+					fieldtype: 'Link',
+					options: 'Customer',
+					label: __('Customer'),
+					reqd: 1,
+					default: frm.doc.customer,
+					get_query: () => ({ query: `${TECHNICIAN_API}.customer_query` }),
+				},
+				{
+					fieldname: 'po_no',
+					fieldtype: 'Data',
+					label: __('Kommissionsnummer'),
+					reqd: form.po_no_reqd ? 1 : 0,
+					description: __('Steht im Auftrag im Feld „{0}“.', [form.po_no_label || '']),
+				},
+				{
+					fieldname: 'activity_type',
+					fieldtype: 'Link',
+					options: 'Activity Type',
+					label: __('Activity Type'),
+					reqd: 1,
+					default: frm.doc.activity_type,
+					description: __('Ihr Dienstleistungsartikel wird die erste Position des Auftrags (Preis 0 – die Zeit wird über das Zeitblatt abgerechnet).'),
+				},
+			],
+			primary_action_label: __('Auftrag anlegen'),
+			primary_action(values) {
 				frappe.call({
 					method: 'zeit_projekt.site_visit.site_visit.create_sales_order',
-					args: { site_visit: frm.doc.name, po_no: values.po_no },
-					freeze: true,
-					freeze_message: __('Creating Sales Order...', null, 'Site Visit'),
-					callback(r) {
-						if (!r.message) return;
-						dialog.hide();
-						frm.reload_doc();
+					args: {
+						customer: values.customer,
+						activity_type: values.activity_type,
+						po_no: values.po_no,
+						project: frm.doc.project || null,
+						company: frm.doc.company || null,
+						date: frm.doc.date || null,
+						site_visit: frm.is_new() ? null : frm.doc.name,
 					},
-				})
-			);
-		},
+					freeze: true,
+					freeze_message: __('Auftrag wird angelegt...'),
+				}).then((res) => {
+					if (!res.message) return;
+					dialog.hide();
+					const updates = { sales_order: res.message, customer: values.customer };
+					if (!frm.doc.activity_type) updates.activity_type = values.activity_type;
+					frm.set_value(updates).then(() => {
+						frappe.show_alert({ message: __('Auftrag {0} angelegt.', [res.message]), indicator: 'green' });
+						if (!frm.is_new()) frm.save();
+					});
+				});
+			},
+		});
+		dialog.show();
 	});
-	dialog.show();
 }
 
 // Ersatz fuer fetch_from bei Artikelname/Einheit (s. customer() oben).
@@ -202,8 +312,7 @@ function fill_from_project(frm) {
 		});
 	}
 	// Genau ein offener Auftrag zum gewaehlten Projekt? Dann gleich
-	// uebernehmen. Bei mehreren zeigt der Filter aus onload() nur noch die
-	// passenden im Dropdown - der Techniker waehlt dann selbst.
+	// uebernehmen. Bei mehreren waehlt der Techniker im Dialog.
 	if (!frm.doc.sales_order) {
 		frappe
 			.call({
@@ -211,8 +320,33 @@ function fill_from_project(frm) {
 				args: { project: frm.doc.project, customer: frm.doc.customer || null },
 			})
 			.then((r) => {
-				const names = r.message || [];
-				if (names.length === 1) frm.set_value('sales_order', names[0]);
+				const orders = r.message || [];
+				if (orders.length === 1) frm.set_value('sales_order', orders[0].name);
+				else if (orders.length > 1) choose_sales_order(frm, orders);
 			});
 	}
+}
+
+function choose_sales_order(frm, orders) {
+	const label = (so) =>
+		[so.name, so.po_no, frappe.datetime.str_to_user(so.transaction_date)].filter(Boolean).join(' – ');
+	const dialog = new frappe.ui.Dialog({
+		title: __('Auftrag auswählen'),
+		fields: [
+			{
+				fieldname: 'sales_order',
+				fieldtype: 'Select',
+				label: __('Offene Aufträge zu {0}', [frm.doc.project]),
+				options: orders.map((so) => ({ value: so.name, label: label(so) })),
+				default: orders[0].name,
+				reqd: 1,
+			},
+		],
+		primary_action_label: __('Übernehmen'),
+		primary_action(values) {
+			dialog.hide();
+			frm.set_value('sales_order', values.sales_order);
+		},
+	});
+	dialog.show();
 }

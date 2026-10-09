@@ -3,17 +3,17 @@
  "creation": "2026-09-13 09:00:00.000000",
  "docstatus": 0,
  "doctype": "Workspace Sidebar",
- "header_icon": "clipboard-check",
+ "header_icon": "car",
  "idx": 0,
  "items": [
   {
    "child": 0,
    "collapsible": 1,
-   "icon": "clipboard-check",
+   "icon": "car",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Site Visit",
-   "link_to": "Site Visit",
+   "label": "Fahrt",
+   "link_to": "Fahrt",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
@@ -33,23 +33,11 @@
   {
    "child": 0,
    "collapsible": 1,
-   "icon": "file-text",
-   "indent": 0,
-   "keep_closed": 0,
-   "label": "Sales Invoice",
-   "link_to": "Sales Invoice",
-   "link_type": "DocType",
-   "show_arrow": 0,
-   "type": "Link"
-  },
-  {
-   "child": 0,
-   "collapsible": 1,
    "icon": "settings",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Zeit Projekt Einstellungen",
-   "link_to": "Zeit Projekt Einstellungen",
+   "label": "Fahrtenbuch Einstellungen",
+   "link_to": "Fahrtenbuch Einstellungen",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
@@ -57,9 +45,9 @@
  ],
  "modified": "2026-10-07 12:00:00.000000",
  "modified_by": "Administrator",
- "module": "Site Visit",
- "name": "Site Visits",
+ "module": "Fahrtenbuch",
+ "name": "Fahrtenbuch",
  "owner": "Administrator",
  "standard": 1,
- "title": "Site Visits"
+ "title": "Fahrtenbuch"
 }

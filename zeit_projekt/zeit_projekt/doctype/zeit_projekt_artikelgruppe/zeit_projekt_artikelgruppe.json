@@ -1,35 +1,29 @@
 {
  "actions": [],
- "creation": "2026-09-13 09:00:00.000000",
+ "creation": "2026-10-09 13:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "photo",
-  "caption"
+  "item_group"
  ],
  "fields": [
   {
-   "fieldname": "photo",
-   "fieldtype": "Attach Image",
+   "fieldname": "item_group",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Foto",
+   "label": "Artikelgruppe",
+   "options": "Item Group",
    "reqd": 1
-  },
-  {
-   "fieldname": "caption",
-   "fieldtype": "Small Text",
-   "in_list_view": 1,
-   "label": "Beschriftung"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-28 12:00:00.000000",
+ "modified": "2026-10-09 13:00:00.000000",
  "modified_by": "Administrator",
- "module": "Site Visit",
- "name": "Site Visit Photo",
+ "module": "Zeit Projekt",
+ "name": "Zeit Projekt Artikelgruppe",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

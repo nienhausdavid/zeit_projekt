@@ -20,6 +20,9 @@
   "date",
   "from_time",
   "to_time",
+  "working_hours",
+  "section_break_pausen",
+  "breaks",
   "section_break_description",
   "description",
   "section_break_items",
@@ -35,7 +38,7 @@
  ],
  "fields": [
   {
-   "description": "Must be set before submitting - not required yet when saving as a draft (e.g. via the timer)",
+   "description": "Wird aus dem Auftrag übernommen, falls leer",
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -49,7 +52,7 @@
    "read_only": 1
   },
   {
-   "description": "Defaults to the default Company if left empty (see validate() in site_visit.py)",
+   "description": "Wird mit der Standard-Firma vorbelegt, falls leer",
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -67,16 +70,17 @@
    "options": "Project"
   },
   {
-   "description": "Must be set before submitting - not required yet when saving as a draft (e.g. via the timer). If there isn't one yet, use \"+ New Sales Order\" right in this field.",
+   "description": "Gibt es noch keinen, oben über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.",
    "fieldname": "sales_order",
    "fieldtype": "Link",
    "label": "Sales Order",
-   "options": "Sales Order"
+   "options": "Sales Order",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_zeit",
    "fieldtype": "Section Break",
-   "label": "Duration"
+   "label": "Zeitraum"
   },
   {
    "fieldname": "employee",
@@ -94,7 +98,7 @@
    "read_only": 1
   },
   {
-   "description": "Controls the billing rate in the automatically created Timesheet. Must be set before submitting - not required yet when saving as a draft (e.g. via the timer).",
+   "description": "Bestimmt den Stundensatz im automatisch erzeugten Zeitblatt. Muss vor dem Buchen gesetzt sein.",
    "fieldname": "activity_type",
    "fieldtype": "Link",
    "label": "Activity Type",
@@ -119,15 +123,38 @@
    "reqd": 1
   },
   {
-   "description": "Must be set before submitting - not required yet when saving as a draft (e.g. via the timer)",
+   "description": "Muss vor dem Buchen gesetzt sein - beim Speichern als Entwurf (z. B. per Timer) noch nicht erforderlich",
    "fieldname": "to_time",
    "fieldtype": "Datetime",
    "label": "To Time"
   },
   {
+   "description": "Ohne Pausen – so viele Stunden kommen ins Zeitblatt",
+   "fieldname": "working_hours",
+   "fieldtype": "Float",
+   "label": "Arbeitszeit (Std.)",
+   "no_copy": 1,
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "breaks",
+   "description": "Über „Timer pausieren“/„Timer fortsetzen“ oder von Hand. Pausen zählen nicht als Arbeitszeit; das Zeitblatt bekommt je Arbeitsabschnitt eine eigene Zeile.",
+   "fieldname": "section_break_pausen",
+   "fieldtype": "Section Break",
+   "label": "Pausen"
+  },
+  {
+   "fieldname": "breaks",
+   "fieldtype": "Table",
+   "label": "Pausen",
+   "options": "Site Visit Break"
+  },
+  {
    "fieldname": "section_break_description",
    "fieldtype": "Section Break",
-   "label": "Work Performed"
+   "label": "Tätigkeit"
   },
   {
    "fieldname": "description",
@@ -135,52 +162,52 @@
    "label": "Description"
   },
   {
-   "description": "Vor Ort zusaetzlich benoetigtes Material (z. B. Adapter, Kabel) - wird beim Buchen in den verknuepften Auftrag uebernommen.",
+   "description": "Vor Ort zusätzlich benötigtes Material (z. B. Adapter, Kabel) - wird beim Buchen in den verknüpften Auftrag übernommen.",
    "fieldname": "section_break_items",
    "fieldtype": "Section Break",
-   "label": "Additional Items"
+   "label": "Zusätzliche Artikel"
   },
   {
    "fieldname": "extra_items",
    "fieldtype": "Table",
-   "label": "Additional Items",
+   "label": "Zusätzliche Artikel",
    "options": "Site Visit Item"
   },
   {
    "fieldname": "section_break_fotos",
    "fieldtype": "Section Break",
-   "label": "Photos"
+   "label": "Fotos"
   },
   {
    "fieldname": "photos",
    "fieldtype": "Table",
-   "label": "Photos",
+   "label": "Fotos",
    "options": "Site Visit Photo"
   },
   {
    "fieldname": "section_break_unterschrift",
    "fieldtype": "Section Break",
-   "label": "Customer Signature"
+   "label": "Kundenunterschrift"
   },
   {
-   "description": "Unterschrift per Finger/Stift/Maus auf dem Geraet des Technikers. Nicht pflicht, da der Kunde abwesend oder nicht bereit sein kann.",
+   "description": "Unterschrift per Finger/Stift/Maus auf dem Gerät des Technikers. Nicht Pflicht, da der Kunde abwesend oder nicht bereit sein kann.",
    "fieldname": "customer_signature",
    "fieldtype": "Signature",
-   "label": "Customer Signature"
+   "label": "Kundenunterschrift"
   },
   {
    "fieldname": "signee_name",
    "fieldtype": "Data",
-   "label": "Signee Name"
+   "label": "Name des Unterzeichners"
   },
   {
    "fieldname": "section_break_verknuepfung",
    "fieldtype": "Section Break",
-   "label": "Billing"
+   "label": "Abrechnung"
   },
   {
    "allow_on_submit": 0,
-   "description": "Wird beim Buchen automatisch angelegt und verknuepft",
+   "description": "Wird beim Buchen automatisch angelegt und verknüpft",
    "fieldname": "timesheet",
    "fieldtype": "Link",
    "label": "Timesheet",
@@ -202,7 +229,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-27 12:00:00.000000",
+ "modified": "2026-10-09 12:30:00.000000",
  "modified_by": "Administrator",
  "module": "Site Visit",
  "name": "Site Visit",

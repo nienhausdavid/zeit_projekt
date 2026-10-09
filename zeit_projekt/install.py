@@ -18,7 +18,7 @@ CUSTOM_FIELDS = {
 			"fieldtype": "Link",
 			"options": "Item",
 			"insert_after": "billing_rate",
-			"description": "Artikel, der bei der Rechnungsstellung fuer diese Aktivitaetsart verwendet wird",
+			"description": "Artikel, der bei der Rechnungsstellung für diese Aktivitätsart verwendet wird",
 			"module": MODULE,
 		},
 		{
@@ -26,7 +26,7 @@ CUSTOM_FIELDS = {
 			"label": "Bezeichnung für Rechnung",
 			"fieldtype": "Data",
 			"insert_after": "custom_dienstleistungsartikel",
-			"description": "Optional: Text, der in der Rechnungsposition statt der Aktivitaetsart erscheint",
+			"description": "Optional: Text, der in der Rechnungsposition statt der Aktivitätsart erscheint",
 			"module": MODULE,
 		},
 	],
@@ -36,7 +36,44 @@ CUSTOM_FIELDS = {
 			"label": "Projekt für diesen Auftrag erstellen",
 			"fieldtype": "Check",
 			"insert_after": "customer_name",
-			"description": "Das Projekt wird angelegt und verknuepft, sobald der Auftrag bestaetigt (gebucht) wird",
+			"description": "Das Projekt wird angelegt und verknüpft, sobald der Auftrag bestätigt (gebucht) wird",
+			"module": MODULE,
+		},
+	],
+	"Sales Order Item": [
+		{
+			"fieldname": "custom_site_visit",
+			"label": "Kundeneinsatz",
+			"fieldtype": "Link",
+			"options": "Site Visit",
+			"insert_after": "prevdoc_docname",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "Kundeneinsatz, aus dem diese Position als Zusatzartikel übernommen wurde",
+			"module": MODULE,
+		},
+	],
+	"Timesheet Detail": [
+		{
+			"fieldname": "custom_sales_order",
+			"label": "Auftrag",
+			"fieldtype": "Link",
+			"options": "Sales Order",
+			"insert_after": "project",
+			"description": "Vom Kundeneinsatz bzw. der Fahrt gesetzt - Filter im Zeitimport der Ausgangsrechnung",
+			"module": MODULE,
+		},
+	],
+	"Sales Invoice Item": [
+		{
+			"fieldname": "custom_fahrt",
+			"label": "Fahrt (Kilometer)",
+			"fieldtype": "Link",
+			"options": "Fahrt",
+			"insert_after": "sales_order",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "Vom Zeitimport gesetzt - die Kilometer dieser Fahrt gelten mit dem Buchen der Rechnung als abgerechnet",
 			"module": MODULE,
 		},
 	],
@@ -78,11 +115,96 @@ def before_app_install(app_name):
 		)
 
 
+def after_migrate():
+	"""Neue oder geaenderte Custom Fields auch auf bereits installierten Sites
+	anlegen - after_install laeuft nur einmal."""
+	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True, update=True)
+	_desk_abgleichen()
+	_auftrag_an_zeitbuchungen_nachtragen()
+
+
 def after_install():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True)
 	_deaktiviere_alte_client_scripts()
 	_site_visit_pdf_on_submit_enable()
+	_desk_abgleichen()
 	click.secho("Zeit & Projekt: Felder angelegt.", fg="green")
+
+
+def _auftrag_an_zeitbuchungen_nachtragen():
+	"""Zeitblaetter aus frueher gebuchten Kundeneinsaetzen und Fahrten kennen
+	ihren Auftrag noch nicht (Feld custom_sales_order) - einmalig nachtragen,
+	damit der Auftragsfilter im Zeitimport auch sie findet. Idempotent: setzt
+	nur leere Felder."""
+	if not frappe.db.has_column("Timesheet Detail", "custom_sales_order"):
+		return
+	nachgetragen = 0
+	for doctype in ("Site Visit", "Fahrt"):
+		if not frappe.db.table_exists(doctype):
+			continue
+		belege = frappe.get_all(
+			doctype,
+			filters={"docstatus": 1, "timesheet": ["is", "set"], "sales_order": ["is", "set"]},
+			fields=["timesheet", "sales_order"],
+		)
+		for beleg in belege:
+			for zeile in frappe.get_all(
+				"Timesheet Detail",
+				filters={"parent": beleg.timesheet, "custom_sales_order": ["is", "not set"]},
+				pluck="name",
+			):
+				frappe.db.set_value(
+					"Timesheet Detail", zeile, "custom_sales_order", beleg.sales_order, update_modified=False
+				)
+				nachgetragen += 1
+	if nachgetragen:
+		click.secho(f"Zeit & Projekt: Auftrag an {nachgetragen} Zeitbuchung(en) nachgetragen.", fg="green")
+
+
+def _desk_abgleichen():
+	"""Desktop-Symbole und Seitenleisten exakt wie in desktop_icon/ und
+	workspace_sidebar/ herstellen.
+
+	Frappe importiert diese Dateien beim migrate nur, wenn der Datensatz fehlt
+	oder aelter als die Datei ist (frappe/modules/import_file.py,
+	import_file_by_path). Auf Sites mit einer frueheren Version der App
+	existieren "Zeit & Projekt" und "Site Visits" aber schon - automatisch beim
+	Installieren erzeugt und damit juenger als die Datei. Sie blieben dann
+	unveraendert stehen (alter Link, kein Bezug zur App), nur das neue Symbol
+	"Fahrtenbuch" entstuende. Deshalb jeden Datensatz, dessen Zeitstempel nicht
+	dem der Datei entspricht, aus der Datei neu laden (force). Der alte
+	Datensatz wird dabei "for_reload" geloescht, also ohne on_trash - die
+	Dateien in der App bleiben auch im developer_mode unangetastet."""
+	import os
+
+	from frappe.modules.import_file import import_file_by_path, read_doc_from_file
+	from frappe.utils import get_datetime
+
+	geaendert = []
+	for ordner in ("workspace_sidebar", "desktop_icon"):
+		pfad = frappe.get_app_path("zeit_projekt", ordner)
+		if not os.path.isdir(pfad):
+			continue
+		for datei in sorted(os.listdir(pfad)):
+			if not datei.endswith(".json"):
+				continue
+			datei = os.path.join(pfad, datei)
+			doc = read_doc_from_file(datei)
+			if not frappe.db.table_exists(doc["doctype"]):
+				continue
+			in_db = frappe.db.get_value(doc["doctype"], doc["name"], "modified")
+			if in_db and get_datetime(in_db) == get_datetime(doc["modified"]):
+				continue
+			import_file_by_path(datei, force=True, ignore_version=True)
+			geaendert.append(doc["name"])
+
+	if geaendert:
+		from frappe.desk.doctype.desktop_icon.desktop_icon import clear_desktop_icons_cache
+
+		frappe.cache.delete_key("desktop_icons")
+		frappe.cache.delete_key("bootinfo")
+		clear_desktop_icons_cache()
+		click.secho(f"Zeit & Projekt: Desk abgeglichen ({', '.join(geaendert)}).", fg="green")
 
 
 def before_uninstall():
@@ -136,10 +258,26 @@ def _entferne_desktop_symbole():
 		or_filters=[["app", "=", "zeit_projekt"], ["name", "=", app_title]],
 		pluck="name",
 	)
+	# ignore_on_trash: on_trash von Desktop Icon und Workspace Sidebar loescht
+	# im developer_mode die zugehoerige JSON-Datei in der App - beim
+	# Deinstallieren auf einem Entwicklungssystem waeren desktop_icon/ und
+	# workspace_sidebar/ danach leer.
 	for name in kinder + [n for n in eigene if n not in kinder]:
-		frappe.delete_doc("Desktop Icon", name, ignore_permissions=True, force=True)
+		frappe.delete_doc("Desktop Icon", name, ignore_permissions=True, force=True, ignore_on_trash=True)
 	if kinder or eigene:
 		click.secho("Zeit & Projekt: Desktop-Symbole entfernt.", fg="yellow")
+
+	# Frappe entfernt die Seitenleisten zwar selbst (after_app_uninstall,
+	# frappe/utils/install.py, delete_desktop_icon_and_sidebar), schreibt das
+	# aber nur bei --dry-run fest - sonst blieben sie stehen.
+	seitenleisten = frappe.get_all("Workspace Sidebar", filters={"app": "zeit_projekt"}, pluck="name")
+	for name in seitenleisten:
+		frappe.delete_doc(
+			"Workspace Sidebar", name, ignore_permissions=True, force=True, ignore_on_trash=True
+		)
+	if kinder or eigene or seitenleisten:
+		frappe.cache.delete_key("desktop_icons")
+		frappe.cache.delete_key("bootinfo")
 
 
 def _site_visit_pdf_on_submit_enable():

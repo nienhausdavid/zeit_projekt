@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+concurrency:
+  group: master-zeit_projekt-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    name: Server
+
+    # Images aus dem oeffentlichen Spiegel der offiziellen Docker-Images:
+    # Docker Hub begrenzt anonyme Pulls, GitHub-Runner teilen sich IPs.
+    services:
+      redis-cache:
+        image: public.ecr.aws/docker/library/redis:alpine
+        ports:
+          - 13000:6379
+      redis-queue:
+        image: public.ecr.aws/docker/library/redis:alpine
+        ports:
+          - 11000:6379
+      mariadb:
+        image: public.ecr.aws/docker/library/mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install MariaDB Client
+        run: |
+          sudo apt update
+          sudo apt-get install mariadb-client
+
+      - name: Setup bench
+        run: |
+          pip install frappe-bench
+          bench init --skip-redis-config-generation --skip-assets --frappe-branch version-16 --python "$(which python)" ~/frappe-bench
+
+      - name: Install apps
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench get-app --skip-assets --branch version-16 erpnext
+          bench get-app --skip-assets zeit_projekt $GITHUB_WORKSPACE
+          bench setup requirements --dev
+          bench new-site --db-root-password root --admin-password admin test_site
+          bench --site test_site install-app erpnext
+          bench --site test_site install-app zeit_projekt
+          bench --site test_site execute zeit_projekt.zeit_projekt.tests.setup_ci.complete_setup
+        env:
+          CI: 'Yes'
+
+      - name: Run tests
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench --site test_site set-config allow_tests true
+          bench --site test_site run-tests --app zeit_projekt
+        env:
+          TYPE: server

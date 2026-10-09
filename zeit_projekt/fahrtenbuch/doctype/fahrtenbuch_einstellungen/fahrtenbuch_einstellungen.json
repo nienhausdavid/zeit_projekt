@@ -9,26 +9,28 @@
   "model",
   "api_key",
   "section_break_abrechnung",
-  "time_item",
+  "activity_type",
+  "km_item",
+  "rounding_minutes",
   "section_break_projekt",
   "auto_start_timer",
   "auto_open_camera"
  ],
  "fields": [
   {
-   "description": "Basis-URL einer OpenAI-kompatiblen API, ohne /chat/completions am Ende - z. B. http://<ip-des-servers>:11434/v1 fuer Ollama, oder https://api.openai.com/v1. Leer lassen, um die automatische Kilometerstand-Erkennung zu deaktivieren.",
+   "description": "Basis-URL einer OpenAI-kompatiblen API, ohne /chat/completions am Ende - z. B. http://<ip-des-servers>:11434/v1 für Ollama oder https://api.openai.com/v1. Leer lassen, um die automatische Kilometerstand-Erkennung zu deaktivieren.",
    "fieldname": "api_url",
    "fieldtype": "Data",
    "label": "API-URL"
   },
   {
-   "description": "Name des zu verwendenden Vision-Modells, z. B. qwen3.5:9b - Button oben zeigt die bei der API tatsaechlich verfuegbaren Modelle an",
+   "description": "Name des zu verwendenden Vision-Modells, z. B. qwen3.5:9b - der Knopf oben zeigt die bei der API tatsächlich verfügbaren Modelle an",
    "fieldname": "model",
    "fieldtype": "Data",
    "label": "Modell"
   },
   {
-   "description": "Nur noetig, falls die API einen Schluessel verlangt (z. B. bei OpenAI selbst) - fuer die meisten lokal/selbst gehosteten Server leer lassen",
+   "description": "Nur nötig, falls die API einen Schlüssel verlangt (z. B. bei OpenAI selbst) - für die meisten lokal/selbst gehosteten Server leer lassen",
    "fieldname": "api_key",
    "fieldtype": "Password",
    "label": "API-Schlüssel"
@@ -39,11 +41,26 @@
    "label": "Abrechnung"
   },
   {
-   "description": "Vorbelegung fuer das Feld \"Artikel Fahrzeit\" bei einer neuen Fahrt - bleibt dort weiterhin pro Fahrt aenderbar",
-   "fieldname": "time_item",
+   "description": "Vorbelegung für neue Fahrten. Der Aktivitätsart einen Dienstleistungsartikel zuordnen, damit der Zeitimport der Ausgangsrechnung die Fahrzeit abrechnen kann.",
+   "fieldname": "activity_type",
    "fieldtype": "Link",
-   "label": "Artikel Fahrzeit",
+   "label": "Aktivitätsart Fahrzeit",
+   "options": "Activity Type"
+  },
+  {
+   "description": "Vorbelegung für neue Fahrten",
+   "fieldname": "km_item",
+   "fieldtype": "Link",
+   "label": "Artikel Kilometer",
    "options": "Item"
+  },
+  {
+   "default": "0",
+   "description": "0 = minutengenau. Z. B. 15: abrechenbare Fahrzeit wird auf volle Viertelstunden aufgerundet (die tatsächliche Dauer bleibt im Zeitblatt erhalten).",
+   "fieldname": "rounding_minutes",
+   "fieldtype": "Int",
+   "label": "Fahrzeit abrechnen in Schritten von (Minuten)",
+   "non_negative": 1
   },
   {
    "fieldname": "section_break_projekt",
@@ -68,7 +85,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-13 09:00:00.000000",
+ "modified": "2026-09-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrtenbuch Einstellungen",

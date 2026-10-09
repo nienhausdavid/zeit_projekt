@@ -1,9 +1,10 @@
-// Abrechnung passiert serverseitig beim Buchen (siehe hooks.py -> doc_events
-// -> zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit). Dieses Skript setzt
-// nur Feld-Defaults, uebernimmt Werte aus einer verknuepften Site Visit und
-// stoesst die Kilometerstand-Erkennung nach einem Foto-Upload an - keine
-// async Calls vor dem Buchen, um die Race Condition aus
-// zeit_projekt/sales_order.js nicht zu wiederholen.
+// Beim Buchen legt der Server ein Zeitblatt für die Fahrzeit an (siehe
+// hooks.py -> doc_events -> zeit_projekt.fahrtenbuch.fahrtenbuch.before_submit);
+// Fahrzeit und Kilometer werden über den Zeitimport der Ausgangsrechnung
+// abgerechnet. Dieses Skript setzt nur Feld-Defaults, übernimmt Werte aus
+// verknüpften Belegen und stößt die Kilometerstand-Erkennung an - keine async
+// Calls vor dem Buchen, um die Race Condition aus sales_order.js nicht zu
+// wiederholen.
 
 // Techniker (Rolle "Employee") duerfen Kunde, Auftrag, Artikel und Fahrzeug
 // nicht lesen - Suche und Vorbelegung laufen deshalb ueber eingeschraenkte
@@ -35,7 +36,6 @@ frappe.ui.form.on('Fahrt', {
 		frm.set_query('site_visit', () => {
 			return frm.doc.customer ? { filters: { customer: frm.doc.customer } } : {};
 		});
-		frm.set_query('time_item', () => ({ query: `${TECHNICIAN_API}.item_query` }));
 		frm.set_query('km_item', () => ({ query: `${TECHNICIAN_API}.item_query` }));
 		frm.set_query('vehicle', () => ({ query: `${TECHNICIAN_API}.vehicle_query` }));
 
@@ -46,11 +46,11 @@ frappe.ui.form.on('Fahrt', {
 					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
 				});
 		}
-		if (!frm.doc.time_item) {
-			frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
-				if (r.message && r.message.time_item) frm.set_value('time_item', r.message.time_item);
-			});
-		}
+		frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
+			const d = r.message || {};
+			if (d.activity_type && !frm.doc.activity_type) frm.set_value('activity_type', d.activity_type);
+			if (d.km_item && !frm.doc.km_item) frm.set_value('km_item', d.km_item);
+		});
 		// Kein automatischer Default fuer start_time - das uebernimmt der
 		// Timer (oder die manuelle Eingabe). Ein Default hier wuerde bei
 		// Formularoeffnung den falschen Zeitpunkt festlegen, falls der
@@ -96,6 +96,9 @@ frappe.ui.form.on('Fahrt', {
 	refresh(frm) {
 		frm.dashboard.clear_headline();
 		update_timer_toolbar(frm);
+		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
+			frm.add_custom_button(__('Zeitblatt öffnen'), () => frappe.set_route('Form', 'Timesheet', frm.doc.timesheet));
+		}
 		if (frm.doc.start_odometer && frm.doc.end_odometer && frm.doc.distance_km) {
 			frm.dashboard.set_headline_alert(
 				__('Strecke: {0} km, Dauer: {1} Std.', [frm.doc.distance_km, frm.doc.duration_hours]),
@@ -155,25 +158,53 @@ function stop_ticking(frm) {
 	}
 }
 
+// Kilometerstand-Erkennung läuft als Hintergrund-Job (bis zu 45 s) - das
+// Formular bleibt bedienbar, das Ergebnis kommt per Realtime-Event zurück.
+// Global statt im Skript-Scope: das Formular-Skript kann mehrfach ausgeführt
+// werden, der Realtime-Listener soll trotzdem nur einmal existieren.
+window.zeit_projekt_ocr = window.zeit_projekt_ocr || { offen: {}, listener: false };
+const offene_erkennungen = window.zeit_projekt_ocr.offen;
+
+if (!window.zeit_projekt_ocr.listener) {
+	window.zeit_projekt_ocr.listener = true;
+	frappe.realtime.on('zeit_projekt_odometer', (data) => {
+		const auftrag = window.zeit_projekt_ocr.offen[data.request_id];
+		if (!auftrag) return;
+		delete window.zeit_projekt_ocr.offen[data.request_id];
+		zeige_erkennung(auftrag, data);
+	});
+}
+
+function zeige_erkennung(auftrag, data) {
+	const frm = cur_frm;
+	// Formular inzwischen verlassen, anderes Foto oder Wert schon von Hand
+	// eingetragen? (Der Name einer neuen Fahrt ändert sich beim Speichern,
+	// deshalb wird am Foto erkannt, ob es noch dieselbe Fahrt ist.)
+	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
+	if (data.reading && !frm.doc[data.fieldname]) {
+		frm.set_value(data.fieldname, data.reading);
+		frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [data.reading]), indicator: 'green' });
+	} else if (!data.reading) {
+		frappe.show_alert({
+			message: __('Konnte den Kilometerstand nicht erkennen, bitte manuell eintragen.'),
+			indicator: 'orange',
+		});
+	}
+}
+
 function fetch_odometer_reading(frm, photo_field, odometer_field) {
 	const file_url = frm.doc[photo_field];
 	if (!file_url) return;
 
-	frappe.call({
-		method: 'zeit_projekt.fahrtenbuch.fahrtenbuch.get_odometer_reading',
-		args: { file_url },
-		freeze: true,
-		freeze_message: __('Kilometerstand wird erkannt...'),
-		callback(r) {
-			if (r.message) {
-				frm.set_value(odometer_field, r.message);
-				frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [r.message]), indicator: 'green' });
-			} else {
-				frappe.show_alert({
-					message: __('Konnte den Kilometerstand nicht erkennen, bitte manuell eintragen.'),
-					indicator: 'orange',
-				});
-			}
-		},
-	});
+	frappe
+		.call({
+			method: 'zeit_projekt.fahrtenbuch.fahrtenbuch.get_odometer_reading',
+			args: { file_url, fieldname: odometer_field },
+		})
+		.then((r) => {
+			const res = r.message || {};
+			if (!res.queued) return; // Erkennung nicht eingerichtet
+			offene_erkennungen[res.request_id] = { photo_field, file_url };
+			frappe.show_alert({ message: __('Kilometerstand wird im Hintergrund erkannt …'), indicator: 'blue' });
+		});
 }

@@ -1,8 +1,11 @@
 import frappe
+from frappe import _
 
 
 def projektname(doc):
-	ref = (doc.buyer_reference or "").strip()
+	# buyer_reference kommt aus der App eu_einvoice - ohne sie gibt es das Feld
+	# nicht, und doc.buyer_reference waere ein AttributeError.
+	ref = (doc.get("buyer_reference") or "").strip()
 	basis = ref or (doc.customer_name or doc.customer or "")
 	return f"{basis} - {doc.name}"
 
@@ -40,7 +43,7 @@ def before_submit(doc, method=None):
 
 	doc.project = projekt.name
 	frappe.msgprint(
-		f"Projekt <b>{projekt.name}</b> ({projekt.project_name}) angelegt und verknuepft.",
+		_("Projekt {0} ({1}) angelegt und verknüpft.").format(f"<b>{projekt.name}</b>", projekt.project_name),
 		indicator="green",
 		alert=True,
 	)

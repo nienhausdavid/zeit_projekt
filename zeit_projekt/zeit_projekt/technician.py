@@ -47,7 +47,7 @@ def _search(doctype, txt, fields, filters, start, page_len, search_fields):
 		or_filters=or_filters,
 		fields=fields,
 		start=start,
-		page_length=page_len,
+		limit=page_len,
 		order_by="modified desc",
 		as_list=True,
 	)
@@ -85,12 +85,20 @@ def sales_order_query(doctype, txt, searchfield, start, page_len, filters, **kwa
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def item_query(doctype, txt, searchfield, start, page_len, filters, **kwargs):
+	from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
+		excluded_item_groups,
+	)
+
 	_check_access()
+	conditions = {"disabled": 0, "is_sales_item": 1, "has_variants": 0}
+	ausgeschlossen = excluded_item_groups()
+	if ausgeschlossen:
+		conditions["item_group"] = ["not in", list(ausgeschlossen)]
 	return _search(
 		"Item",
 		txt,
 		["name", "item_name"],
-		{"disabled": 0, "is_sales_item": 1, "has_variants": 0},
+		conditions,
 		start,
 		page_len,
 		["name", "item_name"],
@@ -116,10 +124,17 @@ def get_link_details(doctype, name):
 
 @frappe.whitelist()
 def get_open_sales_orders(project, customer=None):
-	"""Hoechstens zwei offene Auftraege zum Projekt - bei genau einem wird er
-	im Formular direkt uebernommen."""
+	"""Offene Auftraege zum Projekt (neueste zuerst) - bei genau einem wird er
+	im Formular direkt uebernommen, bei mehreren erscheint ein Auswahldialog
+	mit Kommissionsnummer und Datum."""
 	_check_access()
 	filters = {"project": project, "docstatus": ["<", 2], "status": ["not in", GESCHLOSSENE_STATUS]}
 	if customer:
 		filters["customer"] = customer
-	return frappe.get_all("Sales Order", filters=filters, pluck="name", limit=2)
+	return frappe.get_all(
+		"Sales Order",
+		filters=filters,
+		fields=["name", "po_no", "transaction_date", "customer_name"],
+		order_by="transaction_date desc, creation desc",
+		limit=20,
+	)

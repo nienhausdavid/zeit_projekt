@@ -32,12 +32,13 @@
   "section_break_beschreibung",
   "description",
   "section_break_abrechnung",
+  "activity_type",
   "sales_order",
-  "time_item",
   "column_break_5",
   "bill_km",
   "km_item",
-  "sales_order_items",
+  "timesheet",
+  "km_sales_invoice",
   "amended_from"
  ],
  "fields": [
@@ -73,7 +74,8 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Customer",
-   "options": "Customer"
+   "options": "Customer",
+   "description": "Muss vor dem Buchen gesetzt sein - wird sonst aus Projekt, Auftrag oder Kundeneinsatz übernommen"
   },
   {
    "fieldname": "project",
@@ -191,18 +193,18 @@
    "label": "Abrechnung"
   },
   {
-   "description": "Muss vor dem Buchen gesetzt sein - die Fahrzeit wird immer darueber abgerechnet",
+   "description": "Muss vor dem Buchen gesetzt sein - die Fahrzeit wird als Zeitblatt mit dieser Aktivitätsart gebucht und über den Zeitimport der Ausgangsrechnung abgerechnet",
+   "fieldname": "activity_type",
+   "fieldtype": "Link",
+   "label": "Aktivitätsart Fahrzeit",
+   "options": "Activity Type"
+  },
+  {
+   "description": "Optional: zugehöriger Auftrag - füllt Kunde/Projekt; abgerechnet wird über Zeitblatt und Rechnung",
    "fieldname": "sales_order",
    "fieldtype": "Link",
    "label": "Sales Order",
    "options": "Sales Order"
-  },
-  {
-   "description": "Muss vor dem Buchen gesetzt sein - wird dann immer mit der Dauer (Std.) als Menge in den Auftrag uebernommen",
-   "fieldname": "time_item",
-   "fieldtype": "Link",
-   "label": "Artikel Fahrzeit",
-   "options": "Item"
   },
   {
    "fieldname": "column_break_5",
@@ -210,7 +212,7 @@
   },
   {
    "default": "0",
-   "description": "Nimmt zusaetzlich die Strecke (km) als eigene Position in den Auftrag auf",
+   "description": "Die Strecke (km) wird beim Zeitimport der Ausgangsrechnung als eigene Position übernommen",
    "fieldname": "bill_km",
    "fieldtype": "Check",
    "label": "Kilometer abrechnen"
@@ -221,16 +223,25 @@
    "fieldtype": "Link",
    "label": "Artikel Kilometer",
    "mandatory_depends_on": "eval:doc.bill_km",
-   "options": "Item"
+   "options": "Item",
+   "description": "Wird beim Zeitimport der Ausgangsrechnung mit der Strecke (km) als Menge übernommen"
   },
   {
-   "description": "Beim Buchen angelegte Auftragspositionen - werden beim Stornieren wieder entfernt",
-   "fieldname": "sales_order_items",
-   "fieldtype": "Small Text",
-   "hidden": 1,
-   "label": "Auftragspositionen",
+   "description": "Wird beim Buchen automatisch angelegt und gebucht",
+   "fieldname": "timesheet",
+   "fieldtype": "Link",
+   "label": "Zeitblatt",
    "no_copy": 1,
-   "print_hide": 1,
+   "options": "Timesheet",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "km_sales_invoice",
+   "fieldtype": "Link",
+   "label": "Kilometer abgerechnet in",
+   "no_copy": 1,
+   "options": "Sales Invoice",
    "read_only": 1
   },
   {
@@ -247,7 +258,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-27 12:00:00.000000",
+ "modified": "2026-09-28 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrt",

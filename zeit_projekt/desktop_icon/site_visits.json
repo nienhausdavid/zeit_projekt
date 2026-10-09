@@ -1,0 +1,21 @@
+{
+ "app": "zeit_projekt",
+ "creation": "2026-09-28 13:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon": "clipboard-check",
+ "icon_type": "Link",
+ "idx": 2,
+ "label": "Site Visits",
+ "link_to": "Site Visits",
+ "link_type": "Workspace Sidebar",
+ "parent_icon": "Zeit & Projekt",
+ "modified": "2026-10-07 12:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Site Visits",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}
