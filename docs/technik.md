@@ -14,7 +14,7 @@ zeit_projekt/
     ├── modules.txt                # "Zeit Projekt", "Fahrtenbuch", "Site Visit"
     ├── patches.txt                # derzeit leer
     ├── desktop_icon/              # App-Symbol "Zeit & Projekt" + zwei Unter-Symbole
-    ├── workspace_sidebar/         # Seitenleisten "Fahrtenbuch" und "Site Visits"
+    ├── workspace_sidebar/         # Seitenleisten im alten Format (Frappe < 16.51)
     ├── translations/
     │   ├── en.csv                 # Englisch (Quelle der App ist Deutsch)
     │   └── de.csv                 # nur die englischen Doctype-Namen von Site Visit
@@ -86,10 +86,19 @@ so auch auf bestehenden Sites an.
 `add_to_apps_screen` registriert **ein** App-Symbol „Zeit & Projekt" (Logo,
 Ziel `/desk/fahrt?sidebar=Fahrtenbuch`). Darunter liegen die Symbole
 *Fahrtenbuch* und *Site Visits*, die je eine eigene Seitenleiste öffnen. Die
-Symbole und Seitenleisten liegen als JSON in `desktop_icon/` und
-`workspace_sidebar/`; Frappe gleicht sie bei jedem `migrate` ab. Der
-Dateiname muss `frappe.scrub(<Bezeichnung>)` entsprechen, sonst löscht
+Symbole liegen als JSON in `desktop_icon/`, die Seitenleisten als `Sidebar`
+je Modul unter `fahrtenbuch/sidebar/fahrtenbuch/` und
+`site_visit/sidebar/site_visits/`; Frappe gleicht sie bei jedem `migrate` ab.
+Der Dateiname muss `frappe.scrub(<Bezeichnung>)` entsprechen, sonst löscht
 `migrate` das Symbol als verwaist.
+
+**Frappe ab 16.51:** Der Desk liest nur noch den Doctype `Sidebar`; `Workspace
+Sidebar` ist wirkungslos, und `workspace_sidebar/` wird nicht mehr importiert
+(`frappe/model/sync.py`). Ein Symbol zeigt über das Modul auf die Seitenleiste
+(`frappe.boot.module_sidebars`), deshalb tragen die beiden Dateien
+`"module": "Fahrtenbuch"` bzw. `"module": "Site Visit"`. Ohne sie hätten
+beide Symbole kein Ziel. `workspace_sidebar/` bleibt für ältere Frappe-Stände
+im Repo.
 
 Frappe überspringt dabei Datensätze, die jünger als die Datei sind – etwa
 die Symbole, die eine frühere Version der App automatisch erzeugen ließ.

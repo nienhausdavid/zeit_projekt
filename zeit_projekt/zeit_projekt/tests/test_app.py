@@ -60,8 +60,13 @@ class TestApp(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value("Desktop Icon", "Zeit & Projekt", "icon_type"), "App")
 		kinder = frappe.get_all("Desktop Icon", filters={"parent_icon": "Zeit & Projekt"}, pluck="link_to")
 		self.assertEqual(sorted(kinder), ["Fahrtenbuch", "Site Visits"])
+		# Frappe >= 16.51 liest "Sidebar"; "Workspace Sidebar" ist dort wirkungslos.
+		doctype = "Sidebar" if frappe.db.table_exists("Sidebar") else "Workspace Sidebar"
 		for sidebar in kinder:
-			self.assertTrue(frappe.db.exists("Workspace Sidebar", sidebar))
+			self.assertTrue(frappe.db.exists(doctype, sidebar))
+		if doctype == "Sidebar":
+			self.assertEqual(frappe.db.get_value("Sidebar", "Fahrtenbuch", "module"), "Fahrtenbuch")
+			self.assertEqual(frappe.db.get_value("Sidebar", "Site Visits", "module"), "Site Visit")
 		kacheln = [a for a in get_apps() if a["name"] == "zeit_projekt"]
 		self.assertEqual(len(kacheln), 1)
 		self.assertTrue(kacheln[0]["route"].startswith("/desk/"))
