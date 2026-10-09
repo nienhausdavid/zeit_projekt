@@ -5,7 +5,7 @@ sauber abrechnen.
 
 | Bereich | Was es tut |
 |---|---|
-| **Kundeneinsatz** (Site Visit) | Einsatz vor Ort mit Timer, Fotos, Kundenunterschrift und Zusatzmaterial dokumentieren; beim Buchen entsteht automatisch ein Zeitblatt. |
+| **Kundeneinsatz** (Site Visit) | Einsatz vor Ort mit Timer und Pausen, Fotos, Kundenunterschrift und Zusatzmaterial dokumentieren; Auftrag ist Pflicht und lässt sich direkt mit Kommissionsnummer anlegen; beim Buchen entsteht automatisch ein Zeitblatt. |
 | **Fahrtenbuch** | Fahrten mit Timer und Kilometerstand (optional per Fotoerkennung) erfassen; beim Buchen entsteht ein Zeitblatt für die Fahrzeit. |
 | **Zeitimport in der Ausgangsrechnung** | Holt offene Zeiten und Fahrt-Kilometer des Rechnungskunden als Einzelpositionen in die Rechnung. |
 | **Projekt aus Auftrag** | Haken im Auftrag legt beim Bestätigen automatisch ein Projekt an und verknüpft es. |
@@ -56,8 +56,9 @@ Installation bricht sonst ab.
    Kilometer-Artikel als Vorbelegung, optional Taktung der Fahrzeit und die
    API für die Kilometerstand-Erkennung.
 5. **Zeit Projekt Einstellungen**: Aufbau der Positionsbeschreibung im
-   Zeitimport, Umgang mit Zusatzartikeln ohne Preis, ggf. „PDFs immer mit
-   Chrome erzeugen".
+   Zeitimport, Umgang mit Zusatzartikeln ohne Preis, als Zusatzartikel
+   ausgeschlossene Artikelgruppen (z. B. Dienstleistungen), ggf. „PDFs immer
+   mit Chrome erzeugen".
 6. Projekttyp **External** muss existieren (für „Projekt aus Auftrag").
 7. Optional: [`pdf_on_submit`](https://github.com/alyf-de/erpnext_pdf-on-submit)
    installieren, damit Kundeneinsätze beim Buchen automatisch ein PDF

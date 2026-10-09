@@ -26,6 +26,15 @@ Zeiten ohne Kunde und Projekt werden ausgelassen und gemeldet. Bereits in
 der Rechnung stehende Zeiten/Fahrten werden bei einem erneuten Import nicht
 doppelt übernommen. „Vorhandene Positionen ersetzen" ist standardmäßig aus.
 
+**Auftrag:** Kundeneinsatz und Fahrt tragen beim Buchen ihren Auftrag in die
+Zeitbuchung ein (Feld *Auftrag*; bei manuell erfassten Zeiten von Hand
+setzbar). Der optionale Filter **„Auftrag"** im Dialog holt nur Zeiten und
+Fahrten dieses Auftrags. Jede importierte Zeitposition übernimmt den Auftrag
+in ihr Feld *Auftrag* (`sales_order`) – aber nur bei gebuchtem Auftrag, dessen
+Projekt leer ist oder dem der Rechnung entspricht: ERPNext vergleicht Kunde,
+Firma, Projekt und Währung von Rechnung und Auftrag und lehnt die Rechnung
+sonst ab.
+
 **Kilometer genau einmal:** Jede Kilometer-Position verweist über das Feld
 *Fahrt (Kilometer)* auf ihre Fahrt. Mit dem Buchen der Rechnung gilt die
 Fahrt als abgerechnet; eine zweite Rechnung mit derselben Fahrt wird
@@ -51,9 +60,9 @@ darunter.
 ## Zusatzartikel im Auftrag
 
 Beim Buchen eines Kundeneinsatzes werden noch nicht übernommene
-Zusatzartikel in den verknüpften Auftrag aufgenommen – auch in einen
-bereits gebuchten, über dieselbe ERPNext-Funktion wie der Dialog „Update
-Items" (Steuern, Summen und Kreditlimit werden neu berechnet).
+Zusatzartikel in den verknüpften Auftrag aufgenommen – in einen Entwurf
+direkt, in einen bereits gebuchten über dieselbe ERPNext-Funktion wie der
+Dialog „Update Items" (Steuern, Summen und Kreditlimit werden neu berechnet).
 
 - **Preis** aus ERPNext (Preisliste, Preisregeln, Währung des Auftrags).
   Fehlt ein Preis, lässt sich der Einsatz nicht buchen – außer in *Zeit
@@ -76,7 +85,8 @@ Custom Field *„Projekt für diesen Auftrag erstellen"* im Auftrag: Beim
 Bestätigen (Buchen) legt ein serverseitiger `before_submit`-Hook ein Projekt
 an (Typ *External*, Kunde, Auftrag, Zeitraum) und verknüpft es; danach
 springt das Formular zum Projekt (Reiter *Verknüpfungen*). Name des Projekts:
-Kundenreferenz (`buyer_reference`), sonst Kundenname, plus Auftragsnummer.
+Käuferreferenz (`buyer_reference`, nur mit der App eu_einvoice), sonst
+Kundenname, plus Auftragsnummer.
 
 Die Projektanlage läuft bewusst im selben Request wie das Buchen: eine
 frühere Variante per JavaScript konnte bei doppeltem Klick einen „has been

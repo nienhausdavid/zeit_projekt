@@ -26,7 +26,7 @@ zeit_projekt/
     │       ├── fahrtenbuch.js           # Fahrt: Vorbelegung, Timer, Kilometerstand-Erkennung
     │       ├── fahrtenbuch_einstellungen.js  # "Verfügbare Modelle abrufen"
     │       ├── project.js               # "Fahrt mit Timer starten"
-    │       └── site_visit.js            # Kundeneinsatz: Timer, Link-Suchen, "Neuer Auftrag"
+    │       └── site_visit.js            # Kundeneinsatz: Timer/Pausen, Link-Suchen, "Neuer Auftrag"
     ├── zeit_projekt/              # Modul "Zeit Projekt"
     │   ├── billing.py                 # Zeitblatt anlegen/stornieren, Positionen im Auftrag
     │   ├── sales_invoice.py           # Zeitimport, Kilometer, Prüfung custom_fahrt
@@ -34,7 +34,7 @@ zeit_projekt/
     │   ├── technician.py              # eingeschränkte Link-Suchen für Techniker
     │   ├── desk.py                    # Sichtbarkeit des App-Symbols
     │   ├── pdf.py                     # optional: Chrome als PDF-Generator erzwingen
-    │   ├── doctype/zeit_projekt_einstellungen/
+    │   ├── doctype/{zeit_projekt_einstellungen,zeit_projekt_artikelgruppe}/
     │   └── tests/                     # Integrationstests + setup_ci.py
     ├── fahrtenbuch/               # Modul "Fahrtenbuch"
     │   ├── fahrtenbuch.py             # before_submit/on_cancel, Vorbelegung, OCR-Job
@@ -44,7 +44,7 @@ zeit_projekt/
     └── site_visit/                # Modul "Site Visit"
         ├── site_visit.py              # before_submit/on_cancel, create_sales_order
         ├── project_dashboard.py
-        ├── doctype/{site_visit,site_visit_item,site_visit_photo}/
+        ├── doctype/{site_visit,site_visit_item,site_visit_photo,site_visit_break}/
         └── print_format/site_visit_report/
 ```
 
@@ -60,6 +60,7 @@ der App.
 | Activity Type | `custom_rechnungstext` | optionale Bezeichnung auf der Rechnung |
 | Sales Order | `custom_projekt_erstellen` | Projekt beim Buchen anlegen |
 | Sales Order Item | `custom_site_visit` | Herkunft einer Zusatzartikel-Position |
+| Timesheet Detail | `custom_sales_order` | Auftrag der Zeitbuchung (Filter im Zeitimport) |
 | Sales Invoice Item | `custom_fahrt` | Fahrt einer Kilometer-Position |
 
 `after_migrate` legt sie erneut an bzw. aktualisiert sie – neue Felder kommen
@@ -168,8 +169,9 @@ bench --site <test-site> run-tests --app zeit_projekt
 `tests/utils.py` legt die Testdaten selbst an (Kunden, Artikel,
 Aktivitätsarten, zwei Nutzer: Techniker nur mit „Employee", Buchhaltung mit
 „Accounts User"). Abgedeckt sind u. a.: Buchen und Stornieren von Fahrt und
-Kundeneinsatz samt Zeitblatt, Taktung, Überschneidung, Zusatzartikel im
-Auftrag (Preis, fremder Kunde, „Neuer Auftrag“, Berichtigung), Zeitimport und
+Kundeneinsatz samt Zeitblatt, Taktung, Überschneidung, Pausen, Zusatzartikel im
+Auftrag (Preis, fremder Kunde, „Neuer Auftrag“, Entwurf, Berichtigung,
+ausgeschlossene Artikelgruppen), Zeitimport mit Auftragsfilter und
 Kilometer genau einmal, Rechte der Link-Suchen, Desk-Sichtbarkeit und die
 Kilometerstand-Erkennung gegen einen lokalen Fake-Server.
 
@@ -195,7 +197,6 @@ Frappe/ERPNext `version-16`, installiert die App und führt die Tests aus.
 
 - „Neuer Auftrag" direkt aus der Fahrt (wie beim Kundeneinsatz).
 - Kilometer per Route/Adresse berechnen statt über das Tacho-Foto.
-- Mehrere Zeitsegmente/Pausen pro Kundeneinsatz.
 - GPS-Standort beim Anlegen von Fahrt und Kundeneinsatz.
 - Externes Signaturpad statt Finger/Stift.
 - Custom Fields oder Property Setter, die später über die Oberfläche
