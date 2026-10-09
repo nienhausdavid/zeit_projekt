@@ -4,6 +4,8 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "aktivitaeten_section",
+  "aktivitaetsarten",
   "rechnung_section",
   "positionsbezeichnung",
   "lieferdatum_quelle",
@@ -14,6 +16,18 @@
   "force_chrome_pdf"
  ],
  "fields": [
+  {
+   "description": "Je Aktivitätsart der Artikel, mit dem ihre Zeiten in der Ausgangsrechnung erscheinen. Gespeichert wird direkt in den Aktivitätsarten; neue Aktivitätsarten und Artikel lassen sich im Auswahlfeld über „Neu anlegen“ erstellen. Eine Zeile zu löschen löscht die Aktivitätsart nicht.",
+   "fieldname": "aktivitaeten_section",
+   "fieldtype": "Section Break",
+   "label": "Aktivitätsarten und Artikel"
+  },
+  {
+   "fieldname": "aktivitaetsarten",
+   "fieldtype": "Table",
+   "label": "Aktivitätsarten",
+   "options": "Zeit Projekt Aktivitaetsart"
+  },
   {
    "fieldname": "rechnung_section",
    "fieldtype": "Section Break",
@@ -70,7 +84,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-09 13:00:00.000000",
+ "modified": "2026-10-09 23:00:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",
