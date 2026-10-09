@@ -41,6 +41,16 @@ Fahrt als abgerechnet; eine zweite Rechnung mit derselben Fahrt wird
 abgelehnt, ebenso eine Fahrt eines anderen Kunden. Stornieren der Rechnung
 hebt die Markierung wieder auf.
 
+### Aktivitätsarten und Artikel (Zeit Projekt Einstellungen)
+
+Die Tabelle *Aktivitätsarten und Artikel* zeigt alle aktiven Aktivitätsarten
+mit Dienstleistungsartikel, Bezeichnung für Rechnung, Stundensatz und dem
+Verkaufspreis des Artikels (nur zur Kontrolle). Änderungen werden beim
+Speichern direkt in die Aktivitätsarten geschrieben – dort liest der
+Zeitimport. Neue Aktivitätsarten oder Artikel lassen sich im Auswahlfeld
+über „Neu anlegen" erstellen; eine Zeile zu löschen löscht die Aktivitätsart
+nicht.
+
 ### Positionsbeschreibung (Zeit Projekt Einstellungen)
 
 | Auswahl „Erste Zeile der Positionsbeschreibung" | Ergebnis |

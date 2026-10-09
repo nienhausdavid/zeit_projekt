@@ -12,6 +12,7 @@
   "column_break_1",
   "project",
   "sales_order",
+  "neuer_auftrag",
   "section_break_zeit",
   "employee",
   "employee_name",
@@ -70,12 +71,18 @@
    "options": "Project"
   },
   {
-   "description": "Gibt es noch keinen, oben über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.",
+   "description": "Gibt es noch keinen, über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.",
    "fieldname": "sales_order",
    "fieldtype": "Link",
    "label": "Sales Order",
    "options": "Sales Order",
    "reqd": 1
+  },
+  {
+   "depends_on": "eval:!doc.sales_order && doc.docstatus === 0",
+   "fieldname": "neuer_auftrag",
+   "fieldtype": "Button",
+   "label": "Neuer Auftrag"
   },
   {
    "fieldname": "section_break_zeit",
@@ -229,7 +236,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-09 12:30:00.000000",
+ "modified": "2026-10-09 23:30:00.000000",
  "modified_by": "Administrator",
  "module": "Site Visit",
  "name": "Site Visit",

@@ -183,7 +183,6 @@
 "Beginn der Zeitbuchung","Start of the Time Entry"
 "Ende der Zeitbuchung","End of the Time Entry"
 "Fahrtenbuch","Trip Log"
-"Gibt es noch keinen, oben über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.","If there isn't one yet, create it right here with ""New Sales Order"" – including the commission number."
 "Wird aus dem Auftrag übernommen, falls leer","Taken from the sales order if empty"
 "Kommissionsnummer","Commission Number"
 "Steht im Auftrag im Feld „{0}“.","Stored in the sales order field ""{0}""."
@@ -236,3 +235,4 @@
 "Verkaufspreis des Artikels in der Standard-Verkaufspreisliste – nur zur Kontrolle","Selling price of the item in the default selling price list – for reference only"
 "Zeile {0}: Aktivitätsart {1} steht doppelt in der Tabelle.","Row {0}: Activity type {1} appears twice in the table."
 "Zeile {0}: Artikel {1} ist gesperrt oder kein Verkaufsartikel.","Row {0}: Item {1} is disabled or not a sales item."
+"Gibt es noch keinen, über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.","If there isn't one yet, create it right here with ""New Sales Order"" – including the commission number."

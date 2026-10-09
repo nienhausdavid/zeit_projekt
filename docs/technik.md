@@ -35,7 +35,7 @@ zeit_projekt/
     │   ├── technician.py              # eingeschränkte Link-Suchen für Techniker
     │   ├── desk.py                    # Sichtbarkeit des App-Symbols
     │   ├── pdf.py                     # optional: Chrome als PDF-Generator erzwingen
-    │   ├── doctype/{zeit_projekt_einstellungen,zeit_projekt_artikelgruppe}/
+    │   ├── doctype/{zeit_projekt_einstellungen,zeit_projekt_artikelgruppe,zeit_projekt_aktivitaetsart}/
     │   └── tests/                     # Integrationstests + setup_ci.py
     ├── fahrtenbuch/               # Modul "Fahrtenbuch"
     │   ├── fahrtenbuch.py             # before_submit/on_cancel, Vorbelegung, OCR-Job

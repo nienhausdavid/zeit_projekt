@@ -43,9 +43,11 @@ Installation bricht sonst ab.
 
 ## Einrichtung nach der Installation
 
-1. **Aktivitätsarten**: je Aktivitätsart einen *Dienstleistungsartikel*
-   eintragen (daraus wird die Rechnungsposition) und einen Stundensatz
-   hinterlegen. Eine Aktivitätsart für die **Fahrzeit** anlegen.
+1. **Aktivitätsarten**: in *Zeit Projekt Einstellungen → Aktivitätsarten und
+   Artikel* je Aktivitätsart einen *Dienstleistungsartikel* (daraus wird die
+   Rechnungsposition) und einen Stundensatz eintragen – die Tabelle zeigt
+   auch, ob der Artikel einen Verkaufspreis hat. Eine Aktivitätsart für die
+   **Fahrzeit** anlegen (geht dort ebenfalls).
 2. **Preise**: Verkaufspreise in der Standard-Verkaufspreisliste für die
    Dienstleistungsartikel, den Kilometer-Artikel und alle Artikel, die als
    Zusatzmaterial im Einsatz verwendet werden.
