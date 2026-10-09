@@ -216,3 +216,5 @@
 "Zeile {0}: Das Ende der Pause muss nach ihrem Beginn liegen.","Row {0}: The break must end after it starts."
 "Zeile {0}: Die Pause überschneidet sich mit einer anderen.","Row {0}: The break overlaps another one."
 "Nach Abzug der Pausen bleibt keine Arbeitszeit übrig.","No working time is left after deducting the breaks."
+"Auftrag auswählen","Select Sales Order"
+"Offene Aufträge zu {0}","Open sales orders for {0}"

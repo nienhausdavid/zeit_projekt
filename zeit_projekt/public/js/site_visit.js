@@ -312,8 +312,7 @@ function fill_from_project(frm) {
 		});
 	}
 	// Genau ein offener Auftrag zum gewaehlten Projekt? Dann gleich
-	// uebernehmen. Bei mehreren zeigt der Filter aus onload() nur noch die
-	// passenden im Dropdown - der Techniker waehlt dann selbst.
+	// uebernehmen. Bei mehreren waehlt der Techniker im Dialog.
 	if (!frm.doc.sales_order) {
 		frappe
 			.call({
@@ -321,8 +320,33 @@ function fill_from_project(frm) {
 				args: { project: frm.doc.project, customer: frm.doc.customer || null },
 			})
 			.then((r) => {
-				const names = r.message || [];
-				if (names.length === 1) frm.set_value('sales_order', names[0]);
+				const orders = r.message || [];
+				if (orders.length === 1) frm.set_value('sales_order', orders[0].name);
+				else if (orders.length > 1) choose_sales_order(frm, orders);
 			});
 	}
+}
+
+function choose_sales_order(frm, orders) {
+	const label = (so) =>
+		[so.name, so.po_no, frappe.datetime.str_to_user(so.transaction_date)].filter(Boolean).join(' – ');
+	const dialog = new frappe.ui.Dialog({
+		title: __('Auftrag auswählen'),
+		fields: [
+			{
+				fieldname: 'sales_order',
+				fieldtype: 'Select',
+				label: __('Offene Aufträge zu {0}', [frm.doc.project]),
+				options: orders.map((so) => ({ value: so.name, label: label(so) })),
+				default: orders[0].name,
+				reqd: 1,
+			},
+		],
+		primary_action_label: __('Übernehmen'),
+		primary_action(values) {
+			dialog.hide();
+			frm.set_value('sales_order', values.sales_order);
+		},
+	});
+	dialog.show();
 }

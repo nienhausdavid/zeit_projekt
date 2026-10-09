@@ -64,3 +64,19 @@ class TestTechnikerRechte(IntegrationTestCase):
 		self.assertEqual((d["auto_start_timer"], d["auto_open_camera"]), (1, 1))
 		self.assertIn("activity_type", d)
 		self.assertNotIn("api_key", d)
+
+	def test_offene_auftraege_zum_projekt(self):
+		projekt = frappe.get_doc(
+			{"doctype": "Project", "project_name": f"ZP Projekt {frappe.generate_hash(length=6)}", "customer": KUNDE_A}
+		).insert()
+		namen = []
+		for kommission in ("K-1", "K-2"):
+			so = make_sales_order(self.ctx.company, submit=False)
+			so.update({"project": projekt.name, "po_no": f"{kommission}-{frappe.generate_hash(length=6)}"})
+			so.submit()
+			namen.append(so.name)
+
+		frappe.set_user(TECH)
+		auftraege = technician.get_open_sales_orders(projekt.name, KUNDE_A)
+		self.assertEqual(sorted(a.name for a in auftraege), sorted(namen))
+		self.assertTrue(all(a.po_no and a.transaction_date for a in auftraege))
