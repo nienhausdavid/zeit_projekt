@@ -147,6 +147,25 @@ Typische Fehler: eine angehängte Ziffer (3333333 statt 333333, 1733862 statt 17
 der Tageszähler statt des Gesamtstands (2082 statt 100000), abgeschnittene oder
 vertauschte Ziffern bei Spiegelung, Unschärfe und mechanischen Zählwerken.
 
+
+## 6. `glm-ocr` (zweiter Versuch)
+
+Der erste Lauf (Tabelle 1) war unfair: `glm-ocr` ist ein reines Texterkennungs-Modell. Es ignoriert die Frage,
+schreibt den ganzen Text des Bildes ab und hört nicht von selbst auf (`finish_reason: length`, es wiederholt sich). Daher lief fast
+jede Anfrage ins Limit. Zweiter Versuch: Prompt `Text Recognition:`, Ausgabe auf 40 Token begrenzt, ausgewertet wird die **erste Zeile**
+(Tausenderpunkte und Leerzeichen entfernt), 27 Hauptfotos × 3 Anfragen, Limit 90 s:
+
+| Auswertung | Treffer | ohne Wert | Negativfälle ohne Zahl | Dauer je Foto |
+|---|---|---|---|---|
+| erste Zeile der Texterkennung | 19,8 % (16 / 81) | 37 | 2 / 6 | etwa 11 s |
+
+Die Ausgabe ist von Anfrage zu Anfrage unterschiedlich. In einer zusätzlichen Stichprobe (27 Hauptfotos × 2 Anfragen,
+60 Token, ohne Auswertung nach Zeile) stand der richtige Wert in **38 von 54 Ausgaben irgendwo im Text**, aber nur in
+**2 von 54 als erste Zeile**. Das Modell findet die Zahlen, weiß aber nicht, welche der Gesamtkilometerstand ist (es nennt auch
+Tacho-Skalen, Tageszähler, Reichweite). Ohne zusätzliche Auswahlstufe (Heuristik oder ein zweites Modell) taugt es für diese
+Aufgabe nicht; als eigenständiges Modell nicht empfohlen.
+
+
 ## Grenzen
 
 - 27 Fotos mit je 3 Anfragen: Unterschiede von wenigen Punkten sind nicht gesichert.
