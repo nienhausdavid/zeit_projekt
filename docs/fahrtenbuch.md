@@ -62,12 +62,14 @@ Einrichtung in *Fahrtenbuch Einstellungen*:
 
 - **API-URL**: Basis-URL ohne `/chat/completions`, z. B.
   `http://<ip-des-servers>:11434/v1` oder `https://api.openai.com/v1`
-- **Modell**: z. B. `qwen3.5:9b` – der Knopf **„Verfügbare Modelle
-  abrufen"** fragt die API nach ihren Modellen (nur System Manager)
+- **Modell**: empfohlen `ornith-1.5:9b` (siehe *Genauigkeit* unten) – der Knopf
+  **„Verfügbare Modelle abrufen"** fragt die API nach ihren Modellen (nur
+  System Manager)
 - **API-Schlüssel**: nur falls die API einen verlangt
 
 Ohne Eintrag bleibt die Erkennung aus. Die Erkennung läuft als
-**Hintergrund-Job** (Queue `short`, bis zu 45 s pro Foto) – das Formular
+**Hintergrund-Job** (Queue `short`, bis zu 45 s je Anfrage, höchstens 100 s
+insgesamt) – das Formular
 bleibt bedienbar, das Ergebnis erscheint per Realtime-Meldung. Es wird nur
 übernommen, wenn noch dasselbe Foto im Formular steht und der Wert nicht
 schon von Hand eingetragen ist. Dafür muss ein Worker für die Queue `short`
@@ -75,6 +77,45 @@ laufen (bei Frappe Manager und Frappe Cloud Standard).
 
 Fotos werden vor dem Versand auf max. 1024 px verkleinert; verarbeitet
 werden nur Dateien, die der Nutzer selbst lesen darf.
+
+### Ablauf je Foto
+
+1. Das Modell wird **ohne Denken** gefragt (`reasoning_effort: none`). Mit dem
+   Standard-Denken blieben viele Anfragen leer: bei schwierigen Fotos lief das
+   Modell in eine Denkschleife (bei `qwen3.5:9b` kam nach 15 Minuten keine
+   Antwort). Lehnt eine API den Parameter ab (HTTP 400), geht es ohne ihn
+   weiter.
+2. Bis zu **drei Anfragen**; übernommen wird der Wert, den mindestens zwei
+   Antworten nennen (nach zwei gleichen Antworten ist Schluss). Gibt es keine
+   Mehrheit, bleibt das Feld leer, und der Techniker trägt von Hand ein.
+3. Antworten mit mehr als 7 Ziffern gelten als Zahlensalat und werden verworfen.
+4. Im Formular wird ein erkannter **Endstand unter dem Startstand** nicht
+   eingetragen, sondern nur gemeldet.
+
+Grenzen: Zeigt das Foto keinen Gesamtstand (nur Tageszähler oder Temperatur),
+liefern die Modelle trotzdem eine Zahl. Der Techniker sieht den eingetragenen
+Wert und kann ihn ändern; eine Prüfung gegen den letzten Stand des
+Fahrzeugs gibt es noch nicht.
+
+### Genauigkeit (Modellvergleich 09./10.10.2026)
+
+27 Tacho-Fotos von Wikimedia Commons (überwiegend US-Tachos, kein SLK R170;
+Sollwerte vom Bild abgelesen, Lesefehler möglich), je 3 Anfragen, Denken aus,
+Bildkante 1024 px, Ollama:
+
+| Modell | Treffer je Anfrage | Foto per Mehrheit richtig |
+|---|---|---|
+| `ornith-1.5:9b` | 88 % | 25 von 27 |
+| `gemma4:12b` | 79 % | 21 von 27 |
+| `qwen3.5:9b` | 73 % | 21 von 27 |
+| `gemma4:e4b` / `qwen3.5:4b` / `gemma4:e2b` | 58 % / 53 % / 43 % | 16 / 14 / 11 von 27 |
+
+`glm-ocr` liest die ganze Anzeige als Text und passt nicht zur Aufgabe. Kleinere
+Bilder (640 px: 67 %, 448 px: 57 % bei `ornith-1.5:9b`) und ein automatischer
+Zuschnitt auf den Zähler (79–82 %) waren schlechter als das ganze Foto mit
+1024 px. Mit Denken an stieg die Quote bei schwierigen Fotos, die Antworten
+dauerten aber im Median 28 s und liefen teils ins Limit. Echte Handyfotos
+können anders abschneiden - die Werte sind ein Anhaltspunkt, kein Versprechen.
 
 ## Einstellungen im Überblick
 
