@@ -1,6 +1,8 @@
 import base64
 import io
 import re
+import time
+from collections import Counter
 
 import frappe
 import requests
@@ -19,6 +21,25 @@ PROMPT = (
 # Erst nach Verkleinerung auf ~1024px kam eine korrekte Antwort. Deshalb hier
 # vorsorglich fuer jedes Foto, nicht erst als Reaktion auf einen Fehlschlag.
 MAX_IMAGE_DIMENSION = 1024
+
+# Modellvergleich vom 09./10.10.2026 (27 Tacho-Fotos, je 3 Anfragen, Details in
+# docs/fahrtenbuch.md): Mit dem Standard-Denken der Modelle kam bei schwierigen
+# Fotos oft gar keine Antwort (Denkschleife bis ins Zeitlimit, bei qwen3.5:9b
+# einmal nach 15 Minuten noch nicht). Ohne Denken antwortet das Modell in rund
+# einer Sekunde. Einzelne Antworten sind dann gelegentlich falsch (angehaengte
+# Ziffer, Tageszaehler statt Gesamtstand) - deshalb mehrere Anfragen und nur ein
+# Wert, den mindestens zwei Antworten nennen (ornith-1.5:9b: 88 % je Anfrage,
+# 93 % der Fotos mit Mehrheitsentscheid).
+ANFRAGEN = 3
+# Laenger ist kein Kilometerstand, sondern Zahlensalat (im Test kam einmal eine
+# 25-stellige Antwort).
+MAX_STELLEN = 7
+# Der Hintergrund-Job laeuft mit timeout=120 (fahrtenbuch.get_odometer_reading).
+GESAMT_ZEIT = 100
+
+# API-URLs, die reasoning_effort ablehnen (z. B. aeltere OpenAI-Modelle): dort
+# wird nicht jedes Mal erst die abgelehnte Anfrage geschickt.
+_OHNE_DENKEN_PARAMETER = set()
 
 
 def _downscale_to_jpeg(image_bytes: bytes) -> bytes:
@@ -98,37 +119,68 @@ def read_odometer(file_doc) -> int | None:
 		return None
 
 	headers = {"Content-Type": "application/json", **_auth_headers(settings)}
+	api_url = settings.api_url.rstrip("/")
+	ende = time.monotonic() + GESAMT_ZEIT
 
-	try:
-		response = requests.post(
-			f"{settings.api_url.rstrip('/')}/chat/completions",
-			headers=headers,
-			json={
-				"model": settings.model,
-				"messages": [
-					{
-						"role": "user",
-						"content": [
-							{"type": "text", "text": PROMPT},
-							{
-								"type": "image_url",
-								"image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
-							},
-						],
-					}
+	stimmen = []
+	for _ in range(ANFRAGEN):
+		try:
+			stimmen.append(_frage(api_url, headers, settings.model, image_b64))
+		except (requests.RequestException, KeyError, IndexError, ValueError):
+			# API nicht erreichbar oder Antwort nicht lesbar: weitere Anfragen
+			# wuerden nur dieselbe Wartezeit kosten.
+			frappe.logger("fahrtenbuch").error("Kilometerstand-Erkennung fehlgeschlagen", exc_info=True)
+			return None
+
+		haeufigste = Counter(s for s in stimmen if s is not None).most_common(1)
+		if haeufigste and haeufigste[0][1] >= 2:
+			return haeufigste[0][0]  # zwei gleiche Antworten genuegen, die dritte spart man sich
+		if time.monotonic() > ende:
+			break
+
+	# Keine zwei gleichen Antworten: lieber kein Wert, als einen unsicheren
+	# einzutragen - der Techniker tippt ihn dann selbst ein.
+	return None
+
+
+def _frage(api_url: str, headers: dict, model: str, image_b64: str) -> int | None:
+	"""Eine Anfrage an die Vision-API. None, wenn die Antwort keine brauchbare
+	Zahl enthaelt; Netzwerk- und Formatfehler werden an den Aufrufer gereicht."""
+	body = {
+		"model": model,
+		"messages": [
+			{
+				"role": "user",
+				"content": [
+					{"type": "text", "text": PROMPT},
+					{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
 				],
-				"stream": False,
-			},
+			}
+		],
+		"stream": False,
+	}
+
+	def senden(mit_denken_aus: bool):
+		return requests.post(
+			f"{api_url}/chat/completions",
+			headers=headers,
+			json={**body, "reasoning_effort": "none"} if mit_denken_aus else body,
 			# Grosszuegig: ein kaltes, noch nicht geladenes Modell brauchte im
 			# Test 10-15s zusaetzlich zur eigentlichen Anfrage, ein echtes
 			# (statt synthetisches) Testfoto weitere ca. 20s statt <2s.
 			timeout=45,
 		)
-		response.raise_for_status()
-		text = response.json()["choices"][0]["message"]["content"]
-	except (requests.RequestException, KeyError, IndexError):
-		frappe.logger("fahrtenbuch").error("Kilometerstand-Erkennung fehlgeschlagen", exc_info=True)
-		return None
 
+	# Ohne Denken, siehe oben. Lehnt die API den Parameter ab (HTTP 400), geht es
+	# einmal ohne ihn weiter und die URL wird fuer spaeter vorgemerkt.
+	response = senden(api_url not in _OHNE_DENKEN_PARAMETER)
+	if response.status_code == 400 and api_url not in _OHNE_DENKEN_PARAMETER:
+		_OHNE_DENKEN_PARAMETER.add(api_url)
+		response = senden(False)
+	response.raise_for_status()
+
+	text = response.json()["choices"][0]["message"]["content"] or ""
 	digits = re.sub(r"\D", "", text)
-	return int(digits) if digits else None
+	if not digits or len(digits) > MAX_STELLEN:
+		return None
+	return int(digits)

@@ -181,7 +181,22 @@ function zeige_erkennung(auftrag, data) {
 	// eingetragen? (Der Name einer neuen Fahrt ändert sich beim Speichern,
 	// deshalb wird am Foto erkannt, ob es noch dieselbe Fahrt ist.)
 	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
-	if (data.reading && !frm.doc[data.fieldname]) {
+	// Ein Endstand unter dem Startstand kann nicht stimmen (das Buchen würde ihn
+	// ohnehin ablehnen) - dann lieber nichts eintragen als einen falschen Wert.
+	if (
+		data.reading &&
+		data.fieldname === 'end_odometer' &&
+		frm.doc.start_odometer &&
+		data.reading < frm.doc.start_odometer
+	) {
+		frappe.show_alert({
+			message: __('Erkannter Endstand {0} liegt unter dem Startstand {1}. Bitte manuell eintragen.', [
+				data.reading,
+				frm.doc.start_odometer,
+			]),
+			indicator: 'orange',
+		});
+	} else if (data.reading && !frm.doc[data.fieldname]) {
 		frm.set_value(data.fieldname, data.reading);
 		frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [data.reading]), indicator: 'green' });
 	} else if (!data.reading) {
