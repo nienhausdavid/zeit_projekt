@@ -91,6 +91,15 @@ werden nur Dateien, die der Nutzer selbst lesen darf.
 3. Antworten mit mehr als 7 Ziffern gelten als Zahlensalat und werden verworfen.
 4. Im Formular wird ein erkannter **Endstand unter dem Startstand** nicht
    eingetragen, sondern nur gemeldet.
+5. **Unsichere Treffer** werden markiert: Stimmten schon die ersten beiden
+   Antworten überein, gilt der Wert als sicher (grüner Hinweis). Brauchte es die
+   dritte Anfrage, gab es eine abweichende Antwort - der Wert wird eingetragen,
+   aber orange gemeldet, und am Feld steht „nicht sicher, bitte mit dem Foto
+   vergleichen", bis der Techniker den Wert ändert.
+
+**Fotohilfe:** An den beiden Foto-Feldern und im Kamera-Dialog (Desktop) steht,
+was aufs Bild gehört: der Gesamt-Kilometerzähler (ODO), nicht Tageszähler (TRIP)
+oder Temperatur, formatfüllend und ohne Spiegelung.
 
 Grenzen: Zeigt das Foto keinen Gesamtstand (nur Tageszähler oder Temperatur),
 liefern die Modelle trotzdem eine Zahl. Der Techniker sieht den eingetragenen

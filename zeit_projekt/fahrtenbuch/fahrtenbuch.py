@@ -106,12 +106,18 @@ def get_odometer_reading(file_url, fieldname):
 def run_odometer_ocr(file_name, fieldname, request_id, user):
 	"""Hintergrund-Job: Erkennung ausfuehren und das Ergebnis (oder None) an
 	das offene Formular des Nutzers melden."""
-	from zeit_projekt.fahrtenbuch.ocr import read_odometer
+	from zeit_projekt.fahrtenbuch.ocr import read_odometer_mit_vertrauen
 
-	reading = read_odometer(frappe.get_doc("File", file_name))
+	reading, sicher = read_odometer_mit_vertrauen(frappe.get_doc("File", file_name))
 	frappe.publish_realtime(
 		"zeit_projekt_odometer",
-		{"request_id": request_id, "fieldname": fieldname, "reading": reading},
+		# unsicher: es gab eine abweichende Antwort, der Techniker soll gegenpruefen
+		{
+			"request_id": request_id,
+			"fieldname": fieldname,
+			"reading": reading,
+			"unsicher": bool(reading) and not sicher,
+		},
 		user=user,
 		after_commit=False,
 	)

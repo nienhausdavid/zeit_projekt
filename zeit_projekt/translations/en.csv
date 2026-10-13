@@ -237,3 +237,7 @@
 "Zeile {0}: Aktivitätsart {1} steht doppelt in der Tabelle.","Row {0}: Activity type {1} appears twice in the table."
 "Zeile {0}: Artikel {1} ist gesperrt oder kein Verkaufsartikel.","Row {0}: Item {1} is disabled or not a sales item."
 "Gibt es noch keinen, über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.","If there isn't one yet, create it right here with ""New Sales Order"" – including the commission number."
+"Automatisch erkannt, aber nicht sicher - bitte mit dem Foto vergleichen.","Recognized automatically, but not certain - please compare with the photo."
+"Kilometerstand erkannt: {0} - nicht sicher, bitte mit dem Foto vergleichen.","Odometer reading recognized: {0} - not certain, please compare with the photo."
+"Foto vom Gesamt-Kilometerzähler (ODO) - nicht vom Tageszähler (TRIP) und nicht von der Temperatur. Zahl formatfüllend, ohne Spiegelung. Der Stand wird automatisch erkannt und kann danach jederzeit von Hand korrigiert werden.","Photo of the total odometer (ODO) - not the trip counter (TRIP) and not the temperature. Fill the frame with the digits, avoid reflections. The reading is recognized automatically and can be corrected by hand at any time."
+"Bitte den Gesamt-Kilometerzähler (ODO) formatfüllend fotografieren - nicht den Tageszähler (TRIP) und nicht die Temperatur. Spiegelungen vermeiden.","Please photograph the total odometer (ODO) filling the frame - not the trip counter (TRIP) and not the temperature. Avoid reflections."
