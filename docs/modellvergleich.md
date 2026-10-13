@@ -143,7 +143,7 @@ Richtige Antworten von 3, schwierigste Fotos zuerst.
 | `9840_k02.jpg` | 9840 | 3/3 | 3/3 | 3/3 | 3/3 |
 
 
-Typische Fehler: ein angehängte Ziffer (3333333 statt 333333, 1733862 statt 173386),
+Typische Fehler: eine angehängte Ziffer (3333333 statt 333333, 1733862 statt 173386),
 der Tageszähler statt des Gesamtstands (2082 statt 100000), abgeschnittene oder
 vertauschte Ziffern bei Spiegelung, Unschärfe und mechanischen Zählwerken.
 
