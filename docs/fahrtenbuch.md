@@ -60,12 +60,26 @@ Liest den Kilometerstand aus dem Tacho-Foto über eine beliebige
 
 Einrichtung in *Fahrtenbuch Einstellungen*:
 
-- **API-URL**: Basis-URL ohne `/chat/completions`, z. B.
-  `http://<ip-des-servers>:11434/v1` oder `https://api.openai.com/v1`
+- **Schnittstelle**: `OpenAI-kompatibel` (Standard; geht mit Ollama, LM Studio,
+  OpenAI u. a.) oder `Ollama (nativ)` (Ollamas eigene Schnittstelle `/api/chat`,
+  nur für Ollama; erlaubt Kontextfenster und Verweildauer)
+- **API-URL**: bei *OpenAI-kompatibel* die Basis-URL ohne `/chat/completions`, z. B.
+  `http://<ip-des-servers>:11434/v1` oder `https://api.openai.com/v1`; bei
+  *Ollama (nativ)* die Server-Adresse, z. B. `http://<ip-des-servers>:11434` (ein
+  angehängtes `/v1` wird ignoriert)
 - **Modell**: empfohlen `ornith-1.5:9b` (siehe *Genauigkeit* unten) – der Knopf
   **„Verfügbare Modelle abrufen"** fragt die API nach ihren Modellen (nur
   System Manager)
 - **API-Schlüssel**: nur falls die API einen verlangt
+- **Kontextfenster (Token)** (nur *Ollama (nativ)*): leer = Standard des Servers.
+  Erlaubt sind 2048 bis 262144. Ein Foto braucht nur etwa 1.000 bis 1.500 Token;
+  ein sehr großes Fenster belegt viel Speicher (bei `qwen3-vl:4b-instruct` lud der
+  Server im Test 14,5 GB für ein 3,3-GB-Modell). Nach einer Änderung lädt Ollama
+  das Modell einmal neu.
+- **Modell im Speicher halten** (nur *Ollama (nativ)*): wie lange das Modell nach
+  der letzten Anfrage geladen bleibt, z. B. `30m`, `2h`, `-1` (dauerhaft) oder `0`
+  (sofort entladen). Leer = Standard des Servers. Ein dauerhaft geladenes Modell
+  vermeidet das Neuladen beim ersten Foto nach einer Pause.
 
 Ohne Eintrag bleibt die Erkennung aus. Die Erkennung läuft als
 **Hintergrund-Job** (Queue `short`, bis zu 45 s je Anfrage, höchstens 100 s
@@ -80,7 +94,10 @@ werden nur Dateien, die der Nutzer selbst lesen darf.
 
 ### Ablauf je Foto
 
-1. Das Modell wird **ohne Denken** gefragt (`reasoning_effort: none`). Mit dem
+1. Das Modell wird **ohne Denken** gefragt (`reasoning_effort: none`, bei *Ollama
+   (nativ)* `think: false`; dort ist die Antwort zusätzlich auf 32 Token begrenzt,
+   damit ein Modell, das das Denken ignoriert, nach Sekunden statt Minuten ohne Wert
+   endet). Mit dem
    Standard-Denken blieben viele Anfragen leer: bei schwierigen Fotos lief das
    Modell in eine Denkschleife (bei `qwen3.5:9b` kam nach 15 Minuten keine
    Antwort). Lehnt eine API den Parameter ab (HTTP 400), geht es ohne ihn
@@ -162,7 +179,7 @@ können anders abschneiden - die Werte sind ein Anhaltspunkt, kein Versprechen.
 | Aktivitätsart Fahrzeit | Vorbelegung für neue Fahrten; die Aktivitätsart braucht einen Dienstleistungsartikel |
 | Artikel Kilometer | Vorbelegung für neue Fahrten |
 | Fahrzeit abrechnen in Schritten von (Minuten) | Taktung, 0 = minutengenau |
-| API-URL, Modell, API-Schlüssel | Kilometerstand-Erkennung |
+| Schnittstelle, API-URL, Modell, API-Schlüssel, Kontextfenster, Modell im Speicher halten | Kilometerstand-Erkennung |
 | Timer automatisch starten / Kamera automatisch öffnen | Verhalten beim Anlegen aus dem Projekt |
 
 Die Einstellungen darf nur der System Manager lesen (API-Schlüssel);

@@ -124,13 +124,13 @@ def run_odometer_ocr(file_name, fieldname, request_id, user):
 
 
 @frappe.whitelist()
-def get_available_models(api_url=None, api_key=None):
+def get_available_models(api_url=None, api_key=None, api_type=None):
 	"""Fuer den "Modelle abrufen"-Button in Fahrtenbuch Einstellungen -
-	api_url/api_key optional, damit ein gerade eingetipptes, noch nicht
+	api_url/api_key/api_type optional, damit ein gerade eingetipptes, noch nicht
 	gespeichertes Feld direkt getestet werden kann. Nur System Manager: der
 	Server ruft dabei eine frei angegebene URL ab."""
 	from zeit_projekt.fahrtenbuch.ocr import list_models
 
 	frappe.only_for("System Manager")
 
-	return list_models(api_url=api_url, api_key=api_key)
+	return list_models(api_url=api_url, api_key=api_key, api_type=api_type)
