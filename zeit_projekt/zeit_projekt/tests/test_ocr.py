@@ -141,6 +141,16 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self._api([salat, salat, salat])
 		self.assertIsNone(ocr.read_odometer(self.file))
 
+	def test_none_ist_kein_wert(self):
+		"""Der Prompt erlaubt NONE (kein Gesamtstand sichtbar) - auch mit Zusatztext
+		darf daraus keine Zahl werden."""
+		self._api(["NONE", "none", "NONE (Tageszaehler 185.5)"])
+		self.assertIsNone(ocr.read_odometer(self.file))
+		self.assertEqual(len(FakeVisionApi.anfragen), 3)
+
+	def test_prompt_erlaubt_none(self):
+		self.assertIn("NONE", ocr.PROMPT)
+
 	def test_denken_wird_abgeschaltet(self):
 		self._api()
 		ocr.read_odometer(self.file)

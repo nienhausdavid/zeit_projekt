@@ -9,10 +9,20 @@ import requests
 from frappe import _
 from PIL import Image
 
+# Prompt-Vergleich (docs/fahrtenbuch.md): Der fruehere Prompt verlangte immer
+# Ziffern - bei Fotos ohne Gesamtstand (nur Temperatur oder Tageszaehler) erfanden
+# die Modelle eine Zahl. Diese Fassung beschreibt den Gesamtzaehler genauer,
+# grenzt Tageszaehler (TRIP) und andere Werte ab und erlaubt "NONE". Gegenueber dem
+# frueheren Prompt: ornith-1.5:9b 86 % statt 88 % (im Rauschen), qwen3.5:9b 80 %
+# statt 73 %, qwen3.5:4b 78 % statt 53 %; das Temperatur-Foto erkennen alle.
+# Ein Tageszaehler wird weiter als Gesamtstand gelesen.
 PROMPT = (
-	"This is a photo of a car odometer (mileage display). What is the total "
-	"number of kilometers shown? Ignore any small decimal/tenths digit shown "
-	"in a different color. Respond with only the digits, nothing else."
+	"This is a photo of a car instrument cluster. Find the TOTAL odometer: the long "
+	"counter showing all kilometers (or miles) the car has driven. It is NOT the trip "
+	"counter (labelled TRIP, A or B, usually with a decimal digit), NOT a temperature, "
+	"clock, range or fuel value. Ignore any small decimal/tenths digit shown in a "
+	"different color. If the total odometer is not clearly visible, respond with the "
+	"single word NONE. Otherwise respond with only the digits, nothing else."
 )
 
 # Handy-Kamerafotos kommen leicht mit 4000+ px Kantenlaenge und mehreren MB
@@ -191,6 +201,8 @@ def _frage(api_url: str, headers: dict, model: str, image_b64: str) -> int | Non
 	response.raise_for_status()
 
 	text = response.json()["choices"][0]["message"]["content"] or ""
+	if text.strip().upper().startswith("NONE"):
+		return None  # "NONE (Tageszaehler 185.5)": die Ziffern dahinter gehoeren nicht dazu
 	digits = re.sub(r"\D", "", text)
 	if not digits or len(digits) > MAX_STELLEN:
 		return None

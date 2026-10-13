@@ -89,6 +89,9 @@ werden nur Dateien, die der Nutzer selbst lesen darf.
    Antworten nennen (nach zwei gleichen Antworten ist Schluss). Gibt es keine
    Mehrheit, bleibt das Feld leer, und der Techniker trägt von Hand ein.
 3. Antworten mit mehr als 7 Ziffern gelten als Zahlensalat und werden verworfen.
+   Der Prompt beschreibt den Gesamtzähler genauer (nicht Tageszähler/TRIP, nicht
+   Temperatur, Uhr, Reichweite) und erlaubt die Antwort `NONE`, wenn er nicht
+   klar zu sehen ist; `NONE` zählt als „kein Wert".
 4. Im Formular wird ein erkannter **Endstand unter dem Startstand** nicht
    eingetragen, sondern nur gemeldet.
 5. **Unsichere Treffer** werden markiert: Stimmten schon die ersten beiden
@@ -101,28 +104,44 @@ werden nur Dateien, die der Nutzer selbst lesen darf.
 was aufs Bild gehört: der Gesamt-Kilometerzähler (ODO), nicht Tageszähler (TRIP)
 oder Temperatur, formatfüllend und ohne Spiegelung.
 
-Grenzen: Zeigt das Foto keinen Gesamtstand (nur Tageszähler oder Temperatur),
-liefern die Modelle trotzdem eine Zahl. Der Techniker sieht den eingetragenen
+Grenzen: Zeigt das Foto statt des Gesamtstands nur eine Temperatur oder andere
+Werte, antworten die Modelle jetzt mit `NONE` (im Test bei allen getesteten
+Modellen). Ein reiner **Tageszähler** wird aber weiter als Gesamtstand gelesen
+(im Test bei allen Modellen). Der Techniker sieht den eingetragenen
 Wert und kann ihn ändern; eine Prüfung gegen den letzten Stand des
 Fahrzeugs gibt es noch nicht.
 
 ### Genauigkeit (Modellvergleich 09./10.10.2026)
+
+**Alle Ergebnisse als Tabellen** (Modelle, Prompts, Denken an/aus, Bildgröße, Zuschnitt,
+Ergebnis je Foto): [modellvergleich.md](modellvergleich.md). Hier die Kurzfassung.
 
 27 Tacho-Fotos von Wikimedia Commons (überwiegend US-Tachos, kein SLK R170;
 Sollwerte vom Bild abgelesen, Lesefehler möglich), je 3 Anfragen, Denken aus,
 Bildkante 1024 px. Der Test lief mit **Ollama auf einem Steam Deck** (Handheld
 mit integrierter Grafik, kein Server mit dedizierter GPU):
 
-| Modell | Treffer je Anfrage | Foto per Mehrheit richtig |
-|---|---|---|
-| `ornith-1.5:9b` | 88 % | 25 von 27 |
-| `gemma4:12b` | 79 % | 21 von 27 |
-| `qwen3.5:9b` | 73 % | 21 von 27 |
-| `gemma4:e4b` / `qwen3.5:4b` / `gemma4:e2b` | 58 % / 53 % / 43 % | 16 / 14 / 11 von 27 |
+Treffer je Anfrage, mit dem früheren Prompt (nur „Ziffern") und mit dem
+aktuellen Prompt (Gesamtzähler genau beschrieben, `NONE` erlaubt); Fotos per
+Mehrheit richtig (von 27); Dauer je Foto auf dem Steam Deck:
+
+| Modell | früherer Prompt | aktueller Prompt | Mehrheit richtig (früher → jetzt) | Dauer je Foto |
+|---|---|---|---|---|
+| `ornith-1.5:9b` | 88 % | 86 % | 25 → 23 | 15 s |
+| `gemma4:12b` | 79 % | 77 % | 21 → 21 | 9 s |
+| `qwen3.5:9b` | 73 % | 80 % | 21 → 23 | 15 s |
+| `qwen3.5:4b` | 53 % | 78 % | 14 → 22 | 11 s |
+| `gemma4:e4b` / `gemma4:e2b` (nur früherer Prompt) | 58 % / 43 % | – | 16 / 11 | – |
+
+Die Unterschiede von ein bis drei Punkten bei `ornith-1.5:9b` und `gemma4:12b`
+liegen im Rauschen (27 Fotos, je 3 Anfragen). Der aktuelle Prompt hebt die
+kleineren Modelle deutlich an, und das Temperatur-Foto (kein Gesamtstand) wird
+von allen vier Modellen als „kein Wert" erkannt, mit dem früheren Prompt von
+keinem. Das Tageszähler-Foto bleibt ein Fehler bei allen.
 
 **Dauer je Foto** (ebenfalls auf dem Steam Deck, `ornith-1.5:9b`): Die erste
 Anfrage braucht etwa 14 s, weil das Bild erst verarbeitet wird; jede weitere
-Anfrage mit demselben Bild etwa 0,8 s (Zwischenspeicher von Ollama). Der
+Anfrage mit demselben Bild etwa 0,8 s (vermutlich Zwischenspeicher von Ollama). Der
 Mehrheitsentscheid kostet daher kaum Zeit, ein Foto dauert insgesamt etwa 15 s
 (höchstens gut 18 s). Dazu kommt das Laden des Modells, wenn Ollama es nach einer
 Pause neu in den Speicher holen muss (im Test insgesamt 26 s für das erste Foto).
