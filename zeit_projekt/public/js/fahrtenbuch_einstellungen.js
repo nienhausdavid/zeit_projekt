@@ -13,7 +13,7 @@ function fetch_models(frm) {
 		method: 'zeit_projekt.fahrtenbuch.fahrtenbuch.get_available_models',
 		// Testet direkt, was gerade im Formular steht (auch ungespeichert) -
 		// server faellt auf den gespeicherten Stand zurueck, wenn leer.
-		args: { api_url: frm.doc.api_url, api_key: frm.doc.api_key },
+		args: { api_url: frm.doc.api_url, api_key: frm.doc.api_key, api_type: frm.doc.api_type },
 		freeze: true,
 		freeze_message: __('Modelle werden abgerufen...'),
 		callback(r) {

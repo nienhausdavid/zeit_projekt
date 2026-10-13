@@ -166,12 +166,60 @@ Tacho-Skalen, Tageszähler, Reichweite). Ohne zusätzliche Auswahlstufe (Heurist
 Aufgabe nicht; als eigenständiges Modell nicht empfohlen.
 
 
+## 7. Schnittstelle und Kontextfenster (`qwen3-vl:4b-instruct`, aktueller Prompt, Denken aus)
+
+Ollama lädt das Modell standardmäßig mit 128k Kontext (131 072 Token) und belegt dafür 14,5 GB, obwohl die Datei nur
+3,3 GB groß ist. Ein Foto braucht nur etwa 1.000 bis 1.500 Token. Über Ollamas eigene Schnittstelle (`/api/chat`) lässt sich
+das Kontextfenster setzen:
+
+| Schnittstelle | Kontextfenster | Speicher im Server | Dauer je Foto | Treffer (27 Fotos × 3) | Negativfälle ohne Zahl |
+|---|---|---|---|---|---|
+| OpenAI-kompatibel | Server-Standard (128k) | 14,5 GB | 34 s | 88,9 % (72 / 81) | 0 / 6 |
+| nativ, Bild in einer Nachricht | 8 192 | 3,7 GB | 14 s | 82,7 % (67 / 81) | 3 / 6 |
+| nativ, Bild in einer Nachricht | 4 096 | 3,3 GB | 14 s | 81,5 % (66 / 81) | 3 / 6 |
+| **nativ, Text und Bild als zwei Nachrichten (so in der App)** | **8 192** | **3,7 GB** | **14 s** | **87,7 % (71 / 81)** | 1 / 6 |
+
+**Ursache des Unterschieds zwischen nativ und OpenAI:** Die Reihenfolge von Text und Bild. Die nativen Aufrufe mit dem Bild in
+derselben Nachricht stellen das Bild vor den Text; die OpenAI-Schicht macht aus „Text, dann Bild" zwei aufeinanderfolgende
+Nachrichten (so die Vermutung, am Verhalten, nicht im Ollama-Code geprüft). Bei Zählern mit Dezimalstelle hängt das Modell dann die
+Zehntelziffer an (87846 → 878469, 173386 → 1733862). Belege: (1) Die OpenAI-Schnittstelle mit dem Bild **vor** dem Text liefert
+dieselben Fehler wie nativ; (2) `temperature: 0` ändert nichts (nur dass die Fehler bei jeder Wiederholung gleich sind); (3) der
+Server-Standard-Kontext (128k) nativ liefert dieselben Fehler wie 8 192, das Kontextfenster ist also nicht die Ursache; (4) nativ mit
+zwei Nachrichten (erst der Text, dann das Bild) kommt auf das OpenAI-Ergebnis zurück. Gegenprobe (4) wurde auf allen Fotos gemessen,
+(1) bis (3) auf den fünf Fotos mit Abweichung.
+
+**Normales `qwen3-vl:4b` (ohne `-instruct`):** `think: false` wirkt auch über die native Schnittstelle nicht. Das Modell schreibt
+trotzdem einen Denktext (1060 Zeichen, 329 Token, 33 s inklusive Laden); mit `num_predict: 32` bleibt die Antwort leer. `qwen3-vl:4b-instruct`
+antwortet dagegen ohne Denktext (6 Token, 0,4 s). Für die App kommt nur `-instruct` in Frage.
+
+## 8. Echte Handyfotos (2 Fotos) und Bildgröße
+
+Zwei eigene Handyfotos des Betreibers (VW-Tacho bei Nacht, Gesamtstand **163244 km**, daneben Tageszähler 95,6 und Uhr 22:18; Sollwert vom Bild
+gelesen). Foto 1 ist scharf, Foto 2 unscharf und schräg. Je Foto 3 Anfragen, Denken aus, aktueller Prompt. Die Ziffern sind klein; auf
+die längste Kante von 1024 px verkleinert (so arbeitet die App heute) sind sie nur noch wenige Pixel hoch.
+
+| Bildkante | Modell / Schnittstelle | Foto 1 (scharf) | Foto 2 (unscharf) | Dauer je Foto |
+|---|---|---|---|---|
+| 1024 px | `ornith-1.5:9b`, OpenAI | 163244 ×3 ✓ | 16324, 163214, 163214 ✗ | 16 s |
+| 1024 px | `qwen3.5:9b`, OpenAI | 1632441632444, 163244, 163244 (✓ per Mehrheit) | 16324, 163294, 165324 ✗ | 16 s |
+| 1024 px | `qwen3-vl:4b-instruct`, OpenAI | 16324 ×3 ✗ | 0, 15321, 63214 ✗ | 34 s |
+| 1024 px | `qwen3-vl:4b-instruct`, nativ 2 Nachrichten, 8 192 | 16324 ×3 ✗ | 95641, 153214, 0 ✗ | 14 s |
+| 1536 px | `ornith-1.5:9b`, OpenAI | 163244 ×3 ✓ | 163241, 163244, 163244 (✓ per Mehrheit) | 35 s |
+| 1536 px | `qwen3-vl:4b-instruct`, nativ, 16 384 | 16324 ×3 ✗ | 16321 ×3 ✗ | 23 s |
+| 2048 px | `ornith-1.5:9b`, OpenAI | 1632444, 163244, 163244 (✓ per Mehrheit) | 163214, 163214, 163244 ✗ | 90 s |
+| 2048 px | `qwen3-vl:4b-instruct`, nativ, 16 384 | 163244 ×3 ✓ | 16321, 16324, 16321 ✗ | 51 s |
+
+Zwei Fotos sind keine Statistik. Es zeigt aber, wo die Probleme liegen: Bei echten, dunklen Handyfotos sind die Ziffern klein, und
+die Verkleinerung auf 1024 px kostet Genauigkeit. `qwen3-vl:4b-instruct` lässt bei 1024 und 1536 px die letzte Ziffer weg
+(16324), bei 2048 px liest es das scharfe Foto richtig. `ornith-1.5:9b` liest das scharfe Foto immer richtig und das unscharfe
+bei 1536 px per Mehrheit. 2048 px kostet bei `ornith-1.5:9b` 90 s je Foto, 1536 px etwa 35 s.
+
 ## Grenzen
 
 - 27 Fotos mit je 3 Anfragen: Unterschiede von wenigen Punkten sind nicht gesichert.
 - Sollwerte vom Bild abgelesen, Lesefehler möglich.
-- Überwiegend US-Tachos mit englischer Beschriftung, kein SLK R170, keine echten
-  Handyfotos aus dem Außendienst. Dort kann es anders aussehen.
+- Überwiegend US-Tachos mit englischer Beschriftung, kein SLK R170. Echte Handyfotos wurden nur
+  an zwei Fotos geprüft (Abschnitt 8); dort schnitten die Modelle schlechter ab als auf den Commons-Fotos.
 - Alles auf einem Steam Deck gemessen; Dauern lassen sich nicht auf andere Hardware
   übertragen.
 - Rohdaten, Skripte und Fotos liegen im Bench unter `modell-vergleich/`

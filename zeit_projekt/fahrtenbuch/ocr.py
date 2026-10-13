@@ -30,6 +30,9 @@ PROMPT = (
 # (content: "") und einmal mit komplettem Totalausfall (Timeout) quittiert.
 # Erst nach Verkleinerung auf ~1024px kam eine korrekte Antwort. Deshalb hier
 # vorsorglich fuer jedes Foto, nicht erst als Reaktion auf einen Fehlschlag.
+# Standardwert; in den Einstellungen (Bildgroesse) aenderbar. Bei zwei echten, dunklen
+# Handyfotos las ornith-1.5:9b mit 1536 px besser als mit 1024 px, brauchte aber etwa
+# doppelt so lange (docs/modellvergleich.md, Abschnitt 8).
 MAX_IMAGE_DIMENSION = 1024
 
 # Modellvergleich vom 09./10.10.2026 (27 Tacho-Fotos, je 3 Anfragen, Details in
@@ -52,18 +55,46 @@ GESAMT_ZEIT = 100
 _OHNE_DENKEN_PARAMETER = set()
 
 
-def _downscale_to_jpeg(image_bytes: bytes) -> bytes:
+def _downscale_to_jpeg(image_bytes: bytes, max_px: int | None = None) -> bytes:
 	"""Skaliert bei Bedarf herunter und kodiert dabei immer als JPEG neu -
 	nicht nur wenn tatsaechlich verkleinert wird, damit der MIME-Typ im
 	data:-URL unten (immer "image/jpeg") garantiert zum Inhalt passt, egal
 	welches Format das Original hatte."""
 	image = Image.open(io.BytesIO(image_bytes))
-	if max(image.size) > MAX_IMAGE_DIMENSION:
-		image.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION))
+	max_px = max_px or MAX_IMAGE_DIMENSION
+	if max(image.size) > max_px:
+		image.thumbnail((max_px, max_px))
 
 	buffer = io.BytesIO()
 	image.convert("RGB").save(buffer, format="JPEG", quality=85)
 	return buffer.getvalue()
+
+
+API_TYP_OLLAMA = "Ollama (nativ)"
+
+# Die Antwort besteht nur aus wenigen Ziffern oder "NONE". Die Begrenzung kappt eine
+# Denkschleife nach wenigen Sekunden, falls ein Modell das Denken trotz think=false
+# nicht abschaltet (qwen3-vl:4b tat das im Test, 54-87 s je Anfrage): leere Antwort =
+# "kein Wert" statt minutenlangem Warten.
+NUM_PREDICT = 32
+
+
+def _ollama_basis(api_url: str) -> str:
+	"""Server-Adresse fuer Ollamas eigene Schnittstelle. Ein angehaengtes /v1
+	(die Adresse der OpenAI-kompatiblen Schnittstelle) wird entfernt."""
+	basis = api_url.rstrip("/")
+	return basis[: -len("/v1")] if basis.endswith("/v1") else basis
+
+
+def _zahl_aus(text: str) -> int | None:
+	"""Kilometerstand aus der Modellantwort: nur Ziffern, NONE (kein Gesamtstand
+	sichtbar) und Zahlensalat ergeben keinen Wert."""
+	if text.strip().upper().startswith("NONE"):
+		return None  # "NONE (Tageszaehler 185.5)": die Ziffern dahinter gehoeren nicht dazu
+	digits = re.sub(r"\D", "", text)
+	if not digits or len(digits) > MAX_STELLEN:
+		return None
+	return int(digits)
 
 
 def _auth_headers(settings) -> dict:
@@ -71,12 +102,14 @@ def _auth_headers(settings) -> dict:
 	return {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
 
-def list_models(api_url: str | None = None, api_key: str | None = None) -> list[str]:
-	"""Fragt eine OpenAI-kompatible API nach den dort tatsaechlich
-	verfuegbaren Modellen (GET .../models - Teil des OpenAI-Standards, den
-	auch Ollama & Co. darueber mit anbieten).
+def list_models(
+	api_url: str | None = None, api_key: str | None = None, api_type: str | None = None
+) -> list[str]:
+	"""Fragt die API nach den dort tatsaechlich verfuegbaren Modellen: bei der
+	OpenAI-kompatiblen Schnittstelle GET .../models, bei Ollama (nativ)
+	GET /api/tags.
 
-	api_url/api_key optional: fuer den "Modelle abrufen"-Button in
+	api_url/api_key/api_type optional: fuer den "Modelle abrufen"-Button in
 	Fahrtenbuch Einstellungen, damit ein gerade eingetipptes, noch nicht
 	gespeichertes Feld direkt getestet werden kann. Ohne Angabe wird der
 	bereits gespeicherte Stand aus den Einstellungen verwendet."""
@@ -84,19 +117,23 @@ def list_models(api_url: str | None = None, api_key: str | None = None) -> list[
 	api_url = api_url or settings.api_url
 	if not api_url:
 		frappe.throw(_("Bitte zuerst eine API-URL eintragen."))
+	ollama = (api_type or settings.api_type) == API_TYP_OLLAMA
 
 	headers = {}
 	key = api_key or settings.get_password("api_key", raise_exception=False)
 	if key:
 		headers["Authorization"] = f"Bearer {key}"
 
+	url = f"{_ollama_basis(api_url)}/api/tags" if ollama else f"{api_url.rstrip('/')}/models"
 	try:
-		response = requests.get(f"{api_url.rstrip('/')}/models", headers=headers, timeout=15)
+		response = requests.get(url, headers=headers, timeout=15)
 		response.raise_for_status()
 		data = response.json()
 	except requests.RequestException:
 		frappe.throw(_("Die API war nicht erreichbar."))
 
+	if ollama:
+		return sorted(m["name"] for m in data.get("models", []) if m.get("name"))
 	return sorted(m["id"] for m in data.get("data", []) if m.get("id"))
 
 
@@ -133,19 +170,32 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	with open(file_doc.get_full_path(), "rb") as f:
 		image_bytes = f.read()
 	try:
-		image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes)).decode()
+		image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes, settings.max_image_px)).decode()
 	except (OSError, Image.DecompressionBombError):
 		# Kein (lesbares) Bild - wie "nichts erkannt" behandeln
 		return None, False
 
 	headers = {"Content-Type": "application/json", **_auth_headers(settings)}
-	api_url = settings.api_url.rstrip("/")
+	if settings.api_type == API_TYP_OLLAMA:
+		basis = _ollama_basis(settings.api_url)
+
+		def frage():
+			return _frage_ollama(
+				basis, headers, settings.model, image_b64, settings.context_length, settings.keep_alive
+			)
+
+	else:
+		api_url = settings.api_url.rstrip("/")
+
+		def frage():
+			return _frage_openai(api_url, headers, settings.model, image_b64)
+
 	ende = time.monotonic() + GESAMT_ZEIT
 
 	stimmen = []
 	for _ in range(ANFRAGEN):
 		try:
-			stimmen.append(_frage(api_url, headers, settings.model, image_b64))
+			stimmen.append(frage())
 		except (requests.RequestException, KeyError, IndexError, ValueError):
 			# API nicht erreichbar oder Antwort nicht lesbar: weitere Anfragen
 			# wuerden nur dieselbe Wartezeit kosten.
@@ -164,7 +214,7 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	return None, False
 
 
-def _frage(api_url: str, headers: dict, model: str, image_b64: str) -> int | None:
+def _frage_openai(api_url: str, headers: dict, model: str, image_b64: str) -> int | None:
 	"""Eine Anfrage an die Vision-API. None, wenn die Antwort keine brauchbare
 	Zahl enthaelt; Netzwerk- und Formatfehler werden an den Aufrufer gereicht."""
 	body = {
@@ -200,10 +250,57 @@ def _frage(api_url: str, headers: dict, model: str, image_b64: str) -> int | Non
 		response = senden(False)
 	response.raise_for_status()
 
-	text = response.json()["choices"][0]["message"]["content"] or ""
-	if text.strip().upper().startswith("NONE"):
-		return None  # "NONE (Tageszaehler 185.5)": die Ziffern dahinter gehoeren nicht dazu
-	digits = re.sub(r"\D", "", text)
-	if not digits or len(digits) > MAX_STELLEN:
-		return None
-	return int(digits)
+	return _zahl_aus(response.json()["choices"][0]["message"]["content"] or "")
+
+
+def _frage_ollama(
+	basis: str,
+	headers: dict,
+	model: str,
+	image_b64: str,
+	num_ctx: int | None = None,
+	keep_alive: str | None = None,
+) -> int | None:
+	"""Eine Anfrage ueber Ollamas eigene Schnittstelle (/api/chat). Dort gehoeren
+	Kontextfenster (options.num_ctx), Denken aus (think) und Verweildauer im
+	Speicher (keep_alive) zur Schnittstelle. None, wenn die Antwort keine
+	brauchbare Zahl enthaelt; Netzwerk- und Formatfehler werden gereicht."""
+	optionen = {"num_predict": NUM_PREDICT}
+	if num_ctx:
+		optionen["num_ctx"] = int(num_ctx)
+	body = {
+		"model": model,
+		"stream": False,
+		"think": False,
+		"options": optionen,
+		# Text und Bild als zwei aufeinanderfolgende Nachrichten, in dieser Reihenfolge: So
+		# macht es Ollamas OpenAI-kompatible Schicht aus "Text, dann Bild". Liegt das Bild
+		# in derselben Nachricht, steht es vor dem Text, und das Modell haengt bei Zaehlern
+		# mit Dezimalstelle die Zehntelziffer an (qwen3-vl:4b-instruct: 87846 -> 878469,
+		# 173386 -> 1733862; mit zwei Nachrichten 88 % statt 83 % wie ueber die OpenAI-API).
+		"messages": [
+			{"role": "user", "content": PROMPT},
+			{"role": "user", "content": "", "images": [image_b64]},
+		],
+	}
+	if keep_alive:
+		# "30m"/"1h" als Text, "-1" (dauerhaft) und "0" als Zahl, wie Ollama es erwartet
+		body["keep_alive"] = int(keep_alive) if re.fullmatch(r"-?\d+", str(keep_alive).strip()) else keep_alive
+
+	def senden(mit_think: bool):
+		return requests.post(
+			f"{basis}/api/chat",
+			headers=headers,
+			json=body if mit_think else {k: v for k, v in body.items() if k != "think"},
+			timeout=45,
+		)
+
+	# Modelle ohne Denkfunktion koennen think ablehnen (HTTP 400): einmal ohne den
+	# Parameter weiter und die Adresse fuer spaeter vormerken.
+	response = senden(basis not in _OHNE_DENKEN_PARAMETER)
+	if response.status_code == 400 and basis not in _OHNE_DENKEN_PARAMETER:
+		_OHNE_DENKEN_PARAMETER.add(basis)
+		response = senden(False)
+	response.raise_for_status()
+
+	return _zahl_aus((response.json().get("message") or {}).get("content") or "")

@@ -22,21 +22,43 @@ class FakeVisionApi(BaseHTTPRequestHandler):
 
 	antworten: list = []
 	anfragen: list = []
+	pfade: list = []
 	lehnt_reasoning_ab = False
+	lehnt_think_ab = False
+
+	def do_GET(self):
+		FakeVisionApi.pfade.append(self.path)
+		if self.path.endswith("/api/tags"):
+			antwort = {"models": [{"name": "qwen3-vl:4b-instruct"}, {"name": "gemma4:12b"}]}
+		else:
+			antwort = {"data": [{"id": "gpt-4o"}, {"id": "gpt-4o-mini"}]}
+		self.send_response(200)
+		self.send_header("Content-Type", "application/json")
+		self.end_headers()
+		self.wfile.write(json.dumps(antwort).encode())
 
 	def do_POST(self):
 		body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
 		FakeVisionApi.anfragen.append(body)
+		FakeVisionApi.pfade.append(self.path)
 		if FakeVisionApi.lehnt_reasoning_ab and "reasoning_effort" in body:
 			self.send_response(400)
 			self.end_headers()
 			return
-		ok = body["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+		if FakeVisionApi.lehnt_think_ab and "think" in body:
+			self.send_response(400)
+			self.end_headers()
+			return
+		nativ = self.path.endswith("/api/chat")
+		if nativ:
+			ok = any(m.get("images") for m in body["messages"])
+		else:
+			ok = body["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/jpeg;base64,")
 		if FakeVisionApi.antworten:
 			text = FakeVisionApi.antworten.pop(0)
 		else:
 			text = "Stand: 123 456 km" if ok else "?"
-		antwort = {"choices": [{"message": {"content": text}}]}
+		antwort = {"message": {"content": text}} if nativ else {"choices": [{"message": {"content": text}}]}
 		self.send_response(200)
 		self.send_header("Content-Type", "application/json")
 		self.end_headers()
@@ -58,16 +80,27 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		).insert()
 
 	def setUp(self):
-		FakeVisionApi.antworten, FakeVisionApi.anfragen, FakeVisionApi.lehnt_reasoning_ab = [], [], False
+		FakeVisionApi.antworten, FakeVisionApi.anfragen, FakeVisionApi.pfade = [], [], []
+		FakeVisionApi.lehnt_reasoning_ab = FakeVisionApi.lehnt_think_ab = False
 		ocr._OHNE_DENKEN_PARAMETER.clear()
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
-		frappe.db.set_single_value("Fahrtenbuch Einstellungen", {"api_url": None, "model": None})
+		frappe.db.set_single_value(
+			"Fahrtenbuch Einstellungen",
+			{
+				"api_url": None,
+				"model": None,
+				"api_type": "OpenAI-kompatibel",
+				"context_length": None,
+				"keep_alive": None,
+				"max_image_px": None,
+			},
+		)
 		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
 		ocr._OHNE_DENKEN_PARAMETER.clear()
 
-	def _api(self, antworten=None):
+	def _api(self, antworten=None, ollama=False, kontext=None, keep_alive=None, bild_px=None):
 		"""Startet den Fake-Server und richtet die Einstellungen darauf ein."""
 		FakeVisionApi.antworten = list(antworten or [])
 		server = HTTPServer(("127.0.0.1", 0), FakeVisionApi)
@@ -75,9 +108,26 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self.addCleanup(server.shutdown)
 		frappe.db.set_single_value(
 			"Fahrtenbuch Einstellungen",
-			{"api_url": f"http://127.0.0.1:{server.server_port}/v1", "model": "test"},
+			{
+				"api_url": f"http://127.0.0.1:{server.server_port}/v1",
+				"model": "test",
+				"api_type": "Ollama (nativ)" if ollama else "OpenAI-kompatibel",
+				"context_length": kontext,
+				"keep_alive": keep_alive,
+				"max_image_px": bild_px,
+			},
 		)
 		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
+
+	def _gesendete_bildkante(self, body):
+		"""Laengste Kante des Bildes, das der Fake-Server bekommen hat (JPEG, base64)."""
+		import base64
+
+		if "images" in body["messages"][-1]:
+			b64 = body["messages"][-1]["images"][0]
+		else:
+			b64 = body["messages"][0]["content"][1]["image_url"]["url"].split(",", 1)[1]
+		return max(Image.open(io.BytesIO(base64.b64decode(b64))).size)
 
 	def test_ohne_einrichtung_kein_job(self):
 		self.assertEqual(get_odometer_reading(self.file.file_url, "start_odometer"), {"queued": False})
@@ -173,3 +223,104 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		frappe.db.set_single_value("Fahrtenbuch Einstellungen", {"api_url": "http://127.0.0.1:1/v1", "model": "x"})
 		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
 		self.assertIsNone(ocr.read_odometer(self.file))
+
+	def test_openai_pfad_bleibt_unveraendert(self):
+		self._api(kontext=8192, keep_alive="30m")  # Felder gelten nur fuer Ollama (nativ)
+		self.assertEqual(ocr.read_odometer(self.file), 123456)
+		self.assertTrue(all(p.endswith("/v1/chat/completions") for p in FakeVisionApi.pfade))
+		body = FakeVisionApi.anfragen[0]
+		self.assertNotIn("options", body)
+		self.assertNotIn("keep_alive", body)
+
+	def test_ollama_nativ(self):
+		"""Eigene Schnittstelle: /api/chat (ein angehaengtes /v1 der URL entfaellt), Bild
+		als images, Denken aus, begrenzte Antwort, ohne Kontextfenster kein num_ctx."""
+		self._api(ollama=True)
+		self.assertEqual(ocr.read_odometer(self.file), 123456)
+		self.assertTrue(all(p == "/api/chat" for p in FakeVisionApi.pfade))
+		body = FakeVisionApi.anfragen[0]
+		self.assertIs(body["think"], False)
+		self.assertEqual(body["options"], {"num_predict": ocr.NUM_PREDICT})
+		self.assertNotIn("keep_alive", body)
+		# Text zuerst, Bild danach, als zwei Nachrichten (siehe ocr._frage_ollama)
+		self.assertEqual([m["role"] for m in body["messages"]], ["user", "user"])
+		self.assertEqual(body["messages"][0], {"role": "user", "content": ocr.PROMPT})
+		self.assertTrue(body["messages"][1]["images"][0])
+		self.assertEqual(body["messages"][1]["content"], "")
+
+	def test_ollama_kontextfenster_und_verweildauer(self):
+		self._api(ollama=True, kontext=8192, keep_alive="30m")
+		ocr.read_odometer(self.file)
+		body = FakeVisionApi.anfragen[0]
+		self.assertEqual(body["options"], {"num_predict": ocr.NUM_PREDICT, "num_ctx": 8192})
+		self.assertEqual(body["keep_alive"], "30m")
+
+	def test_ollama_verweildauer_dauerhaft_als_zahl(self):
+		self._api(ollama=True, keep_alive="-1")
+		ocr.read_odometer(self.file)
+		self.assertEqual(FakeVisionApi.anfragen[0]["keep_alive"], -1)
+
+	def test_ollama_mehrheit_und_none(self):
+		self._api(["2082", "100000", "100000"], ollama=True)
+		self.assertEqual(ocr.read_odometer_mit_vertrauen(self.file), (100000, False))
+		FakeVisionApi.antworten = ["NONE", "none", "NONE (Tageszaehler 185.5)"]
+		self.assertEqual(ocr.read_odometer_mit_vertrauen(self.file), (None, False))
+
+	def test_ollama_ohne_think_wenn_abgelehnt(self):
+		FakeVisionApi.lehnt_think_ab = True
+		self._api(ollama=True)
+		self.assertEqual(ocr.read_odometer(self.file), 123456)
+		self.assertEqual(sum("think" in b for b in FakeVisionApi.anfragen), 1)  # nur die erste wurde abgelehnt
+		FakeVisionApi.anfragen.clear()
+		self.assertEqual(ocr.read_odometer(self.file), 123456)
+		self.assertFalse(any("think" in b for b in FakeVisionApi.anfragen))
+
+	def test_modelle_abrufen_beide_schnittstellen(self):
+		self._api()
+		self.assertEqual(ocr.list_models(), ["gpt-4o", "gpt-4o-mini"])
+		self.assertTrue(FakeVisionApi.pfade[-1].endswith("/v1/models"))
+		self.assertEqual(ocr.list_models(api_type="Ollama (nativ)"), ["gemma4:12b", "qwen3-vl:4b-instruct"])
+		self.assertEqual(FakeVisionApi.pfade[-1], "/api/tags")
+
+	def test_einstellungen_pruefen_kontextfenster_und_verweildauer(self):
+		einstellungen = frappe.get_doc("Fahrtenbuch Einstellungen")
+		for kontext in (100, 999999):
+			einstellungen.context_length = kontext
+			with self.assertRaises(frappe.ValidationError):
+				einstellungen.validate()
+		einstellungen.context_length = 8192
+		einstellungen.keep_alive = "30m"
+		einstellungen.validate()
+		for falsch in ("abc", "30 Minuten", "m30"):
+			einstellungen.keep_alive = falsch
+			with self.assertRaises(frappe.ValidationError):
+				einstellungen.validate()
+
+	def test_bildgroesse_standard_1024(self):
+		for ollama in (False, True):
+			FakeVisionApi.anfragen.clear()
+			self._api(ollama=ollama)
+			ocr.read_odometer(self.file)  # Testbild ist 2000 x 1200
+			self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), 1024)
+
+	def test_bildgroesse_einstellbar(self):
+		for ollama in (False, True):
+			for px in (512, 1536):
+				FakeVisionApi.anfragen.clear()
+				self._api(ollama=ollama, bild_px=px)
+				ocr.read_odometer(self.file)
+				self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), px)
+
+	def test_bildgroesse_vergroessert_nicht(self):
+		self._api(bild_px=4096)  # das Testbild ist nur 2000 px breit
+		ocr.read_odometer(self.file)
+		self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), 2000)
+
+	def test_einstellungen_pruefen_bildgroesse(self):
+		einstellungen = frappe.get_doc("Fahrtenbuch Einstellungen")
+		for px in (100, 5000):
+			einstellungen.max_image_px = px
+			with self.assertRaises(frappe.ValidationError):
+				einstellungen.validate()
+		einstellungen.max_image_px = 1536
+		einstellungen.validate()
