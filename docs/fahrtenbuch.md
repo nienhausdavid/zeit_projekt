@@ -113,6 +113,9 @@ Fahrzeugs gibt es noch nicht.
 
 ### Genauigkeit (Modellvergleich 09./10.10.2026)
 
+**Alle Ergebnisse als Tabellen** (Modelle, Prompts, Denken an/aus, Bildgröße, Zuschnitt,
+Ergebnis je Foto): [modellvergleich.md](modellvergleich.md). Hier die Kurzfassung.
+
 27 Tacho-Fotos von Wikimedia Commons (überwiegend US-Tachos, kein SLK R170;
 Sollwerte vom Bild abgelesen, Lesefehler möglich), je 3 Anfragen, Denken aus,
 Bildkante 1024 px. Der Test lief mit **Ollama auf einem Steam Deck** (Handheld
