@@ -85,8 +85,9 @@ before_request = ["zeit_projekt.zeit_projekt.pdf.force_chrome_pdf"]
 # ---------------------------------------------------------------------------
 # Desk: eine Kachel auf /apps und ein App-Symbol "Zeit & Projekt" mit den
 # Seitenleisten "Fahrtenbuch" und "Site Visits" darunter (mitgeliefert unter
-# desktop_icon/ und workspace_sidebar/, Frappe synchronisiert sie bei
-# install/migrate).
+# desktop_icon/, <modul>/sidebar/ (Doctype "Sidebar", Frappe >= 16.51) und
+# workspace_sidebar/ (aeltere Staende); Frappe synchronisiert sie bei
+# install/migrate, install.py gleicht Abweichungen aus).
 # ---------------------------------------------------------------------------
 app_logo_url = "/assets/zeit_projekt/images/zeit_projekt-logo.svg"
 

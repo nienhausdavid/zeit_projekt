@@ -13,8 +13,8 @@ anderen Kunden oder ein abgeschlossener/stornierter wird abgelehnt.
 - **Projekt gewählt:** Gibt es genau einen offenen Auftrag dazu, wird er
   übernommen; bei mehreren erscheint ein Auswahldialog (Auftrag,
   Kommissionsnummer, Datum).
-- **Noch kein Auftrag:** Knopf **„Neuer Auftrag"** – auch im noch nicht
-  gespeicherten Einsatz. Im Dialog Kunde, **Kommissionsnummer** und
+- **Noch kein Auftrag:** Knopf **„Neuer Auftrag"** direkt unter dem Feld
+  *Auftrag* (und oben im Formular) – auch im noch nicht gespeicherten Einsatz. Im Dialog Kunde, **Kommissionsnummer** und
   Aktivitätsart. Die Kommissionsnummer steht im Auftragsfeld `po_no` (je nach
   Site z. B. „Customer Reference"; ist es dort Pflicht, ist es auch im Dialog
   Pflicht). Der Auftrag entsteht als **Entwurf** – Buchen bleibt Sache des

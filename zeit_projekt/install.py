@@ -162,8 +162,14 @@ def _auftrag_an_zeitbuchungen_nachtragen():
 
 
 def _desk_abgleichen():
-	"""Desktop-Symbole und Seitenleisten exakt wie in desktop_icon/ und
-	workspace_sidebar/ herstellen.
+	"""Desktop-Symbole und Seitenleisten exakt wie in desktop_icon/,
+	<modul>/sidebar/ und workspace_sidebar/ herstellen.
+
+	Seit Frappe 16.51 liest der Desk die Seitenleisten aus dem Doctype
+	"Sidebar" (Dateien je Modul unter <modul>/sidebar/<name>/<name>.json, so
+	wie ERPNext sie ausliefert). "Workspace Sidebar" ist dort wirkungslos
+	(frappe/model/sync.py importiert workspace_sidebar/ nicht mehr); die
+	alten Dateien bleiben nur fuer aeltere Frappe-Staende erhalten.
 
 	Frappe importiert diese Dateien beim migrate nur, wenn der Datensatz fehlt
 	oder aelter als die Datei ist (frappe/modules/import_file.py,
@@ -175,28 +181,29 @@ def _desk_abgleichen():
 	dem der Datei entspricht, aus der Datei neu laden (force). Der alte
 	Datensatz wird dabei "for_reload" geloescht, also ohne on_trash - die
 	Dateien in der App bleiben auch im developer_mode unangetastet."""
+	import glob
 	import os
 
 	from frappe.modules.import_file import import_file_by_path, read_doc_from_file
 	from frappe.utils import get_datetime
 
-	geaendert = []
+	dateien = []
 	for ordner in ("workspace_sidebar", "desktop_icon"):
 		pfad = frappe.get_app_path("zeit_projekt", ordner)
-		if not os.path.isdir(pfad):
+		if os.path.isdir(pfad):
+			dateien += [os.path.join(pfad, d) for d in sorted(os.listdir(pfad)) if d.endswith(".json")]
+	dateien += sorted(glob.glob(os.path.join(frappe.get_app_path("zeit_projekt"), "*", "sidebar", "*", "*.json")))
+
+	geaendert = []
+	for datei in dateien:
+		doc = read_doc_from_file(datei)
+		if not frappe.db.table_exists(doc["doctype"]):
 			continue
-		for datei in sorted(os.listdir(pfad)):
-			if not datei.endswith(".json"):
-				continue
-			datei = os.path.join(pfad, datei)
-			doc = read_doc_from_file(datei)
-			if not frappe.db.table_exists(doc["doctype"]):
-				continue
-			in_db = frappe.db.get_value(doc["doctype"], doc["name"], "modified")
-			if in_db and get_datetime(in_db) == get_datetime(doc["modified"]):
-				continue
-			import_file_by_path(datei, force=True, ignore_version=True)
-			geaendert.append(doc["name"])
+		in_db = frappe.db.get_value(doc["doctype"], doc["name"], "modified")
+		if in_db and get_datetime(in_db) == get_datetime(doc["modified"]):
+			continue
+		import_file_by_path(datei, force=True, ignore_version=True)
+		geaendert.append(doc["name"])
 
 	if geaendert:
 		from frappe.desk.doctype.desktop_icon.desktop_icon import clear_desktop_icons_cache
@@ -275,7 +282,13 @@ def _entferne_desktop_symbole():
 		frappe.delete_doc(
 			"Workspace Sidebar", name, ignore_permissions=True, force=True, ignore_on_trash=True
 		)
-	if kinder or eigene or seitenleisten:
+	# Dasselbe fuer den Doctype "Sidebar" (Frappe ab 16.51), den der Desk liest.
+	neue_seitenleisten = []
+	if frappe.db.table_exists("Sidebar"):
+		neue_seitenleisten = frappe.get_all("Sidebar", filters={"app": "zeit_projekt"}, pluck="name")
+		for name in neue_seitenleisten:
+			frappe.delete_doc("Sidebar", name, ignore_permissions=True, force=True, ignore_on_trash=True)
+	if kinder or eigene or seitenleisten or neue_seitenleisten:
 		frappe.cache.delete_key("desktop_icons")
 		frappe.cache.delete_key("bootinfo")
 

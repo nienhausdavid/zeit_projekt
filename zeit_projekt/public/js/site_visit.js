@@ -55,6 +55,12 @@ frappe.ui.form.on('Site Visit', {
 		fill_from_project(frm);
 	},
 
+	// Knopf direkt unter dem Feld Auftrag (Feld neuer_auftrag, nur sichtbar,
+	// solange kein Auftrag gewaehlt ist) - derselbe Dialog wie oben im Formular.
+	neuer_auftrag(frm) {
+		show_create_sales_order_dialog(frm);
+	},
+
 	sales_order(frm) {
 		// Kunde (und, falls noch leer, Projekt) aus dem gewaehlten Auftrag
 		// uebernehmen - derselbe Grund wie bei project(): der Techniker soll
