@@ -153,8 +153,13 @@ def create_sales_order(customer, activity_type, po_no=None, project=None, compan
 				"company": company or erpnext.get_default_company(),
 				"project": project or None,
 				"po_no": (po_no or "").strip() or None,
-				"transaction_date": heute,
-				"delivery_date": max(getdate(date or heute), heute),
+				# Als Text (ISO), nicht als date: ERPNext reicht transaction_date beim
+				# Zahlungsplan an get_payment_term_details weiter, und das prueft
+				# seit Frappe 16.51 in Web-Requests str | None. Mit einem date
+				# scheiterte der Auftrag fuer jeden Kunden mit Zahlungsbedingung
+				# (FrappeTypeError), in der Konsole blieb das unbemerkt.
+				"transaction_date": str(heute),
+				"delivery_date": str(max(getdate(date or heute), heute)),
 			}
 		)
 		zeile = price_rows(
