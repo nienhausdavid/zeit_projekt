@@ -30,6 +30,9 @@ PROMPT = (
 # (content: "") und einmal mit komplettem Totalausfall (Timeout) quittiert.
 # Erst nach Verkleinerung auf ~1024px kam eine korrekte Antwort. Deshalb hier
 # vorsorglich fuer jedes Foto, nicht erst als Reaktion auf einen Fehlschlag.
+# Standardwert; in den Einstellungen (Bildgroesse) aenderbar. Bei zwei echten, dunklen
+# Handyfotos las ornith-1.5:9b mit 1536 px besser als mit 1024 px, brauchte aber etwa
+# doppelt so lange (docs/modellvergleich.md, Abschnitt 8).
 MAX_IMAGE_DIMENSION = 1024
 
 # Modellvergleich vom 09./10.10.2026 (27 Tacho-Fotos, je 3 Anfragen, Details in
@@ -52,14 +55,15 @@ GESAMT_ZEIT = 100
 _OHNE_DENKEN_PARAMETER = set()
 
 
-def _downscale_to_jpeg(image_bytes: bytes) -> bytes:
+def _downscale_to_jpeg(image_bytes: bytes, max_px: int | None = None) -> bytes:
 	"""Skaliert bei Bedarf herunter und kodiert dabei immer als JPEG neu -
 	nicht nur wenn tatsaechlich verkleinert wird, damit der MIME-Typ im
 	data:-URL unten (immer "image/jpeg") garantiert zum Inhalt passt, egal
 	welches Format das Original hatte."""
 	image = Image.open(io.BytesIO(image_bytes))
-	if max(image.size) > MAX_IMAGE_DIMENSION:
-		image.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION))
+	max_px = max_px or MAX_IMAGE_DIMENSION
+	if max(image.size) > max_px:
+		image.thumbnail((max_px, max_px))
 
 	buffer = io.BytesIO()
 	image.convert("RGB").save(buffer, format="JPEG", quality=85)
@@ -166,7 +170,7 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	with open(file_doc.get_full_path(), "rb") as f:
 		image_bytes = f.read()
 	try:
-		image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes)).decode()
+		image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes, settings.max_image_px)).decode()
 	except (OSError, Image.DecompressionBombError):
 		# Kein (lesbares) Bild - wie "nichts erkannt" behandeln
 		return None, False

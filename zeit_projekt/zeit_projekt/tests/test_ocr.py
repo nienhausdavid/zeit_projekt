@@ -94,12 +94,13 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				"api_type": "OpenAI-kompatibel",
 				"context_length": None,
 				"keep_alive": None,
+				"max_image_px": None,
 			},
 		)
 		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
 		ocr._OHNE_DENKEN_PARAMETER.clear()
 
-	def _api(self, antworten=None, ollama=False, kontext=None, keep_alive=None):
+	def _api(self, antworten=None, ollama=False, kontext=None, keep_alive=None, bild_px=None):
 		"""Startet den Fake-Server und richtet die Einstellungen darauf ein."""
 		FakeVisionApi.antworten = list(antworten or [])
 		server = HTTPServer(("127.0.0.1", 0), FakeVisionApi)
@@ -113,9 +114,20 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				"api_type": "Ollama (nativ)" if ollama else "OpenAI-kompatibel",
 				"context_length": kontext,
 				"keep_alive": keep_alive,
+				"max_image_px": bild_px,
 			},
 		)
 		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
+
+	def _gesendete_bildkante(self, body):
+		"""Laengste Kante des Bildes, das der Fake-Server bekommen hat (JPEG, base64)."""
+		import base64
+
+		if "images" in body["messages"][-1]:
+			b64 = body["messages"][-1]["images"][0]
+		else:
+			b64 = body["messages"][0]["content"][1]["image_url"]["url"].split(",", 1)[1]
+		return max(Image.open(io.BytesIO(base64.b64decode(b64))).size)
 
 	def test_ohne_einrichtung_kein_job(self):
 		self.assertEqual(get_odometer_reading(self.file.file_url, "start_odometer"), {"queued": False})
@@ -283,3 +295,32 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 			einstellungen.keep_alive = falsch
 			with self.assertRaises(frappe.ValidationError):
 				einstellungen.validate()
+
+	def test_bildgroesse_standard_1024(self):
+		for ollama in (False, True):
+			FakeVisionApi.anfragen.clear()
+			self._api(ollama=ollama)
+			ocr.read_odometer(self.file)  # Testbild ist 2000 x 1200
+			self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), 1024)
+
+	def test_bildgroesse_einstellbar(self):
+		for ollama in (False, True):
+			for px in (512, 1536):
+				FakeVisionApi.anfragen.clear()
+				self._api(ollama=ollama, bild_px=px)
+				ocr.read_odometer(self.file)
+				self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), px)
+
+	def test_bildgroesse_vergroessert_nicht(self):
+		self._api(bild_px=4096)  # das Testbild ist nur 2000 px breit
+		ocr.read_odometer(self.file)
+		self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), 2000)
+
+	def test_einstellungen_pruefen_bildgroesse(self):
+		einstellungen = frappe.get_doc("Fahrtenbuch Einstellungen")
+		for px in (100, 5000):
+			einstellungen.max_image_px = px
+			with self.assertRaises(frappe.ValidationError):
+				einstellungen.validate()
+		einstellungen.max_image_px = 1536
+		einstellungen.validate()

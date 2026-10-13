@@ -5,11 +5,14 @@ from frappe import _
 from frappe.model.document import Document
 
 MIN_KONTEXT, MAX_KONTEXT = 2048, 262144
+MIN_BILD, MAX_BILD = 256, 4096
 
 
 class FahrtenbuchEinstellungen(Document):
 	def validate(self):
 		# Zu kleine Fenster schneiden Bild oder Prompt ab, zu grosse sprengen den Speicher
+		if self.max_image_px and not MIN_BILD <= self.max_image_px <= MAX_BILD:
+			frappe.throw(_("Die Bildgröße muss zwischen {0} und {1} Pixel liegen.").format(MIN_BILD, MAX_BILD))
 		if self.context_length and not MIN_KONTEXT <= self.context_length <= MAX_KONTEXT:
 			frappe.throw(
 				_("Das Kontextfenster muss zwischen {0} und {1} Token liegen.").format(MIN_KONTEXT, MAX_KONTEXT)
