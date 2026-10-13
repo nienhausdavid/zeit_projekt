@@ -141,7 +141,7 @@ keinem. Das Tageszähler-Foto bleibt ein Fehler bei allen.
 
 **Dauer je Foto** (ebenfalls auf dem Steam Deck, `ornith-1.5:9b`): Die erste
 Anfrage braucht etwa 14 s, weil das Bild erst verarbeitet wird; jede weitere
-Anfrage mit demselben Bild etwa 0,8 s (Zwischenspeicher von Ollama). Der
+Anfrage mit demselben Bild etwa 0,8 s (vermutlich Zwischenspeicher von Ollama). Der
 Mehrheitsentscheid kostet daher kaum Zeit, ein Foto dauert insgesamt etwa 15 s
 (höchstens gut 18 s). Dazu kommt das Laden des Modells, wenn Ollama es nach einer
 Pause neu in den Speicher holen muss (im Test insgesamt 26 s für das erste Foto).

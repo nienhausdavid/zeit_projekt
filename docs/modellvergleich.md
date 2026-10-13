@@ -57,8 +57,8 @@ mit den anderen vergleichbar. (3) Jede Anfrage lief ins Limit von 120 s.
 Temperatur-Foto liefert mit NONE 1/2 bei allen vier Hauptmodellen in allen 3
 Anfragen „kein Wert", das Tageszähler-Foto bei keinem (sie lesen den Tageszähler
 als Gesamtstand). *Dauer je Foto:* erste Anfrage plus eine weitere mit demselben
-Bild (Ollama behält das verarbeitete Bild im Zwischenspeicher: erste Anfrage etwa
-14 s, weitere etwa 0,8 s). `gemma4:e4b` und `gemma4:e2b` wurden nur mit dem früheren
+Bild (erste Anfrage etwa 14 s, weitere etwa 0,8 s; vermutlich hält Ollama das
+verarbeitete Bild im Zwischenspeicher - nicht geprüft). `gemma4:e4b` und `gemma4:e2b` wurden nur mit dem früheren
 Prompt gemessen. `glm-ocr` liest die ganze Anzeige als Text, antwortet auf die Frage
 nicht gezielt und läuft meist ins Limit - unbrauchbar für diese Aufgabe.
 
