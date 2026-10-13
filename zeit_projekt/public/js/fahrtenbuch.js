@@ -93,8 +93,18 @@ frappe.ui.form.on('Fahrt', {
 		fetch_odometer_reading(frm, 'end_odometer_photo', 'end_odometer');
 	},
 
+	// Ändert der Techniker einen erkannten Wert, ist die "nicht sicher"-Markierung erledigt.
+	start_odometer(frm) {
+		setze_hinweis(frm, 'start_odometer');
+	},
+
+	end_odometer(frm) {
+		setze_hinweis(frm, 'end_odometer');
+	},
+
 	refresh(frm) {
 		frm.dashboard.clear_headline();
+		setze_foto_hinweise(frm);
 		update_timer_toolbar(frm);
 		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
 			frm.add_custom_button(__('Zeitblatt öffnen'), () => frappe.set_route('Form', 'Timesheet', frm.doc.timesheet));
@@ -175,6 +185,25 @@ if (!window.zeit_projekt_ocr.listener) {
 	});
 }
 
+// Beschreibung eines Kilometerstand-Feldes ändern und später auf den
+// ursprünglichen Text aus dem Doctype zurücksetzen (text weglassen).
+const ursprungstexte = {};
+function setze_hinweis(frm, fieldname, text) {
+	const feld = frm.fields_dict[fieldname];
+	if (!feld) return;
+	if (!(fieldname in ursprungstexte)) ursprungstexte[fieldname] = feld.df.description;
+	frm.set_df_property(fieldname, 'description', text === undefined ? ursprungstexte[fieldname] : text);
+}
+
+// Fotohilfe: was auf das Bild gehört, steht an den Foto-Feldern - die
+// Erkennung liest sonst gern den Tageszähler (TRIP) statt des Gesamtstands.
+function setze_foto_hinweise(frm) {
+	const hinweis = __(
+		'Foto vom Gesamt-Kilometerzähler (ODO) - nicht vom Tageszähler (TRIP) und nicht von der Temperatur. Zahl formatfüllend, ohne Spiegelung. Der Stand wird automatisch erkannt und kann danach jederzeit von Hand korrigiert werden.'
+	);
+	['start_odometer_photo', 'end_odometer_photo'].forEach((f) => frm.set_df_property(f, 'description', hinweis));
+}
+
 function zeige_erkennung(auftrag, data) {
 	const frm = cur_frm;
 	// Formular inzwischen verlassen, anderes Foto oder Wert schon von Hand
@@ -197,8 +226,22 @@ function zeige_erkennung(auftrag, data) {
 			indicator: 'orange',
 		});
 	} else if (data.reading && !frm.doc[data.fieldname]) {
-		frm.set_value(data.fieldname, data.reading);
-		frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [data.reading]), indicator: 'green' });
+		frm.set_value(data.fieldname, data.reading).then(() => {
+			if (data.unsicher) {
+				// Die Modellantworten waren nicht einhellig: Wert eintragen, aber
+				// sichtbar markieren, bis der Techniker ihn bestätigt oder ändert.
+				setze_hinweis(frm, data.fieldname, __('Automatisch erkannt, aber nicht sicher - bitte mit dem Foto vergleichen.'));
+				frappe.show_alert(
+					{
+						message: __('Kilometerstand erkannt: {0} - nicht sicher, bitte mit dem Foto vergleichen.', [data.reading]),
+						indicator: 'orange',
+					},
+					10
+				);
+			} else {
+				frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [data.reading]), indicator: 'green' });
+			}
+		});
 	} else if (!data.reading) {
 		frappe.show_alert({
 			message: __('Konnte den Kilometerstand nicht erkennen, bitte manuell eintragen.'),

@@ -96,6 +96,11 @@ def is_configured() -> bool:
 
 
 def read_odometer(file_doc) -> int | None:
+	"""Nur der erkannte Wert (siehe read_odometer_mit_vertrauen)."""
+	return read_odometer_mit_vertrauen(file_doc)[0]
+
+
+def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	"""Liest den Kilometerstand ueber eine OpenAI-kompatible Chat-Completions-
 	API (Ollama, LM Studio, echtes OpenAI, ...) - konfiguriert in
 	"Fahrtenbuch Einstellungen", keine Standard-URL/kein Standard-Modell
@@ -105,10 +110,15 @@ def read_odometer(file_doc) -> int | None:
 	nichts Eindeutiges erkannt wurde - der Techniker traegt dann manuell ein,
 	das Feld bleibt dafuer immer normal editierbar. Bewusst in einem eigenen
 	Modul: die einzige Stelle, die sich aendern muesste, falls das
-	API-Format spaeter wechseln sollte."""
+	API-Format spaeter wechseln sollte.
+
+	Rueckgabe: (Wert, sicher). "Sicher" heisst: schon die ersten beiden
+	Antworten stimmen ueberein. Brauchte es die dritte Anfrage, gab es eine
+	abweichende Antwort - der Wert ist dann nur die Mehrheit und der Techniker
+	soll ihn gegen das Foto pruefen."""
 	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
 	if not settings.api_url or not settings.model:
-		return None
+		return None, False
 
 	with open(file_doc.get_full_path(), "rb") as f:
 		image_bytes = f.read()
@@ -116,7 +126,7 @@ def read_odometer(file_doc) -> int | None:
 		image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes)).decode()
 	except (OSError, Image.DecompressionBombError):
 		# Kein (lesbares) Bild - wie "nichts erkannt" behandeln
-		return None
+		return None, False
 
 	headers = {"Content-Type": "application/json", **_auth_headers(settings)}
 	api_url = settings.api_url.rstrip("/")
@@ -130,17 +140,18 @@ def read_odometer(file_doc) -> int | None:
 			# API nicht erreichbar oder Antwort nicht lesbar: weitere Anfragen
 			# wuerden nur dieselbe Wartezeit kosten.
 			frappe.logger("fahrtenbuch").error("Kilometerstand-Erkennung fehlgeschlagen", exc_info=True)
-			return None
+			return None, False
 
 		haeufigste = Counter(s for s in stimmen if s is not None).most_common(1)
 		if haeufigste and haeufigste[0][1] >= 2:
-			return haeufigste[0][0]  # zwei gleiche Antworten genuegen, die dritte spart man sich
+			# zwei gleiche Antworten genuegen, die dritte spart man sich
+			return haeufigste[0][0], len(stimmen) == 2
 		if time.monotonic() > ende:
 			break
 
 	# Keine zwei gleichen Antworten: lieber kein Wert, als einen unsicheren
 	# einzutragen - der Techniker tippt ihn dann selbst ein.
-	return None
+	return None, False
 
 
 def _frage(api_url: str, headers: dict, model: str, image_b64: str) -> int | None:

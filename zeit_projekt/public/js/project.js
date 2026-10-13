@@ -65,6 +65,18 @@ function capture_photo_for_field(frm, fieldname) {
 	const capture = new frappe.ui.Capture({ animate: false, error: true });
 	capture.show();
 	hide_and_cleanup_mobile_capture_input(capture);
+	// Hinweis im Kamera-Dialog (Desktop/Webcam; auf dem Handy übernimmt die
+	// Kamera-App, dort steht derselbe Text am Foto-Feld der Fahrt): Die
+	// Erkennung liest sonst gern den Tageszähler statt des Gesamtstands.
+	if (capture.dialog && capture.dialog.$body) {
+		$('<div class="text-muted small" style="margin-bottom: 8px;"></div>')
+			.text(
+				__(
+					'Bitte den Gesamt-Kilometerzähler (ODO) formatfüllend fotografieren - nicht den Tageszähler (TRIP) und nicht die Temperatur. Spiegelungen vermeiden.'
+				)
+			)
+			.prependTo(capture.dialog.$body);
+	}
 	capture.submit((data_urls) => {
 		if (!data_urls || !data_urls.length) return;
 		upload_captured_image(frm, fieldname, data_urls[0]);

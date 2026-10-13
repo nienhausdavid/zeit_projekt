@@ -98,7 +98,29 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 			run_odometer_ocr(self.file.name, "start_odometer", res["request_id"], "Administrator")
 		event, daten = publish.call_args.args[:2]
 		self.assertEqual(event, "zeit_projekt_odometer")
-		self.assertEqual(daten, {"request_id": res["request_id"], "fieldname": "start_odometer", "reading": 123456})
+		self.assertEqual(
+			daten,
+			{"request_id": res["request_id"], "fieldname": "start_odometer", "reading": 123456, "unsicher": False},
+		)
+
+	def _melde(self, antworten):
+		"""Fuehrt den Hintergrund-Job gegen den Fake-Server aus und liefert die Meldung ans Formular."""
+		self._api(antworten)
+		with patch("frappe.publish_realtime") as publish:
+			run_odometer_ocr(self.file.name, "end_odometer", "req", "Administrator")
+		return publish.call_args.args[1]
+
+	def test_einhellig_ist_sicher(self):
+		daten = self._melde(["55055", "55055"])
+		self.assertEqual((daten["reading"], daten["unsicher"]), (55055, False))
+
+	def test_mehrheit_mit_ausreisser_ist_unsicher(self):
+		daten = self._melde(["2082", "100000", "100000"])
+		self.assertEqual((daten["reading"], daten["unsicher"]), (100000, True))
+
+	def test_ohne_wert_nicht_als_unsicher_gemeldet(self):
+		daten = self._melde(["111", "222", "333"])
+		self.assertEqual((daten["reading"], daten["unsicher"]), (None, False))
 
 	def test_zwei_gleiche_antworten_genuegen(self):
 		self._api(["55055", "55055", "99"])
