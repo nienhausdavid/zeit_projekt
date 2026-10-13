@@ -214,12 +214,56 @@ die Verkleinerung auf 1024 px kostet Genauigkeit. `qwen3-vl:4b-instruct` lässt 
 (16324), bei 2048 px liest es das scharfe Foto richtig. `ornith-1.5:9b` liest das scharfe Foto immer richtig und das unscharfe
 bei 1536 px per Mehrheit. 2048 px kostet bei `ornith-1.5:9b` 90 s je Foto, 1536 px etwa 35 s.
 
+## 9. Weitere Modelle und Bildgröße auf den eigenen Fotos (bis Originalgröße)
+
+Dieselben zwei Handyfotos wie in Abschnitt 8 (Gesamtstand **163244 km**, Foto 1 scharf, Foto 2 unscharf und schräg), jetzt mit vier
+weiteren Modellen und vier Bildgrößen. Die Fotos sind **3072 × 4080 px** (längste Kante 4080 px); „Original" heißt hier: nicht
+verkleinert. Je Foto 3 Anfragen, Schnittstelle *Ollama (nativ)* mit zwei Nachrichten, Kontextfenster 32 768, Denken aus, aktueller
+Prompt. Dauer = erste Anfrage bei Foto 2 (Modell geladen); die weiteren Anfragen kommen durch den Prompt-Cache von Ollama in unter
+einer Sekunde und sagen nichts über die Rechenzeit.
+
+| Modell | Bildkante | Foto 1 (scharf) | Foto 2 (unscharf) | Dauer je Foto | Speicher |
+|---|---|---|---|---|---|
+| `qwen3-vl:8b-instruct` | 1024 px | 163244 ×3 ✓ | 153214, 15321, 15321 ✗ | 19 s | 7,8 GB |
+| `qwen3-vl:8b-instruct` | 1536 px | 163244 ×3 ✓ | 16324 ×3 ✗ | 35 s | 7,8 GB |
+| `qwen3-vl:8b-instruct` | 2048 px | 163244 ×3 ✓ | 163214, 16321, 163214 ✗ | 87 s | 7,8 GB |
+| `qwen3-vl:8b-instruct` | Original | leer ✗ | leer ✗ | – | 7,8 GB |
+| `qwen2.5vl:7b` | 1024 px | 163244 ×3 ✓ | 95600 ×3 ✗ | 15 s | 6,2 GB |
+| `qwen2.5vl:7b` | 1536 px | 163244 ×3 ✓ | 16324 ×3 ✗ | 36 s | 6,2 GB |
+| `qwen2.5vl:7b` | 2048 px | leer ✗ | leer ✗ | – | 6,2 GB |
+| `qwen2.5vl:7b` | Original | leer ✗ | leer ✗ | – | 6,2 GB |
+| `minicpm-v4.5` | 1024 px | 163244 ×3 ✓ | 9956 ×3 ✗ | 11 s | – |
+| `minicpm-v4.5` | 1536 px | 163244 ×3 ✓ | 1632 ×3 ✗ | 21 s | – |
+| `minicpm-v4.5` | 2048 px | 163244 ×3 ✓ | 1632 ×3 ✗ | 21 s | – |
+| `minicpm-v4.5` | Original | 163244 ×3 ✓ | 1632, 1632, 1632768 ✗ | 22 s | – |
+| `granite3.2-vision` | 1024 px | 120000 ×3 ✗ | leer ✗ | – | – |
+| `granite3.2-vision` | 1536 px bis Original | leer ✗ | leer ✗ | – | – |
+
+„Leer" heißt: Der Server antwortet mit HTTP 200 und einem leeren Text, ohne Fehlermeldung (kein `done_reason`, keine Tokenzahl).
+Die App wertet das wie „nichts erkannt".
+
+Ergebnisse:
+
+- **Foto 1 (scharf)** lesen `qwen3-vl:8b-instruct`, `qwen2.5vl:7b` und `minicpm-v4.5` schon bei 1024 px richtig. Mehr Auflösung bringt
+  hier nichts, kostet aber Zeit (`qwen3-vl:8b-instruct`: 19 s bei 1024 px, 87 s bei 2048 px).
+- **Foto 2 (unscharf)** liest keins der vier Modelle, auch nicht in Originalgröße. Meist fehlt die letzte Ziffer oder es kommt
+  eine andere Zahl heraus (zum Beispiel der Tageszähler 95,6 als 95600). Das hatte in Abschnitt 8 nur `ornith-1.5:9b` bei 1536 px per
+  Mehrheit geschafft.
+- **Originalgröße funktioniert auf dem Steam Deck nicht zuverlässig.** Leere Antworten bei `qwen3-vl:8b-instruct` ab etwa 4,9 MP
+  (1928 × 2560 px; 1542 × 2048 px = 3,2 MP lief mit 3102 Prompt-Token), bei `qwen2.5vl:7b` schon ab 1542 × 2048 px. Am Kontextfenster
+  liegt das nicht (3102 Token bei 32 768 verfügbaren). Vermutlich bricht die Bildverarbeitung bei großen Bildern ab (Speicher); die
+  Ollama-Logs wurden nicht geprüft. Nur `minicpm-v4.5` verarbeitet das Original (22 s je Foto).
+- `granite3.2-vision` ist für die Aufgabe nicht brauchbar.
+
+Folge für die App: Die Einstellung **Originalauflösung verwenden** schickt das Foto unverkleinert. Sie ist für Modelle gedacht, die große
+Bilder verkraften; mit `qwen3-vl` und `qwen2.5vl` auf diesem Steam Deck führt sie zu leeren Antworten. Der Standard bleibt 1024 px.
+
 ## Grenzen
 
 - 27 Fotos mit je 3 Anfragen: Unterschiede von wenigen Punkten sind nicht gesichert.
 - Sollwerte vom Bild abgelesen, Lesefehler möglich.
 - Überwiegend US-Tachos mit englischer Beschriftung, kein SLK R170. Echte Handyfotos wurden nur
-  an zwei Fotos geprüft (Abschnitt 8); dort schnitten die Modelle schlechter ab als auf den Commons-Fotos.
+  an zwei Fotos geprüft (Abschnitt 8 und 9); dort schnitten die Modelle schlechter ab als auf den Commons-Fotos.
 - Alles auf einem Steam Deck gemessen; Dauern lassen sich nicht auf andere Hardware
   übertragen.
 - Rohdaten, Skripte und Fotos liegen im Bench unter `modell-vergleich/`

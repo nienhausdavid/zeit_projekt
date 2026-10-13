@@ -34,6 +34,8 @@ PROMPT = (
 # Handyfotos las ornith-1.5:9b mit 1536 px besser als mit 1024 px, brauchte aber etwa
 # doppelt so lange (docs/modellvergleich.md, Abschnitt 8).
 MAX_IMAGE_DIMENSION = 1024
+# Marker fuer "nicht verkleinern" (Einstellung "Originalauflösung verwenden")
+ORIGINAL_GROESSE = -1
 
 # Modellvergleich vom 09./10.10.2026 (27 Tacho-Fotos, je 3 Anfragen, Details in
 # docs/fahrtenbuch.md): Mit dem Standard-Denken der Modelle kam bei schwierigen
@@ -62,7 +64,7 @@ def _downscale_to_jpeg(image_bytes: bytes, max_px: int | None = None) -> bytes:
 	welches Format das Original hatte."""
 	image = Image.open(io.BytesIO(image_bytes))
 	max_px = max_px or MAX_IMAGE_DIMENSION
-	if max(image.size) > max_px:
+	if max_px != ORIGINAL_GROESSE and max(image.size) > max_px:
 		image.thumbnail((max_px, max_px))
 
 	buffer = io.BytesIO()
@@ -170,7 +172,9 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	with open(file_doc.get_full_path(), "rb") as f:
 		image_bytes = f.read()
 	try:
-		image_b64 = base64.b64encode(_downscale_to_jpeg(image_bytes, settings.max_image_px)).decode()
+		image_b64 = base64.b64encode(_downscale_to_jpeg(
+				image_bytes, ORIGINAL_GROESSE if settings.get("image_original") else settings.max_image_px
+			)).decode()
 	except (OSError, Image.DecompressionBombError):
 		# Kein (lesbares) Bild - wie "nichts erkannt" behandeln
 		return None, False
