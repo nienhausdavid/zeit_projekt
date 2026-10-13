@@ -110,7 +110,8 @@ Fahrzeugs gibt es noch nicht.
 
 27 Tacho-Fotos von Wikimedia Commons (überwiegend US-Tachos, kein SLK R170;
 Sollwerte vom Bild abgelesen, Lesefehler möglich), je 3 Anfragen, Denken aus,
-Bildkante 1024 px, Ollama:
+Bildkante 1024 px. Der Test lief mit **Ollama auf einem Steam Deck** (Handheld
+mit integrierter Grafik, kein Server mit dedizierter GPU):
 
 | Modell | Treffer je Anfrage | Foto per Mehrheit richtig |
 |---|---|---|
@@ -118,6 +119,15 @@ Bildkante 1024 px, Ollama:
 | `gemma4:12b` | 79 % | 21 von 27 |
 | `qwen3.5:9b` | 73 % | 21 von 27 |
 | `gemma4:e4b` / `qwen3.5:4b` / `gemma4:e2b` | 58 % / 53 % / 43 % | 16 / 14 / 11 von 27 |
+
+**Dauer je Foto** (ebenfalls auf dem Steam Deck, `ornith-1.5:9b`): Die erste
+Anfrage braucht etwa 14 s, weil das Bild erst verarbeitet wird; jede weitere
+Anfrage mit demselben Bild etwa 0,8 s (Zwischenspeicher von Ollama). Der
+Mehrheitsentscheid kostet daher kaum Zeit, ein Foto dauert insgesamt etwa 15 s
+(höchstens gut 18 s). Dazu kommt das Laden des Modells, wenn Ollama es nach einer
+Pause neu in den Speicher holen muss (im Test insgesamt 26 s für das erste Foto).
+Auf stärkerer Hardware sind kürzere Zeiten zu erwarten, die Genauigkeit sollte
+sich nicht ändern; die Werte hier gelten nur für das Steam Deck.
 
 `glm-ocr` liest die ganze Anzeige als Text und passt nicht zur Aufgabe. Kleinere
 Bilder (640 px: 67 %, 448 px: 57 % bei `ornith-1.5:9b`) und ein automatischer
