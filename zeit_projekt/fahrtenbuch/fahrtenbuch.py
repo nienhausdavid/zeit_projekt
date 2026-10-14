@@ -33,9 +33,9 @@ def on_cancel(doc, method=None):
 
 
 def abrechenbare_stunden(stunden):
-	"""Taktung aus "Fahrtenbuch Einstellungen": auf volle Schritte aufrunden.
+	"""Taktung aus "Zeit Projekt Einstellungen": auf volle Schritte aufrunden.
 	0 = keine Taktung (None -> das Zeitblatt nimmt die tatsaechliche Dauer)."""
-	schritt = cint(frappe.db.get_single_value("Fahrtenbuch Einstellungen", "rounding_minutes"))
+	schritt = cint(frappe.db.get_single_value("Zeit Projekt Einstellungen", "rounding_minutes"))
 	if schritt <= 0:
 		return None
 	minuten = math.ceil(round(flt(stunden) * 60, 4) / schritt) * schritt
@@ -53,13 +53,13 @@ def positionstext(doc, art):
 
 @frappe.whitelist()
 def get_fahrt_defaults():
-	"""Vorbelegungen fuer das Fahrt-Formular. "Fahrtenbuch Einstellungen" darf
+	"""Vorbelegungen fuer das Fahrt-Formular. "Zeit Projekt Einstellungen" darf
 	nur der System Manager lesen (API-Schluessel) - Techniker bekommen hier nur
 	die unkritischen Werte. get_cached_doc liefert bei nie gespeicherten
 	Einstellungen die Feld-Defaults (beide Haken an)."""
 	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
 		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
-	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
+	settings = frappe.get_cached_doc("Zeit Projekt Einstellungen")
 	return {
 		"activity_type": settings.activity_type,
 		"km_item": settings.km_item,
@@ -126,7 +126,7 @@ def run_odometer_ocr(file_name, fieldname, request_id, user):
 
 @frappe.whitelist()
 def get_available_models(api_url=None, api_key=None, api_type=None):
-	"""Fuer den "Modelle abrufen"-Button in Fahrtenbuch Einstellungen -
+	"""Fuer den "Modelle abrufen"-Button in Zeit Projekt Einstellungen -
 	api_url/api_key/api_type optional, damit ein gerade eingetipptes, noch nicht
 	gespeichertes Feld direkt getestet werden kann. Nur System Manager: der
 	Server ruft dabei eine frei angegebene URL ab."""

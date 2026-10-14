@@ -54,7 +54,7 @@ Installation bricht sonst ab.
 3. **Lager**: Neue Auftragspositionen brauchen ein Lager (ERPNext-Vorgabe,
    auch für Dienstleistungen) – Standardlager am Artikel, am Auftrag oder in
    den Lagereinstellungen setzen.
-4. **Fahrtenbuch Einstellungen**: Aktivitätsart Fahrzeit und
+4. **Zeit Projekt Einstellungen**: Aktivitätsart Fahrzeit und
    Kilometer-Artikel als Vorbelegung, optional Taktung der Fahrzeit und die
    API für die Kilometerstand-Erkennung.
 5. **Zeit Projekt Einstellungen**: Aufbau der Positionsbeschreibung im

@@ -33,7 +33,7 @@ Kilometer bereits in einer gebuchten Rechnung stehen.
 
 ## Taktung
 
-*Fahrtenbuch Einstellungen → „Fahrzeit abrechnen in Schritten von
+*Zeit Projekt Einstellungen → „Fahrzeit abrechnen in Schritten von
 (Minuten)"*: z. B. 15 rundet die abrechenbaren Stunden auf volle
 Viertelstunden auf (50 Minuten → 1,0 Std.). Die tatsächliche Dauer bleibt im
 Zeitblatt erhalten; ERPNext zeigt dann den Hinweis, dass die abrechenbaren
@@ -50,7 +50,7 @@ geprüft.
 Im Projekt-Formular legt der Knopf **„Fahrt mit Timer starten"** (und das
 „+" bei *Fahrten* unter *Verknüpfungen*) eine Fahrt mit Projekt/Kunde an,
 startet den Timer und öffnet die Kamera für das Start-Foto. Beides einzeln
-abschaltbar in *Fahrtenbuch Einstellungen* (Standard: an).
+abschaltbar in *Zeit Projekt Einstellungen* (Standard: an).
 
 ## Kilometerstand-Erkennung
 
@@ -58,7 +58,7 @@ Liest den Kilometerstand aus dem Tacho-Foto über eine beliebige
 **OpenAI-kompatible API** (Chat-Completions mit Bild) – z. B.
 [Ollama](https://ollama.com/), LM Studio oder OpenAI selbst.
 
-Einrichtung in *Fahrtenbuch Einstellungen*:
+Einrichtung in *Zeit Projekt Einstellungen*:
 
 - **Schnittstelle**: `OpenAI-kompatibel` (Standard; geht mit Ollama, LM Studio,
   OpenAI u. a.) oder `Ollama (nativ)` (Ollamas eigene Schnittstelle `/api/chat`,
@@ -215,6 +215,11 @@ keine Strecke, nur diese zwei Zeitpunkte, jeweils mit Zeit und Genauigkeit in Me
 
 ## Einstellungen im Überblick
 
+Alle Einstellungen der App (Fahrtenbuch, Kundeneinsatz, Abrechnung, PDF) liegen an einem
+Ort: **Zeit Projekt Einstellungen**. Sie sind aus den Seitenleisten von Fahrtenbuch und
+Kundeneinsätzen über den Eintrag *Einstellungen* erreichbar. Die frühere Seite
+„Fahrtenbuch Einstellungen" gibt es nicht mehr; ein Patch hat ihre Werte übernommen.
+
 | Feld | Zweck |
 |---|---|
 | Aktivitätsart Fahrzeit | Vorbelegung für neue Fahrten; die Aktivitätsart braucht einen Dienstleistungsartikel |
@@ -224,6 +229,7 @@ keine Strecke, nur diese zwei Zeitpunkte, jeweils mit Zeit und Genauigkeit in Me
 | Timer automatisch starten / Kamera automatisch öffnen | Verhalten beim Anlegen aus dem Projekt |
 | Standort bei Beginn und Ende erfassen | Position bei Beginn und Ende der Fahrt auf einer Karte (Standard: aus) |
 
-Die Einstellungen darf nur der System Manager lesen (API-Schlüssel);
-Techniker erhalten die Vorbelegungen über eine eigene, eingeschränkte
-Server-Methode.
+Der Abschnitt *Kilometerstand-Erkennung* (mit dem API-Schlüssel) ist nur für den
+System Manager sichtbar; der Rest ist für die Rollen sichtbar, die „Zeit Projekt
+Einstellungen" lesen dürfen (Buchhaltung, Projekte). Techniker erhalten die
+Vorbelegungen über eine eigene, eingeschränkte Server-Methode.

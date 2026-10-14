@@ -56,7 +56,6 @@ fm shell <BENCHNAME> -c "bench --site <SITENAME> list-apps"
 
 # Sind die Einstellungen erreichbar?
 fm shell <BENCHNAME> --bench-console -c "print(frappe.get_doc('Zeit Projekt Einstellungen').as_dict())"
-fm shell <BENCHNAME> --bench-console -c "print(frappe.get_doc('Fahrtenbuch Einstellungen').as_dict())"
 
 # Sind alle drei Module registriert und die neuen Doctypes da?
 fm shell <BENCHNAME> --bench-console -c "print(frappe.get_all('Module Def', filters={'app_name':'zeit_projekt'}, pluck='name'))"

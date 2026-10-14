@@ -87,7 +87,7 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		frappe.db.set_single_value(
-			"Fahrtenbuch Einstellungen",
+			"Zeit Projekt Einstellungen",
 			{
 				"api_url": None,
 				"model": None,
@@ -98,7 +98,7 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				"image_original": 0,
 			},
 		)
-		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		ocr._OHNE_DENKEN_PARAMETER.clear()
 
 	def _api(self, antworten=None, ollama=False, kontext=None, keep_alive=None, bild_px=None):
@@ -108,7 +108,7 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		threading.Thread(target=server.serve_forever, daemon=True).start()
 		self.addCleanup(server.shutdown)
 		frappe.db.set_single_value(
-			"Fahrtenbuch Einstellungen",
+			"Zeit Projekt Einstellungen",
 			{
 				"api_url": f"http://127.0.0.1:{server.server_port}/v1",
 				"model": "test",
@@ -118,7 +118,7 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				"max_image_px": bild_px,
 			},
 		)
-		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 
 	def _gesendete_bildkante(self, body):
 		"""Laengste Kante des Bildes, das der Fake-Server bekommen hat (JPEG, base64)."""
@@ -134,8 +134,8 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self.assertEqual(get_odometer_reading(self.file.file_url, "start_odometer"), {"queued": False})
 
 	def test_fremde_datei_gesperrt(self):
-		frappe.db.set_single_value("Fahrtenbuch Einstellungen", {"api_url": "http://127.0.0.1:1", "model": "x"})
-		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", {"api_url": "http://127.0.0.1:1", "model": "x"})
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		frappe.set_user(TECH)
 		with self.assertRaises(frappe.PermissionError):
 			get_odometer_reading(self.file.file_url, "start_odometer")
@@ -221,8 +221,8 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self.assertFalse(any("reasoning_effort" in b for b in FakeVisionApi.anfragen))
 
 	def test_api_nicht_erreichbar(self):
-		frappe.db.set_single_value("Fahrtenbuch Einstellungen", {"api_url": "http://127.0.0.1:1/v1", "model": "x"})
-		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", {"api_url": "http://127.0.0.1:1/v1", "model": "x"})
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		self.assertIsNone(ocr.read_odometer(self.file))
 
 	def test_openai_pfad_bleibt_unveraendert(self):
@@ -284,7 +284,7 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self.assertEqual(FakeVisionApi.pfade[-1], "/api/tags")
 
 	def test_einstellungen_pruefen_kontextfenster_und_verweildauer(self):
-		einstellungen = frappe.get_doc("Fahrtenbuch Einstellungen")
+		einstellungen = frappe.get_doc("Zeit Projekt Einstellungen")
 		for kontext in (100, 999999):
 			einstellungen.context_length = kontext
 			with self.assertRaises(frappe.ValidationError):
@@ -319,13 +319,13 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 
 	def test_originalaufloesung(self):
 		self._api(bild_px=1024)
-		frappe.db.set_single_value("Fahrtenbuch Einstellungen", "image_original", 1)
-		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "image_original", 1)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		ocr.read_odometer(self.file)
 		self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), 2000)
 
 	def test_einstellungen_pruefen_bildgroesse(self):
-		einstellungen = frappe.get_doc("Fahrtenbuch Einstellungen")
+		einstellungen = frappe.get_doc("Zeit Projekt Einstellungen")
 		for px in (100, 5000):
 			einstellungen.max_image_px = px
 			with self.assertRaises(frappe.ValidationError):
