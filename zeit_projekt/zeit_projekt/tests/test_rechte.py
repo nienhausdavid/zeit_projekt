@@ -127,6 +127,25 @@ class TestTechnikerRechte(IntegrationTestCase):
 		with self.assertRaises(TypeError):
 			technician.create_own_employee("X", geschlecht, "1991-05-17", user_id="Administrator")
 
+	def test_benutzerberechtigung_nur_fuer_techniker_nicht_fuer_system_manager(self):
+		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
+		self._selbstanlage(True)
+		tech = self._neuer_benutzer("zp-selbst-ber@example.com")
+		admin = self._neuer_benutzer("zp-selbst-sm@example.com")
+		frappe.get_doc("User", admin).add_roles("System Manager")
+		frappe.clear_cache(user=admin)
+
+		ergebnis = {}
+		for mail in (tech, admin):
+			frappe.set_user(mail)
+			name = technician.create_own_employee("Selbst", geschlecht, "1991-05-17")
+			frappe.set_user("Administrator")
+			ergebnis[mail] = bool(
+				frappe.db.exists("User Permission", {"user": mail, "allow": "Employee", "for_value": name})
+			)
+		self.assertTrue(ergebnis[tech])  # Techniker: auf den eigenen Mitarbeiter beschraenkt
+		self.assertFalse(ergebnis[admin])  # System Manager: keine Beschraenkung
+
 	def test_selbstanlage_nur_wenn_freigeschaltet(self):
 		mail = self._neuer_benutzer("zp-selbst-aus@example.com")
 		geschlecht = frappe.db.get_value("Gender", {}) or "Male"

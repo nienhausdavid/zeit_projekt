@@ -360,15 +360,22 @@ function mitarbeiter_pruefen(frm) {
 	if (frm.doc.docstatus !== 0) return;
 	const zeige = (status) => {
 		if (status.employee) {
+			$(frm.layout.wrapper).find('.zp-mitarbeiter-knopf').remove();
 			if (frm.is_new() && !frm.doc.employee) frm.set_value('employee', status.employee);
 			return;
 		}
+		$(frm.layout.wrapper).find('.zp-mitarbeiter-knopf').remove();
 		if (!status.self_service) return;
-		frm.add_custom_button(__('Mich als Mitarbeiter anlegen'), () => {
+		const oeffnen = () =>
 			frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js?v=2', () =>
 				window.zeit_projekt.mitarbeiter_fragebogen()
 			);
-		});
+		// Am Handy verschwinden normale Knoepfe im "..."-Menue - deshalb gut sichtbar im Formular
+		$('<button type="button" class="btn btn-warning btn-lg zp-mitarbeiter-knopf"></button>')
+			.text(__('Mich als Mitarbeiter anlegen'))
+			.css({ display: 'block', width: 'min(100%, 480px)', minHeight: '64px', fontSize: '1.4rem', fontWeight: '600', margin: '12px 0 16px' })
+			.on('click', oeffnen)
+			.prependTo($(frm.layout.wrapper));
 	};
 	if (frm.__mitarbeiter_status) return zeige(frm.__mitarbeiter_status);
 	frappe

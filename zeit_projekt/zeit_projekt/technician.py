@@ -240,6 +240,10 @@ def create_own_employee(
 			"company": company,
 			"status": "Active",
 			"user_id": frappe.session.user,
+			# ERPNext beschraenkt den Benutzer damit per Benutzerberechtigung auf seinen eigenen
+			# Mitarbeiter und die Firma - fuer Techniker gewollt, fuer einen System Manager eine
+			# Falle (er saehe danach nur noch sich selbst).
+			"create_user_permission": 0 if "System Manager" in frappe.get_roles() else 1,
 		}
 	)
 	employee.flags.ignore_permissions = True
