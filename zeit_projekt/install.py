@@ -205,6 +205,9 @@ def _desk_abgleichen():
 		import_file_by_path(datei, force=True, ignore_version=True)
 		geaendert.append(doc["name"])
 
+	if _in_desktop_layouts_eintragen():
+		geaendert.append("Desktop-Layouts")
+
 	if geaendert:
 		from frappe.desk.doctype.desktop_icon.desktop_icon import clear_desktop_icons_cache
 
@@ -248,6 +251,55 @@ def _deaktiviere_alte_client_scripts():
 				"(Funktion kommt jetzt aus der App). Loeschen kannst du es selbst.",
 				fg="yellow",
 			)
+
+
+def _in_desktop_layouts_eintragen():
+	"""Frappe v16 zeigt auf dem Desk nur Symbole, die im gespeicherten
+	"Desktop Layout" des Benutzers stehen. Hat jemand sein Layout schon
+	gespeichert (z. B. beim Umsortieren), fehlten das App-Symbol "Zeit &
+	Projekt" und seine Unterpunkte dort fuer immer - sie existieren, bleiben
+	aber unsichtbar. Hier werden sie an bestehende Layouts angehaengt (nichts
+	geloescht, Reihenfolge und Rest bleiben). Benutzer ohne gespeichertes
+	Layout bekommen die Symbole ohnehin. Ein Layout ist eine flache Liste
+	vollstaendiger Symbol-Objekte (auch der Unterpunkte), keine Namensliste -
+	ein Eintrag muss dieselben Felder tragen wie die vom Desk gespeicherten.
+	Gibt True zurueck, wenn ein Layout geaendert wurde."""
+	import json
+
+	if not frappe.db.table_exists("Desktop Layout"):
+		return False
+	titel = frappe.get_hooks("app_title", app_name="zeit_projekt")[0]
+	if not frappe.db.exists("Desktop Icon", titel):
+		return False
+
+	felder = [
+		"label", "bg_color", "link", "link_type", "app", "icon_type", "parent_icon", "icon",
+		"link_to", "idx", "standard", "logo_url", "hidden", "name", "restrict_removal", "icon_image",
+	]  # fmt: skip
+	symbole = [frappe.db.get_value("Desktop Icon", titel, felder, as_dict=True)]
+	symbole += frappe.get_all("Desktop Icon", filters={"parent_icon": titel}, fields=felder, order_by="idx asc")
+	symbole = [dict(sym, child_icons=[]) if sym.icon_type == "Link" else dict(sym) for sym in symbole]
+
+	geaendert = False
+	for name in frappe.get_all("Desktop Layout", pluck="name"):
+		roh = frappe.db.get_value("Desktop Layout", name, "layout")
+		try:
+			layout = json.loads(roh or "[]")
+		except ValueError:
+			continue  # unlesbares Layout nicht anfassen
+		if not isinstance(layout, list):
+			continue
+		# Reine Textwerte sind kein gueltiger Eintrag (aus einer frueheren Fassung dieser Funktion)
+		bereinigt = [x for x in layout if not isinstance(x, str)]
+		vorhanden = {x.get("name") for x in bereinigt if isinstance(x, dict)}
+		neu = [sym for sym in symbole if sym["name"] not in vorhanden]
+		if not neu and len(bereinigt) == len(layout):
+			continue
+		frappe.db.set_value(
+			"Desktop Layout", name, "layout", json.dumps(bereinigt + neu), update_modified=False
+		)
+		geaendert = True
+	return geaendert
 
 
 def _entferne_desktop_symbole():
