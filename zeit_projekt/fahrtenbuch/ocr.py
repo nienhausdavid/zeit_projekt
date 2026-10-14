@@ -112,10 +112,10 @@ def list_models(
 	GET /api/tags.
 
 	api_url/api_key/api_type optional: fuer den "Modelle abrufen"-Button in
-	Fahrtenbuch Einstellungen, damit ein gerade eingetipptes, noch nicht
+	Zeit Projekt Einstellungen, damit ein gerade eingetipptes, noch nicht
 	gespeichertes Feld direkt getestet werden kann. Ohne Angabe wird der
 	bereits gespeicherte Stand aus den Einstellungen verwendet."""
-	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
+	settings = frappe.get_cached_doc("Zeit Projekt Einstellungen")
 	api_url = api_url or settings.api_url
 	if not api_url:
 		frappe.throw(_("Bitte zuerst eine API-URL eintragen."))
@@ -140,7 +140,7 @@ def list_models(
 
 
 def is_configured() -> bool:
-	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
+	settings = frappe.get_cached_doc("Zeit Projekt Einstellungen")
 	return bool(settings.api_url and settings.model)
 
 
@@ -152,7 +152,7 @@ def read_odometer(file_doc) -> int | None:
 def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	"""Liest den Kilometerstand ueber eine OpenAI-kompatible Chat-Completions-
 	API (Ollama, LM Studio, echtes OpenAI, ...) - konfiguriert in
-	"Fahrtenbuch Einstellungen", keine Standard-URL/kein Standard-Modell
+	"Zeit Projekt Einstellungen", keine Standard-URL/kein Standard-Modell
 	hinterlegt.
 
 	None, wenn nichts konfiguriert ist, die API nicht erreichbar ist oder
@@ -165,7 +165,7 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	Antworten stimmen ueberein. Brauchte es die dritte Anfrage, gab es eine
 	abweichende Antwort - der Wert ist dann nur die Mehrheit und der Techniker
 	soll ihn gegen das Foto pruefen."""
-	settings = frappe.get_cached_doc("Fahrtenbuch Einstellungen")
+	settings = frappe.get_cached_doc("Zeit Projekt Einstellungen")
 	if not settings.api_url or not settings.model:
 		return None, False
 

@@ -18,7 +18,6 @@ doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js",
 	"Sales Order": "public/js/sales_order.js",
 	"Fahrt": "public/js/fahrtenbuch.js",
-	"Fahrtenbuch Einstellungen": "public/js/fahrtenbuch_einstellungen.js",
 	"Project": "public/js/project.js",
 	"Site Visit": "public/js/site_visit.js",
 }

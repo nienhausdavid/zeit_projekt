@@ -1,1 +1,5 @@
 # Patches werden hier in Ausfuehrungsreihenfolge eingetragen
+[pre_model_sync]
+
+[post_model_sync]
+zeit_projekt.patches.einstellungen_zusammenfuehren

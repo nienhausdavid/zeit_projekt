@@ -1,7 +1,7 @@
 // Ergaenzt das bestehende Projekt-Formular um einen Schnellzugriff, der eine
 // neue Fahrt anlegt - optional mit sofort laufendem Timer (start_time = jetzt)
 // und optional mit sofort geoeffneter Kamera fuer das Start-Kilometerstand-
-// Foto. Beides einzeln umschaltbar in "Fahrtenbuch Einstellungen"
+// Foto. Beides einzeln umschaltbar in "Zeit Projekt Einstellungen"
 // (auto_start_timer/auto_open_camera), Standard fuer beide: an.
 //
 // Zwei Wege dorthin, beide ausgeloest von start_fahrt_aus_projekt():
@@ -25,7 +25,7 @@ frappe.ui.form.on('Project', {
 });
 
 function start_fahrt_aus_projekt(frm) {
-	// Nicht frappe.db.get_single_value: "Fahrtenbuch Einstellungen" darf nur der
+	// Nicht frappe.db.get_single_value: "Zeit Projekt Einstellungen" darf nur der
 	// System Manager lesen, Techniker bekaemen einen Rechte-Fehler.
 	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 		const { auto_start_timer, auto_open_camera } = r.message || {};

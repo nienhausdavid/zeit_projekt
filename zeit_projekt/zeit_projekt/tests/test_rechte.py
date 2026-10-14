@@ -66,6 +66,25 @@ class TestTechnikerRechte(IntegrationTestCase):
 		self.assertIn("activity_type", d)
 		self.assertNotIn("api_key", d)
 
+	def test_ocr_einstellungen_nur_fuer_system_manager(self):
+		"""Der Abschnitt "Kilometerstand-Erkennung" (mit dem API-Schluessel) liegt auf
+		permlevel 1; die uebrigen Rollen sehen nur Stufe 0."""
+		from unittest.mock import patch
+
+		meta = frappe.get_meta("Zeit Projekt Einstellungen")
+		stufe = {f.fieldname: f.permlevel for f in meta.fields}
+		for feld in ("api_type", "api_url", "model", "api_key", "max_image_px", "image_original", "context_length"):
+			self.assertEqual(stufe[feld], 1, feld)
+		for feld in ("activity_type", "km_item", "auto_start_timer", "capture_location", "positionsbezeichnung"):
+			self.assertEqual(stufe[feld], 0, feld)
+
+		for rolle in ("Accounts User", "Accounts Manager", "Projects User"):
+			with patch("frappe.get_roles", return_value=[rolle]):
+				self.assertEqual(meta.get_permlevel_access("read"), [0], rolle)
+		with patch("frappe.get_roles", return_value=["System Manager"]):
+			self.assertEqual(sorted(meta.get_permlevel_access("read")), [0, 1])
+			self.assertEqual(sorted(meta.get_permlevel_access("write")), [0, 1])
+
 	def test_offene_auftraege_zum_projekt(self):
 		projekt = frappe.get_doc(
 			{"doctype": "Project", "project_name": f"ZP Projekt {frappe.generate_hash(length=6)}", "customer": KUNDE_A}

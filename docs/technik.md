@@ -143,12 +143,15 @@ Artikel und Fahrzeug nicht lesen und keine Zeitblätter buchen. Deshalb:
   Kunden gehört. Wer gebucht hat, steht im Zeitblatt-Vermerk und als
   Kommentar im Auftrag.
 
-**Einstellungen:** Schreiben darf nur der System Manager. *Zeit Projekt
-Einstellungen* sind zusätzlich für Accounts User/Manager und Projects User
-lesbar. *Fahrtenbuch Einstellungen* enthalten den API-Schlüssel und sind nur
-für System Manager lesbar; Techniker bekommen die Vorbelegungen über
-`get_fahrt_defaults`. „Verfügbare Modelle abrufen" ist System Managern
-vorbehalten (der Server ruft dabei eine frei angegebene URL ab).
+**Einstellungen:** Alle Einstellungen der App liegen in *Zeit Projekt Einstellungen* (eine
+Single). Schreiben darf nur der System Manager; Accounts User/Manager und Projects User
+dürfen lesen. Der Abschnitt *Kilometerstand-Erkennung* (mit dem API-Schlüssel) hat
+`permlevel` 1 und ist nur für den System Manager sichtbar. Techniker bekommen die
+Vorbelegungen über `get_fahrt_defaults` (läuft serverseitig und gibt nur unkritische Werte
+zurück). „Verfügbare Modelle abrufen" ist System Managern vorbehalten (der Server ruft
+dabei eine frei angegebene URL ab). Die frühere Single „Fahrtenbuch Einstellungen" wurde
+zusammengeführt (Patch `zeit_projekt.patches.einstellungen_zusammenfuehren`: Werte
+übernehmen, API-Schlüssel aus `__Auth` mitnehmen, Doctype löschen).
 
 Eine eigene Techniker-Rolle liefert die App bewusst nicht mit: Rollen sind
 nicht modulgebunden und blieben beim Deinstallieren zurück.

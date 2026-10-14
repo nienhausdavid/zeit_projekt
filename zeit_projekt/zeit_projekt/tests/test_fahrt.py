@@ -23,7 +23,7 @@ class TestFahrt(IntegrationTestCase):
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
-		frappe.db.set_single_value("Fahrtenbuch Einstellungen", "rounding_minutes", 0)
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 0)
 
 	def fahrt(self, start="2031-03-10 08:00:00", end="2031-03-10 09:30:00", km=(1000, 1042), bill_km=1, so=True):
 		return frappe.get_doc(
@@ -82,7 +82,7 @@ class TestFahrt(IntegrationTestCase):
 		self.assertIn(f.name, ts.time_logs[0].description)
 
 	def test_taktung(self):
-		frappe.db.set_single_value("Fahrtenbuch Einstellungen", "rounding_minutes", 15)
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 15)
 		f = self.fahrt("2031-03-11 08:00:00", "2031-03-11 08:50:00")
 		f.submit()
 		log = frappe.get_doc("Timesheet", f.timesheet).time_logs[0]
