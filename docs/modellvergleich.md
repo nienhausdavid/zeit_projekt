@@ -258,12 +258,68 @@ Ergebnisse:
 Folge für die App: Die Einstellung **Originalauflösung verwenden** schickt das Foto unverkleinert. Sie ist für Modelle gedacht, die große
 Bilder verkraften; mit `qwen3-vl` und `qwen2.5vl` auf diesem Steam Deck führt sie zu leeren Antworten. Der Standard bleibt 1024 px.
 
+## 10. Kontextfenster 8 192, 16 384 und 32 768 (alle Modelle)
+
+Alle Modelle mit *Ollama (nativ)*, zwei Nachrichten, aktueller Prompt, Denken aus, je Kontextgröße 3 Anfragen je Foto. Zwei Fotosätze:
+die 27 Hauptfotos der Commons-Sammlung (1024 px, Abschnitt „Testaufbau") und die zwei eigenen Handyfotos (1024 px und 2048 px). Die
+Dauer ist die erste Anfrage je Foto (Median über die Hauptfotos), weil Ollama gleiche Anfragen aus dem Cache beantwortet. Speicher =
+vom Server belegter Speicher laut `/api/ps`.
+
+### 10.1 Commons-Fotos (27 Hauptfotos × 3 Anfragen)
+
+| Modell | Treffer 8 192 | Treffer 16 384 | Treffer 32 768 | Dauer je Foto | Speicher 8 192 / 16 384 / 32 768 |
+|---|---|---|---|---|---|
+| `qwen3-vl:8b-instruct` | 90,1 % | 88,9 % | 91,4 % | 19 s | 6,0 / 6,5 / 7,8 GB |
+| `minicpm-v4.5` | 85,2 % | 90,1 % | 88,9 % | 11 s | – |
+| `qwen3-vl:4b-instruct` | 86,4 % | 84,0 % | 85,2 % | 12,5 s | 3,7 / 4,4 / 5,7 GB |
+| `ornith-1.5:9b` | 82,7 % | 81,5 % | 84,0 % | 14 s | 5,7 / 5,9 / 6,1 GB |
+| `qwen3.5:9b` | 81,5 % | 80,2 % | 84,0 % | 14,5 s | 5,6 / 5,8 / 6,1 GB |
+| `qwen2.5vl:7b` | 81,5 % | 81,5 % | 81,5 % | 15 s | 5,6 / 5,8 / 6,4 GB |
+| `qwen3.5:4b` | 77,8 % | 85,2 % | 81,5 % | 9,7 s | 3,2 / 3,4 / 3,7 GB |
+| `gemma4:12b` | 75,3 % | 74,1 % | 74,1 % | 7,3 s | 8,1 / 7,8 / 7,9 GB |
+| `gemma4:e4b` | 63,0 % | 63,0 % | 60,5 % | 4,5 s | 3,2 / 3,2 / 3,3 GB |
+| `gemma4:e2b` | 42,0 % | 40,7 % | 39,5 % | 3,2 s | 1,9 / 1,9 / 1,7 GB |
+| `granite3.2-vision` | 14,8 % | 14,8 % | 14,8 % | 31 s | – |
+
+Bei den beiden Negativfotos (kein Kilometerstand sichtbar, 6 Anfragen) wäre „keine Zahl" richtig. Die meisten Modelle schaffen das bei 3 von 6
+Anfragen (ein Foto richtig, eines nicht). `granite3.2-vision` liefert 6 von 6 Mal keine Zahl, aber nur, weil es fast nichts liest.
+`qwen3-vl:4b-instruct` (0 bis 1 von 6) und `gemma4:e2b` (0 von 6) erfinden dagegen fast immer eine Zahl; `gemma4:e4b` liegt bei 0 bis 2 von 6.
+
+### 10.2 Eigene Handyfotos (Foto 1 scharf, Foto 2 unscharf; richtige Antworten von 3)
+
+| Modell | 1024 px, Foto 1 / Foto 2 | 2048 px, Foto 1 / Foto 2 (je 8 192 / 16 384 / 32 768) |
+|---|---|---|
+| `ornith-1.5:9b` | 3/3 · 0/3 in allen Kontexten | Foto 1 3/3; Foto 2: 2/3, 3/3, 1/3 (88 s je Foto) |
+| `qwen3-vl:8b-instruct` | 3/3 · 0/3 | Foto 1 3/3; Foto 2 0/3 (191 s bei 8 192, sonst 87 s) |
+| `qwen3-vl:4b-instruct` | 0/3 · 0/3 | Foto 1 3/3; Foto 2 0/3 (50 s) |
+| `minicpm-v4.5` | 3/3 · 0/3 | Foto 1 3/3; Foto 2 0/3 (21 s) |
+| `qwen2.5vl:7b` | 3/3 · 0/3 | leer (kein Ergebnis) |
+| `qwen3.5:4b` | 3/3 · 0/3 | Foto 1 3/3; Foto 2: 0/3, 1/3, 0/3 (49 s) |
+| `qwen3.5:9b` | 1/3, 1/3, 2/3 · 0/3 | Foto 1 3/3, 1/3, 2/3; Foto 2: 1/3, 0/3, 1/3 (87 s) |
+| `gemma4:12b`, `gemma4:e4b`, `gemma4:e2b`, `granite3.2-vision` | 0/3 · 0/3 | 0/3 · 0/3 |
+
+### Ergebnis
+
+- **Das Kontextfenster ändert die Genauigkeit nicht erkennbar.** Die Unterschiede zwischen 8 192, 16 384 und 32 768 liegen bei höchstens
+  wenigen Punkten und gehen bei keinem Modell in eine einheitliche Richtung (zum Beispiel `qwen3.5:4b` 77,8 / 85,2 / 81,5 %). Bei 81
+  Anfragen je Modell sind das Zufallsschwankungen. Auch die Dauer bleibt gleich.
+- **Der Speicher wächst mit dem Kontext**, bei `qwen3-vl:8b-instruct` von 6,0 über 6,5 auf 7,8 GB, bei `qwen3-vl:4b-instruct` von 3,7 auf
+  5,7 GB. 8 192 genügt für Fotos bei 1024 px; deutlich größere Bilder brauchen mehr Kontext, aber dort setzt vorher der Server aus
+  (Abschnitt 9).
+- **Beste Modelle auf den 27 Commons-Fotos:** `qwen3-vl:8b-instruct` (89 bis 91 %), `minicpm-v4.5` (85 bis 90 %), `qwen3-vl:4b-instruct`
+  (84 bis 86 %, erfindet aber bei Negativfotos fast immer eine Zahl). Bei den eigenen Fotos liest nur `ornith-1.5:9b` das unscharfe Foto 2 gelegentlich
+  (bei 2048 px, 88 s je Foto, schwankend).
+- **Nicht brauchbar:** `granite3.2-vision`, `gemma4:e2b`; `gemma4`-Modelle und `qwen3.5` liegen darunter.
+- Ein Fehler in der Messung: Bei `qwen2.5vl:7b` blieb der Runner nach den leeren Antworten bei 2048 px defekt und lieferte danach auf den
+  Commons-Fotos nur noch leere Antworten (0 %). Diese drei Läufe wurden nach dem Entladen des Modells wiederholt; die Tabelle zeigt die
+  Wiederholung. Ein weiterer Lauf (`ornith-1.5:9b`, 8 192) wurde wiederholt, weil meine parallele Sondierung die Zeiten verfälscht hatte.
+
 ## Grenzen
 
 - 27 Fotos mit je 3 Anfragen: Unterschiede von wenigen Punkten sind nicht gesichert.
 - Sollwerte vom Bild abgelesen, Lesefehler möglich.
 - Überwiegend US-Tachos mit englischer Beschriftung, kein SLK R170. Echte Handyfotos wurden nur
-  an zwei Fotos geprüft (Abschnitt 8 und 9); dort schnitten die Modelle schlechter ab als auf den Commons-Fotos.
+  an zwei Fotos geprüft (Abschnitt 8 bis 10); dort schnitten die Modelle schlechter ab als auf den Commons-Fotos.
 - Alles auf einem Steam Deck gemessen; Dauern lassen sich nicht auf andere Hardware
   übertragen.
 - Rohdaten, Skripte und Fotos liegen im Bench unter `modell-vergleich/`
