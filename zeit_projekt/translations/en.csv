@@ -210,7 +210,6 @@
 "Timer fortsetzen","Resume Timer"
 "Pausieren","Pause"
 "Pausiert seit {0} – Arbeitszeit bisher {1}","Paused since {0} – worked so far {1}"
-"Zeile {0}: Die Pause muss innerhalb des Einsatzzeitraums liegen.","Row {0}: The break must lie within the visit's time range."
 "Zeile {0}: Das Ende der Pause muss nach ihrem Beginn liegen.","Row {0}: The break must end after it starts."
 "Zeile {0}: Die Pause überschneidet sich mit einer anderen.","Row {0}: The break overlaps another one."
 "Nach Abzug der Pausen bleibt keine Arbeitszeit übrig.","No working time is left after deducting the breaks."

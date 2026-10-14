@@ -137,7 +137,7 @@ function update_timer_toolbar(frm) {
 			frm.page.add_button(__('Timer pausieren'), () => show_pause_dialog(frm));
 		}
 		// Eine laufende Pause endet serverseitig automatisch mit dem Einsatz
-		// (SiteVisit.validate_breaks).
+		// (SiteVisit.validate_breaks -> pausen.py).
 		frm.page.add_button(__('Timer stoppen'), () => {
 			frm.set_value('to_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});

@@ -72,7 +72,7 @@ Kunden*, *Sonstiges*) und eine optionale Notiz und legt eine Zeile unter
 *Pausen* an; **„Timer fortsetzen"** beendet sie. Die Anzeige zeigt die
 Netto-Arbeitszeit, in einer Pause „Pausiert seit …". „Timer stoppen" in
 einer Pause beendet sie mit dem Einsatz. Pausen lassen sich auch von Hand
-eintragen; sie müssen im Einsatzzeitraum liegen und dürfen sich nicht
+eintragen; sie müssen im Einsatzzeitraum liegen (Prüfung wie bei der Fahrt, `zeit_projekt/pausen.py`) und dürfen sich nicht
 überschneiden.
 
 *Arbeitszeit (Std.)* zeigt die Dauer ohne Pausen – so viel kommt ins
