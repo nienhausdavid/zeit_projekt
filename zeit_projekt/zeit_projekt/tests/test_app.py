@@ -78,6 +78,28 @@ class TestApp(IntegrationTestCase):
 		self.assertEqual(layout[0], fremd)
 		self.assertFalse(_in_desktop_layouts_eintragen())
 
+	def test_desk_symbole_haben_bilder(self):
+		"""Untergeordnete Desk-Symbole brauchen je Variante ein SVG unter
+		public/icons/desktop_icons/<variante>/<label>.svg, sonst zeigt der Desk nur
+		den Anfangsbuchstaben. Das App-Symbol selbst nutzt logo_url."""
+		import glob
+		import json
+		import os
+
+		app = frappe.get_app_path("zeit_projekt")
+		unterpunkte = 0
+		for datei in glob.glob(os.path.join(app, "desktop_icon", "*.json")):
+			with open(datei) as f:
+				icon = json.load(f)
+			if icon.get("icon_type") != "Link":
+				self.assertTrue(icon.get("logo_url"), icon["label"])
+				continue
+			unterpunkte += 1
+			for variante in ("solid", "subtle"):
+				svg = os.path.join(app, "public", "icons", "desktop_icons", variante, f"{frappe.scrub(icon['label'])}.svg")
+				self.assertTrue(os.path.isfile(svg), svg)
+		self.assertGreaterEqual(unterpunkte, 2)
+
 	def test_desk(self):
 		from frappe.apps import get_apps
 
