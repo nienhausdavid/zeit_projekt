@@ -34,6 +34,7 @@ frappe.ui.form.on('Site Visit', {
 			frappe.db.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
 				.then((r) => {
 					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
+					else hinweis_kein_mitarbeiter();
 				});
 		}
 		// Kein automatischer Default fuer from_time mehr - das uebernimmt
@@ -355,4 +356,21 @@ function choose_sales_order(frm, orders) {
 		},
 	});
 	dialog.show();
+}
+
+// Fehlt dem Benutzer ein Mitarbeiter, kann man nicht speichern (Pflichtfeld) -
+// und die Meldung dazu sagt nicht, woran es liegt. Deshalb ein klarer Hinweis
+// mit Weg zum Anlegen (Mitarbeiter mit "Benutzer-ID" = dieser Benutzer).
+function hinweis_kein_mitarbeiter() {
+	frappe.confirm(
+		__(
+			'Ihrem Benutzer ist kein aktiver Mitarbeiter zugeordnet, deshalb lässt sich hier nichts speichern. Mitarbeiter jetzt anlegen? (Das Feld „Benutzer-ID“ wird mit Ihrem Benutzer vorbelegt.)'
+		),
+		() => {
+			frappe.new_doc('Employee', {
+				user_id: frappe.session.user,
+				company: frappe.defaults.get_user_default('Company'),
+			});
+		}
+	);
 }

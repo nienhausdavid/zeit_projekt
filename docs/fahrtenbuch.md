@@ -8,6 +8,17 @@ korrigieren.
 Kein Finanzamt-taugliches Fahrtenbuch (keine Geschäftlich/Privat-Trennung,
 keine lückenlose Erfassung) – ein praktisches Log für Kundenbesuche.
 
+## Voraussetzung: Mitarbeiter
+
+Jede Fahrt (und jeder Kundeneinsatz) gehört zu einem **Mitarbeiter** (Pflichtfeld). Das
+Zeitblatt entsteht pro Mitarbeiter, die Firma kommt aus dem Mitarbeiter, und die
+Überschneidungsprüfung gilt je Mitarbeiter. Das Formular trägt automatisch den aktiven
+Mitarbeiter ein, dessen *Benutzer-ID* der angemeldete Benutzer ist. Gibt es keinen,
+fragt die App, ob sie das Anlegen eines Mitarbeiters öffnen soll (*Benutzer-ID* und
+Firma vorbelegt); ohne Mitarbeiter lässt sich nichts speichern. Der Knopf **„Fahrt mit
+Timer starten"** im Projekt holt den Mitarbeiter vor dem Anlegen, damit das sofortige
+Speichern und das Öffnen der Kamera nicht am Pflichtfeld scheitern.
+
 ## Buchen und Abrechnung
 
 Beim Buchen entsteht automatisch ein **Zeitblatt** mit der *Aktivitätsart

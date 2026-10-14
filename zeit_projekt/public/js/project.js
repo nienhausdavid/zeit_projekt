@@ -25,11 +25,27 @@ frappe.ui.form.on('Project', {
 });
 
 function start_fahrt_aus_projekt(frm) {
+	// Mitarbeiter zuerst holen und gleich mitgeben: das Fahrt-Formular sucht ihn
+	// selbst erst asynchron beim Oeffnen, das sofortige Speichern unten kaeme
+	// dem zuvor und scheiterte am Pflichtfeld - dann oeffnete auch die Kamera nie.
+	frappe.db
+		.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
+		.then((e) => {
+			const employee = e.message && e.message.name;
+			if (!employee) {
+				hinweis_kein_mitarbeiter();
+				return;
+			}
+			fahrt_anlegen(frm, employee);
+		});
+}
+
+function fahrt_anlegen(frm, employee) {
 	// Nicht frappe.db.get_single_value: "Zeit Projekt Einstellungen" darf nur der
 	// System Manager lesen, Techniker bekaemen einen Rechte-Fehler.
 	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 		const { auto_start_timer, auto_open_camera } = r.message || {};
-		const values = { project: frm.doc.name, customer: frm.doc.customer };
+		const values = { project: frm.doc.name, customer: frm.doc.customer, employee };
 		if (auto_start_timer) {
 			values.start_time = frappe.datetime.now_datetime();
 		}
@@ -46,11 +62,15 @@ function start_fahrt_aus_projekt(frm) {
 			// ungespeicherte Fahrt existiert nur im Browser und ginge bei
 			// einem Reload/Schliessen der Seite verloren.
 			const after_create = auto_start_timer ? cur_frm.save() : Promise.resolve();
-			after_create.then(() => {
-				if (auto_open_camera) {
-					capture_photo_for_field(cur_frm, 'start_odometer_photo');
-				}
-			});
+			after_create
+				.then(() => {
+					if (auto_open_camera) {
+						capture_photo_for_field(cur_frm, 'start_odometer_photo');
+					}
+				})
+				.catch(() => {
+					// Speichern fehlgeschlagen: Frappe zeigt den Grund selbst an.
+				});
 		});
 	});
 }
@@ -158,4 +178,21 @@ function upload_captured_image(frm, fieldname, data_url) {
 				indicator: 'red',
 			});
 		});
+}
+
+// Fehlt dem Benutzer ein Mitarbeiter, kann man nicht speichern (Pflichtfeld) -
+// und die Meldung dazu sagt nicht, woran es liegt. Deshalb ein klarer Hinweis
+// mit Weg zum Anlegen (Mitarbeiter mit "Benutzer-ID" = dieser Benutzer).
+function hinweis_kein_mitarbeiter() {
+	frappe.confirm(
+		__(
+			'Ihrem Benutzer ist kein aktiver Mitarbeiter zugeordnet, deshalb lässt sich hier nichts speichern. Mitarbeiter jetzt anlegen? (Das Feld „Benutzer-ID“ wird mit Ihrem Benutzer vorbelegt.)'
+		),
+		() => {
+			frappe.new_doc('Employee', {
+				user_id: frappe.session.user,
+				company: frappe.defaults.get_user_default('Company'),
+			});
+		}
+	);
 }
