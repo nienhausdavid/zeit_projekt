@@ -114,7 +114,7 @@
    "fieldtype": "Check",
    "label": "Originalauflösung verwenden",
    "default": "0",
-   "description": "Das Foto wird unverkleinert gesendet, egal wie groß es ist (Handyfotos haben oft 12 MP und mehr). Am genauesten bei kleinen Ziffern, aber deutlich langsamer und mit viel Kontextbedarf: bei Ollama (nativ) das Kontextfenster dann auf 16384 oder mehr stellen. Aus = die Bildgröße unten gilt."
+   "description": "Das Foto wird unverkleinert gesendet, egal wie groß es ist (Handyfotos haben oft 12 MP und mehr). Hinweis: Nicht jedes Modell verkraftet das. Im Test auf einem Steam Deck lieferten qwen3-vl:8b-instruct ab etwa 4,9 MP und qwen2.5vl:7b ab etwa 3,2 MP leere Antworten (ohne Fehlermeldung); nur minicpm-v4.5 verarbeitete das Original (etwa 22 s je Foto). Scharfe Fotos wurden schon bei 1024 px richtig gelesen, mehr Auflösung brachte dort nichts, kostete aber Zeit. Bei Ollama (nativ) das Kontextfenster dann auf 16384 oder mehr stellen. Aus = die Bildgröße unten gilt."
   },
   {
    "fieldname": "max_image_px",
@@ -128,7 +128,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-13 23:30:00.000000",
+ "modified": "2026-10-14 05:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrtenbuch Einstellungen",

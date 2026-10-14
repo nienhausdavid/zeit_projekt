@@ -270,7 +270,7 @@ vom Server belegter Speicher laut `/api/ps`.
 | Modell | Treffer 8 192 | Treffer 16 384 | Treffer 32 768 | Dauer je Foto | Speicher 8 192 / 16 384 / 32 768 |
 |---|---|---|---|---|---|
 | `qwen3-vl:8b-instruct` | 90,1 % | 88,9 % | 91,4 % | 19 s | 6,0 / 6,5 / 7,8 GB |
-| `minicpm-v4.5` | 85,2 % | 90,1 % | 88,9 % | 11 s | – |
+| `minicpm-v4.5` | 85,2 % | 90,1 % | 88,9 % | 11 s | 5,6 / – / 7,4 GB |
 | `qwen3-vl:4b-instruct` | 86,4 % | 84,0 % | 85,2 % | 12,5 s | 3,7 / 4,4 / 5,7 GB |
 | `ornith-1.5:9b` | 82,7 % | 81,5 % | 84,0 % | 14 s | 5,7 / 5,9 / 6,1 GB |
 | `qwen3.5:9b` | 81,5 % | 80,2 % | 84,0 % | 14,5 s | 5,6 / 5,8 / 6,1 GB |

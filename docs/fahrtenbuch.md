@@ -67,7 +67,9 @@ Einrichtung in *Fahrtenbuch Einstellungen*:
   `http://<ip-des-servers>:11434/v1` oder `https://api.openai.com/v1`; bei
   *Ollama (nativ)* die Server-Adresse, z. B. `http://<ip-des-servers>:11434` (ein
   angehängtes `/v1` wird ignoriert)
-- **Modell**: empfohlen `ornith-1.5:9b` (siehe *Genauigkeit* unten) – der Knopf
+- **Modell**: empfohlen `minicpm-v4.5` (schnell, auch mit großen Bildern; ca. 5,6 GB bei Kontext 8192) oder
+  `qwen3-vl:8b-instruct` (gleich genau, aber langsamer); `ornith-1.5:9b` liest dunkle Fotos teils besser
+  (siehe *Genauigkeit* unten und `docs/modellvergleich.md`, Abschnitt 10) – der Knopf
   **„Verfügbare Modelle abrufen"** fragt die API nach ihren Modellen (nur
   System Manager)
 - **API-Schlüssel**: nur falls die API einen verlangt
@@ -77,7 +79,8 @@ Einrichtung in *Fahrtenbuch Einstellungen*:
   etwa doppelt so lange (35 statt 16 s je Foto; `docs/modellvergleich.md`,
   Abschnitt 8). Bei *Ollama (nativ)* das Kontextfenster mindestens auf 8192 lassen,
   ab 2048 px eher 16384. Messung mit weiteren Modellen bis Originalgröße:
-  `docs/modellvergleich.md`, Abschnitt 9.
+  `docs/modellvergleich.md`, Abschnitt 9. Das Kontextfenster 8192, 16384 oder 32768 änderte die
+  Genauigkeit nicht (Abschnitt 10), nur den Speicher: 8192 reicht bei 1024 px.
 - **Originalauflösung verwenden**: schickt das Foto unverkleinert (Handyfotos haben oft
   12 MP und mehr); die Bildgröße ist dann ohne Wirkung. Nicht jedes Modell verkraftet das:
   auf dem Steam Deck lieferten `qwen3-vl:8b-instruct` ab etwa 4,9 MP und `qwen2.5vl:7b`
@@ -168,6 +171,12 @@ liegen im Rauschen (27 Fotos, je 3 Anfragen). Der aktuelle Prompt hebt die
 kleineren Modelle deutlich an, und das Temperatur-Foto (kein Gesamtstand) wird
 von allen vier Modellen als „kein Wert" erkannt, mit dem früheren Prompt von
 keinem. Das Tageszähler-Foto bleibt ein Fehler bei allen.
+
+**Weitere Modelle** (Abschnitt 10 im Modellvergleich, Treffer je Anfrage auf denselben 27 Fotos bei 8192 / 16384 / 32768 Token):
+`qwen3-vl:8b-instruct` 90 / 89 / 91 % (19 s je Foto), `minicpm-v4.5` 85 / 90 / 89 % (11 s), `qwen3-vl:4b-instruct` 86 / 84 / 85 % (12,5 s),
+`qwen2.5vl:7b` 82 % (15 s). Das Kontextfenster macht keinen erkennbaren Unterschied, `granite3.2-vision` und `gemma4:e2b` sind nicht brauchbar.
+`minicpm-v4.5` und `qwen3-vl:8b-instruct` sind praktisch gleich genau; `minicpm-v4.5` ist fast doppelt so schnell und das einzige getestete
+Modell, das auf dem Steam Deck auch das unverkleinerte Handyfoto verarbeitet. Das unscharfe Handyfoto las keines der neuen Modelle.
 
 **Dauer je Foto** (ebenfalls auf dem Steam Deck, `ornith-1.5:9b`): Die erste
 Anfrage braucht etwa 14 s, weil das Bild erst verarbeitet wird; jede weitere
