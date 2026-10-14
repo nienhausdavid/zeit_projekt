@@ -68,11 +68,16 @@ def ensure_fixtures():
 
 	customer_group = frappe.db.get_value("Customer Group", {"is_group": 0})
 	territory = frappe.db.get_value("Territory", {"is_group": 0})
+	# Heisst ein Kunde nach Nummernkreis (z. B. auf einer Kopie der Cloud-Site),
+	# bekaeme "ZP Kunde A" einen Namen wie CUST-2026-00001 und die Link-Pruefung
+	# der Tests scheiterte - daher bei Bedarf auf den erwarteten Namen umbenennen.
 	for kunde in (KUNDE_A, KUNDE_B):
 		if not frappe.db.exists("Customer", kunde):
-			frappe.get_doc(
+			doc = frappe.get_doc(
 				{"doctype": "Customer", "customer_name": kunde, "customer_group": customer_group, "territory": territory}
 			).insert()
+			if doc.name != kunde:
+				frappe.rename_doc("Customer", doc.name, kunde, force=True)
 
 	for mail, rolle in ((TECH, "Employee"), (BUCHHALTUNG, "Accounts User")):
 		if not frappe.db.exists("User", mail):
