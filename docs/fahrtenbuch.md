@@ -76,7 +76,13 @@ Einrichtung in *Fahrtenbuch Einstellungen*:
   Handyfotos las `ornith-1.5:9b` mit 1536 px besser als mit 1024 px, brauchte aber
   etwa doppelt so lange (35 statt 16 s je Foto; `docs/modellvergleich.md`,
   Abschnitt 8). Bei *Ollama (nativ)* das Kontextfenster mindestens auf 8192 lassen,
-  ab 2048 px eher 16384.
+  ab 2048 px eher 16384. Messung mit weiteren Modellen bis Originalgröße:
+  `docs/modellvergleich.md`, Abschnitt 9.
+- **Originalauflösung verwenden**: schickt das Foto unverkleinert (Handyfotos haben oft
+  12 MP und mehr); die Bildgröße ist dann ohne Wirkung. Nicht jedes Modell verkraftet das:
+  auf dem Steam Deck lieferten `qwen3-vl:8b-instruct` ab etwa 4,9 MP und `qwen2.5vl:7b`
+  ab etwa 3,2 MP leere Antworten, nur `minicpm-v4.5` verarbeitete das Original. Bei
+  *Ollama (nativ)* dann das Kontextfenster auf 16384 oder mehr stellen.
 - **Kontextfenster (Token)** (nur *Ollama (nativ)*): leer = Standard des Servers.
   Erlaubt sind 2048 bis 262144. Ein Foto braucht nur etwa 1.000 bis 1.500 Token;
   ein sehr großes Fenster belegt viel Speicher (bei `qwen3-vl:4b-instruct` lud der
@@ -96,7 +102,7 @@ schon von Hand eingetragen ist. Dafür muss ein Worker für die Queue `short`
 laufen (bei Frappe Manager und Frappe Cloud Standard).
 
 Fotos werden vor dem Versand auf die eingestellte **Bildgröße** verkleinert (längste
-Kante, Standard 1024 px, zulässig 256 bis 4096); verarbeitet werden nur Dateien, die
+Kante, Standard 1024 px, zulässig 256 bis 4096; mit *Originalauflösung verwenden* gar nicht); verarbeitet werden nur Dateien, die
 der Nutzer selbst lesen darf.
 
 ### Ablauf je Foto
@@ -186,7 +192,7 @@ können anders abschneiden - die Werte sind ein Anhaltspunkt, kein Versprechen.
 | Aktivitätsart Fahrzeit | Vorbelegung für neue Fahrten; die Aktivitätsart braucht einen Dienstleistungsartikel |
 | Artikel Kilometer | Vorbelegung für neue Fahrten |
 | Fahrzeit abrechnen in Schritten von (Minuten) | Taktung, 0 = minutengenau |
-| Schnittstelle, API-URL, Modell, API-Schlüssel, Bildgröße, Kontextfenster, Modell im Speicher halten | Kilometerstand-Erkennung |
+| Schnittstelle, API-URL, Modell, API-Schlüssel, Bildgröße, Originalauflösung, Kontextfenster, Modell im Speicher halten | Kilometerstand-Erkennung |
 | Timer automatisch starten / Kamera automatisch öffnen | Verhalten beim Anlegen aus dem Projekt |
 
 Die Einstellungen darf nur der System Manager lesen (API-Schlüssel);

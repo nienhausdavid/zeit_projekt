@@ -254,3 +254,4 @@
 "Bildgröße (längste Kante, Pixel)","Image size (longest edge, pixels)"
 "Das Foto wird vor dem Versand auf diese längste Kante verkleinert. Größer = kleine Ziffern besser lesbar, aber langsamer (Messung mit echten, dunklen Handyfotos: 1536 px las besser als 1024 px, brauchte aber etwa doppelt so lange) und mehr Kontext: bei Ollama (nativ) das Kontextfenster mindestens auf 8192 lassen, ab 2048 px eher 16384. Zulässig sind 256 bis 4096.","The photo is resized to this longest edge before sending. Larger = small digits are easier to read, but slower (measured with real, dark phone photos: 1536 px read better than 1024 px but took about twice as long) and needs more context: with Ollama (native) keep the context window at 8192 or more, for 2048 px rather 16384. Allowed: 256 to 4096."
 "Die Bildgröße muss zwischen {0} und {1} Pixel liegen.","The image size must be between {0} and {1} pixels."
+"Originalauflösung verwenden","Use original resolution"

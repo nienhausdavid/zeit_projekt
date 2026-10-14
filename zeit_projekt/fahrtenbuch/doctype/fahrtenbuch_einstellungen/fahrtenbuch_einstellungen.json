@@ -9,6 +9,7 @@
   "api_type",
   "model",
   "api_key",
+  "image_original",
   "max_image_px",
   "context_length",
   "keep_alive",
@@ -109,17 +110,25 @@
    "description": "Nur Ollama. Wie lange das Modell nach der letzten Anfrage geladen bleibt, z. B. 30m, 2h oder -1 (dauerhaft). Leer = Standard des Servers. So entfällt das Neuladen beim ersten Foto nach einer Pause."
   },
   {
+   "fieldname": "image_original",
+   "fieldtype": "Check",
+   "label": "Originalauflösung verwenden",
+   "default": "0",
+   "description": "Das Foto wird unverkleinert gesendet, egal wie groß es ist (Handyfotos haben oft 12 MP und mehr). Am genauesten bei kleinen Ziffern, aber deutlich langsamer und mit viel Kontextbedarf: bei Ollama (nativ) das Kontextfenster dann auf 16384 oder mehr stellen. Aus = die Bildgröße unten gilt."
+  },
+  {
    "fieldname": "max_image_px",
    "fieldtype": "Int",
    "label": "Bildgröße (längste Kante, Pixel)",
    "default": "1024",
-   "description": "Das Foto wird vor dem Versand auf diese längste Kante verkleinert. Größer = kleine Ziffern besser lesbar, aber langsamer (Messung mit echten, dunklen Handyfotos: 1536 px las besser als 1024 px, brauchte aber etwa doppelt so lange) und mehr Kontext: bei Ollama (nativ) das Kontextfenster mindestens auf 8192 lassen, ab 2048 px eher 16384. Zulässig sind 256 bis 4096."
+   "description": "Das Foto wird vor dem Versand auf diese längste Kante verkleinert. Größer = kleine Ziffern besser lesbar, aber langsamer (Messung mit echten, dunklen Handyfotos: 1536 px las besser als 1024 px, brauchte aber etwa doppelt so lange) und mehr Kontext: bei Ollama (nativ) das Kontextfenster mindestens auf 8192 lassen, ab 2048 px eher 16384. Zulässig sind 256 bis 4096.",
+   "depends_on": "eval:!doc.image_original"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-13 23:00:00.000000",
+ "modified": "2026-10-13 23:30:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrtenbuch Einstellungen",

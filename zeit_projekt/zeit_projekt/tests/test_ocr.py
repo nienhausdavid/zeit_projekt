@@ -95,6 +95,7 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				"context_length": None,
 				"keep_alive": None,
 				"max_image_px": None,
+				"image_original": 0,
 			},
 		)
 		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
@@ -313,6 +314,13 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 
 	def test_bildgroesse_vergroessert_nicht(self):
 		self._api(bild_px=4096)  # das Testbild ist nur 2000 px breit
+		ocr.read_odometer(self.file)
+		self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), 2000)
+
+	def test_originalaufloesung(self):
+		self._api(bild_px=1024)
+		frappe.db.set_single_value("Fahrtenbuch Einstellungen", "image_original", 1)
+		frappe.clear_document_cache("Fahrtenbuch Einstellungen", "Fahrtenbuch Einstellungen")
 		ocr.read_odometer(self.file)
 		self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), 2000)
 
