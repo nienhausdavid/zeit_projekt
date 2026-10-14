@@ -41,7 +41,7 @@ zeit_projekt/
     │   ├── fahrtenbuch.py             # before_submit/on_cancel, Vorbelegung, OCR-Job
     │   ├── ocr.py                     # OpenAI-kompatible Vision-API
     │   ├── project_dashboard.py
-    │   └── doctype/{fahrt,fahrtenbuch_einstellungen}/
+    │   └── doctype/fahrt/
     └── site_visit/                # Modul "Site Visit"
         ├── site_visit.py              # before_submit/on_cancel, create_sales_order
         ├── project_dashboard.py
