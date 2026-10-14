@@ -30,12 +30,6 @@ frappe.ui.form.on('Site Visit', {
 		frm.set_query('item_code', 'extra_items', () => ({ query: `${TECHNICIAN_API}.item_query` }));
 
 		if (!frm.is_new()) return;
-		if (!frm.doc.employee) {
-			frappe.db.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
-				.then((r) => {
-					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
-				});
-		}
 		// Kein automatischer Default fuer from_time mehr - das uebernimmt
 		// jetzt der Timer (oder die manuelle Eingabe), siehe update_timer_toolbar
 		// unten. Ein Default hier wuerde bei Formularoeffnung den falschen
@@ -86,6 +80,7 @@ frappe.ui.form.on('Site Visit', {
 	refresh(frm) {
 		frm.dashboard.clear_headline();
 		update_timer_toolbar(frm);
+		mitarbeiter_pruefen(frm);
 		if (frm.doc.docstatus === 0 && !frm.doc.customer_signature) {
 			frm.dashboard.set_headline_alert(__('Noch keine Kundenunterschrift erfasst.'), 'orange');
 		}
@@ -355,4 +350,32 @@ function choose_sales_order(frm, orders) {
 		},
 	});
 	dialog.show();
+}
+
+// Eigener Mitarbeiter: Name und Freigabe der Selbstanlage liefert der Server (auch ohne
+// Leserecht auf Employee). Gibt es keinen und ist die Selbstanlage erlaubt, erscheint der
+// Knopf "Mich als Mitarbeiter anlegen" (Fragebogen). Der Mitarbeiter ist freiwillig - der
+// Knopf ist nur ein Angebot, kein Muss.
+function mitarbeiter_pruefen(frm) {
+	if (frm.doc.docstatus !== 0) return;
+	const zeige = (status) => {
+		if (status.employee) {
+			if (frm.is_new() && !frm.doc.employee) frm.set_value('employee', status.employee);
+			return;
+		}
+		if (!status.self_service) return;
+		frm.add_custom_button(__('Mich als Mitarbeiter anlegen'), () => {
+			frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js?v=2', () =>
+				window.zeit_projekt.mitarbeiter_fragebogen()
+			);
+		});
+	};
+	if (frm.__mitarbeiter_status) return zeige(frm.__mitarbeiter_status);
+	frappe
+		.call('zeit_projekt.zeit_projekt.technician.get_employee_status')
+		.then((r) => {
+			frm.__mitarbeiter_status = r.message || {};
+			zeige(frm.__mitarbeiter_status);
+		})
+		.catch(() => {});
 }

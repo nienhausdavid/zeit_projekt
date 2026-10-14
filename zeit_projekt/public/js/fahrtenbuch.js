@@ -40,14 +40,6 @@ frappe.ui.form.on('Fahrt', {
 		frm.set_query('vehicle', () => ({ query: `${TECHNICIAN_API}.vehicle_query` }));
 
 		if (!frm.is_new()) return;
-		if (!frm.doc.employee) {
-			frappe.db
-				.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
-				.then((r) => {
-					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
-				})
-				.catch(() => {});
-		}
 		frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 			const d = r.message || {};
 			if (d.activity_type && !frm.doc.activity_type) frm.set_value('activity_type', d.activity_type);
@@ -112,6 +104,7 @@ frappe.ui.form.on('Fahrt', {
 		frm.dashboard.clear_headline();
 		setze_foto_hinweise(frm);
 		update_timer_toolbar(frm);
+		mitarbeiter_pruefen(frm);
 		frm.toggle_display('section_break_karte', !!frm.doc.route_map);
 		standort_nachtragen(frm);
 		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
@@ -624,4 +617,32 @@ function upload_captured_image(frm, fieldname, data_url) {
 				indicator: 'red',
 			});
 		});
+}
+
+// Eigener Mitarbeiter: Name und Freigabe der Selbstanlage liefert der Server (auch ohne
+// Leserecht auf Employee). Gibt es keinen und ist die Selbstanlage erlaubt, erscheint der
+// Knopf "Mich als Mitarbeiter anlegen" (Fragebogen). Der Mitarbeiter ist freiwillig - der
+// Knopf ist nur ein Angebot, kein Muss.
+function mitarbeiter_pruefen(frm) {
+	if (frm.doc.docstatus !== 0) return;
+	const zeige = (status) => {
+		if (status.employee) {
+			if (frm.is_new() && !frm.doc.employee) frm.set_value('employee', status.employee);
+			return;
+		}
+		if (!status.self_service) return;
+		frm.add_custom_button(__('Mich als Mitarbeiter anlegen'), () => {
+			frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js?v=2', () =>
+				window.zeit_projekt.mitarbeiter_fragebogen()
+			);
+		});
+	};
+	if (frm.__mitarbeiter_status) return zeige(frm.__mitarbeiter_status);
+	frappe
+		.call('zeit_projekt.zeit_projekt.technician.get_employee_status')
+		.then((r) => {
+			frm.__mitarbeiter_status = r.message || {};
+			zeige(frm.__mitarbeiter_status);
+		})
+		.catch(() => {});
 }

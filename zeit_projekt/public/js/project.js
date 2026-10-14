@@ -30,13 +30,10 @@ function start_fahrt_aus_projekt(frm) {
 	// das sofortige Speichern unten kaeme dem zuvor - ist "Mitarbeiter ist Pflicht"
 	// an, scheiterte es, und die Kamera oeffnete nie. Ohne Mitarbeiter geht es
 	// trotzdem weiter (er ist freiwillig).
-	frappe.db
-		.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
-		.then(
-			(e) => fahrt_anlegen(frm, e.message && e.message.name),
-			// z. B. keine Leseberechtigung auf Employee: ohne Mitarbeiter weitermachen
-			() => fahrt_anlegen(frm)
-		);
+	frappe.call('zeit_projekt.zeit_projekt.technician.get_employee_status').then(
+		(r) => fahrt_anlegen(frm, r.message && r.message.employee),
+		() => fahrt_anlegen(frm) // ohne Mitarbeiter weitermachen
+	);
 }
 
 function fahrt_anlegen(frm, employee) {

@@ -105,6 +105,9 @@ class TestApp(IntegrationTestCase):
 		# einer Pause im Fahrtenbuch soll es "Pause" bleiben.
 		self.assertEqual(frappe._("Pause", lang="de"), "Pause")
 
+	def test_fahrzeuge_in_der_seitenleiste(self):
+		self.assertTrue(frappe.db.exists("Sidebar Item", {"parent": "Fahrtenbuch", "link_to": "Vehicle"}))
+
 	def test_desk(self):
 		from frappe.apps import get_apps
 

@@ -24,9 +24,6 @@ class TestTechnikerRechte(IntegrationTestCase):
 		cls.ctx = ensure_fixtures()
 		cls.so_b = make_sales_order(cls.ctx.company, KUNDE_B)
 
-	def tearDown(self):
-		frappe.set_user("Administrator")
-
 	def search(self, fn, doctype, txt="", filters=None):
 		return frappe.call(fn, doctype, txt, "name", 0, 50, filters or {})
 
@@ -84,6 +81,92 @@ class TestTechnikerRechte(IntegrationTestCase):
 		with patch("frappe.get_roles", return_value=["System Manager"]):
 			self.assertEqual(sorted(meta.get_permlevel_access("read")), [0, 1])
 			self.assertEqual(sorted(meta.get_permlevel_access("write")), [0, 1])
+
+	def _neuer_benutzer(self, mail="zp-selbst@example.com", desk=True):
+		"""Desk-Benutzer ohne Mitarbeiter. Er braucht eine Rolle mit Desk-Zugriff (hier "Projects
+		User", nur lesen bei Fahrt): "Employee" haelt ERPNext ohne Mitarbeiter nicht, ein Benutzer
+		nur damit waere kein Desk-Benutzer. Ohne desk (Website User) gibt es keine Rolle."""
+		if not frappe.db.exists("User", mail):
+			user = frappe.get_doc({"doctype": "User", "email": mail, "first_name": "Selbst", "send_welcome_email": 0})
+			user.insert()
+			if desk:
+				user.add_roles("Projects User")
+		return mail
+
+	def _selbstanlage(self, an):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_self_service", 1 if an else 0)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		self._selbstanlage(False)
+
+	def test_eigenen_mitarbeiter_anlegen_nur_employee_rolle_dazu(self):
+		mail = self._neuer_benutzer()
+		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
+		frappe.clear_cache(user=mail)
+		rollen_vorher = set(frappe.get_roles(mail))
+		self._selbstanlage(True)
+
+		frappe.set_user(mail)
+		self.assertEqual(technician.get_employee_status(), {"employee": None, "self_service": True})
+		name = technician.create_own_employee("Selbst", geschlecht, "1991-05-17", "Techniker")
+
+		emp = frappe.get_doc("Employee", name)
+		self.assertEqual((emp.user_id, emp.status, emp.first_name), (mail, "Active", "Selbst"))
+		self.assertEqual(technician.get_employee_status(), {"employee": name, "self_service": False})
+		frappe.set_user("Administrator")
+		frappe.clear_cache(user=mail)
+		# ERPNext vergibt mit dem Mitarbeiter die Rolle Employee - sonst kommt nichts dazu
+		self.assertEqual(set(frappe.get_roles(mail)) - rollen_vorher, {"Employee"})
+
+		# nur einmal, und es gibt keinen Weg, einen anderen Benutzer anzugeben
+		frappe.set_user(mail)
+		with self.assertRaises(frappe.ValidationError):
+			technician.create_own_employee("Nochmal", geschlecht, "1991-05-17")
+		with self.assertRaises(TypeError):
+			technician.create_own_employee("X", geschlecht, "1991-05-17", user_id="Administrator")
+
+	def test_selbstanlage_nur_wenn_freigeschaltet(self):
+		mail = self._neuer_benutzer("zp-selbst-aus@example.com")
+		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
+		frappe.set_user(mail)
+		self.assertEqual(technician.get_employee_status(), {"employee": None, "self_service": False})
+		with self.assertRaises(frappe.PermissionError):
+			technician.create_own_employee("X", geschlecht, "1991-05-17")
+		with self.assertRaises(frappe.PermissionError):
+			technician.get_employee_form_data()
+		frappe.set_user("Administrator")
+		self.assertIsNone(frappe.db.get_value("Employee", {"user_id": mail}))
+
+	def test_selbstanlage_nicht_fuer_website_benutzer_und_gast(self):
+		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
+		self._selbstanlage(True)
+		web = self._neuer_benutzer("zp-web@example.com", desk=False)
+		for user in (web, "Guest"):
+			frappe.set_user(user)
+			with self.assertRaises(frappe.PermissionError, msg=user):
+				technician.create_own_employee("X", geschlecht, "1991-05-17")
+			with self.assertRaises(frappe.PermissionError, msg=user):
+				technician.get_employee_status()
+			frappe.set_user("Administrator")
+
+	def test_selbstanlage_prueft_angaben(self):
+		mail = self._neuer_benutzer("zp-selbst-pruefen@example.com")
+		self._selbstanlage(True)
+		frappe.set_user(mail)
+		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
+		for args in (
+			("", geschlecht, "1991-05-17"),  # Vorname fehlt
+			("X", "Gibtsnicht", "1991-05-17"),  # Geschlecht unbekannt
+			("X", geschlecht, "2999-01-01"),  # Geburtsdatum in der Zukunft
+			("X", geschlecht, frappe.utils.add_years(frappe.utils.nowdate(), -10)),  # zu jung
+		):
+			with self.assertRaises(frappe.ValidationError, msg=str(args)):
+				technician.create_own_employee(*args)
+		with self.assertRaises(frappe.ValidationError):
+			technician.create_own_employee("X", geschlecht, "1991-05-17", None, "2999-01-01")  # Eintritt in der Zukunft
+		self.assertIsNone(technician.get_employee_status()["employee"])  # nichts angelegt
 
 	def test_offene_auftraege_zum_projekt(self):
 		projekt = frappe.get_doc(
