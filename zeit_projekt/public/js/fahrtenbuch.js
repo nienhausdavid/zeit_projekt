@@ -40,21 +40,33 @@ frappe.ui.form.on('Fahrt', {
 		frm.set_query('vehicle', () => ({ query: `${TECHNICIAN_API}.vehicle_query` }));
 
 		if (!frm.is_new()) return;
-		if (!frm.doc.employee) {
-			frappe.db.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
-				.then((r) => {
-					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
-				});
-		}
-		frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
+		const employee_geladen = frm.doc.employee
+			? Promise.resolve()
+			: frappe.db
+					.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
+					.then((r) => {
+						if (r.message && r.message.name) frm.set_value('employee', r.message.name);
+					})
+					.catch(() => {});
+		const defaults_geladen = frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 			const d = r.message || {};
 			if (d.activity_type && !frm.doc.activity_type) frm.set_value('activity_type', d.activity_type);
 			if (d.km_item && !frm.doc.km_item) frm.set_value('km_item', d.km_item);
 		});
-		// Kein automatischer Default fuer start_time - das uebernimmt der
-		// Timer (oder die manuelle Eingabe). Ein Default hier wuerde bei
-		// Formularoeffnung den falschen Zeitpunkt festlegen, falls der
-		// Techniker erst spaeter tatsaechlich losfaehrt.
+
+		// Kam das Formular vom Knopf "Neu mit Timer und Kamera" (fahrt_list.js)? Dann nach
+		// dem Laden von Mitarbeiter und Vorbelegung Timer und Kamera starten.
+		const wunsch = window.zeit_projekt && window.zeit_projekt.neu_mit_timer_kamera;
+		if (window.zeit_projekt) window.zeit_projekt.neu_mit_timer_kamera = null;
+		if (wunsch && Date.now() - wunsch < 15000 && !frm.doc.start_time) {
+			Promise.all([employee_geladen, defaults_geladen]).then(() => {
+				// onload laeuft noch vor dem fertigen Aufbau des Formulars: erst danach speichern
+				setTimeout(() => timer_und_kamera_starten(frm), 400);
+			});
+		}
+		// Sonst kein automatischer Default fuer start_time - das uebernimmt der
+		// Timer (oder die manuelle Eingabe). Ein Default beim Oeffnen wuerde den
+		// falschen Zeitpunkt festlegen, falls der Techniker erst spaeter losfaehrt.
 	},
 
 	site_visit(frm) {
@@ -359,4 +371,127 @@ function parse_standorte(wert) {
 		// leer oder ungueltig: neu beginnen
 	}
 	return { type: 'FeatureCollection', features: [] };
+}
+
+// Zeit & Projekt: von mehreren Formularen genutzte Funktionen
+window.zeit_projekt = window.zeit_projekt || {};
+
+// Startzeit auf jetzt setzen, sofort speichern (eine neue, ungespeicherte Fahrt ginge
+// beim Schliessen der Seite verloren) und die Kamera fuer das Start-Kilometerstand-Foto
+// oeffnen. Ausgeloest vom Knopf "Neu mit Timer und Kamera" in der Fahrten-Liste -
+// bewusst immer beides, unabhaengig von den Einstellungen fuer den Projekt-Knopf.
+function timer_und_kamera_starten(frm) {
+	frm.set_value('start_time', frappe.datetime.now_datetime())
+		.then(() => frm.save())
+		.then(() => capture_photo_for_field(frm, 'start_odometer_photo'))
+		.catch(() => {
+			// Speichern fehlgeschlagen: Frappe zeigt den Grund selbst an.
+		});
+}
+
+window.zeit_projekt.foto_aufnehmen = (frm, fieldname) => capture_photo_for_field(frm, fieldname);
+
+function capture_photo_for_field(frm, fieldname) {
+	// Nutzt Frappes eigene frappe.ui.Capture-Klasse direkt (dieselbe, die
+	// auch der Kamera-Knopf im normalen Anhaenge-Dialog verwendet) statt des
+	// vollen Datei-Upload-Dialogs - auf dem Handy oeffnet das sofort die
+	// Kamera-App (kein Zwischenschritt), am Desktop den Webcam-Stream direkt.
+	// Kein automatischer Fallback ohne Kamera (z. B. Desktop ohne Webcam):
+	// frappe.ui.Capture zeigt dann selbst eine Fehlermeldung (options.error).
+	const capture = new frappe.ui.Capture({ animate: false, error: true });
+	capture.show();
+	hide_and_cleanup_mobile_capture_input(capture);
+	// Hinweis im Kamera-Dialog (Desktop/Webcam; auf dem Handy übernimmt die
+	// Kamera-App, dort steht derselbe Text am Foto-Feld der Fahrt): Die
+	// Erkennung liest sonst gern den Tageszähler statt des Gesamtstands.
+	if (capture.dialog && capture.dialog.$body) {
+		$('<div class="text-muted small" style="margin-bottom: 8px;"></div>')
+			.text(
+				__(
+					'Bitte den Gesamt-Kilometerzähler (ODO) formatfüllend fotografieren - nicht den Tageszähler (TRIP) und nicht die Temperatur. Spiegelungen vermeiden.'
+				)
+			)
+			.prependTo(capture.dialog.$body);
+	}
+	capture.submit((data_urls) => {
+		if (!data_urls || !data_urls.length) return;
+		upload_captured_image(frm, fieldname, data_urls[0]);
+	});
+}
+
+function hide_and_cleanup_mobile_capture_input(capture) {
+	// Workaround fuer einen Kern-Bug in frappe.ui.Capture (capture.js): auf
+	// dem Handy haengt es ein <input type="file"> direkt an <body> und will
+	// es per Klasse "visually-hidden" verstecken - die ist aber nur
+	// innerhalb von ".awesomplete" definiert (siehe
+	// scss/common/awesomeplete.scss) und greift hier ueberhaupt nicht. Beim
+	// erfolgreichen Foto faellt das nicht auf, weil das Element im
+	// onchange-Handler sofort wieder entfernt wird - bricht man den
+	// Kamera-/Datei-Dialog aber ab, feuert kein "change"-Event, das Element
+	// bleibt also nie entfernt UND sichtbar als kaputtes Formularfeld auf
+	// der Seite stehen (genau das vom Nutzer beobachtete Bild).
+	//
+	// this.input existiert nur im Mobil-Pfad (show_for_mobile) und wird dort
+	// synchron gesetzt, bevor click() das native Kamera-/Datei-Menue oeffnet
+	// - direkt danach ist es also bereits verfuegbar.
+	const input = capture.input;
+	if (!input) return;
+
+	Object.assign(input.style, {
+		position: 'fixed',
+		top: '-9999px',
+		left: '-9999px',
+		opacity: '0',
+		pointerEvents: 'none',
+	});
+
+	const remove_if_cancelled = () => {
+		window.removeEventListener('focus', remove_if_cancelled);
+		// Verzoegert, weil der Fokus schon zurueck ist, bevor der Browser
+		// files/onchange bei einer echten Auswahl fertig verarbeitet hat.
+		setTimeout(() => {
+			if (input.isConnected && !input.files.length) {
+				input.remove();
+			}
+		}, 500);
+	};
+	window.addEventListener('focus', remove_if_cancelled, { once: true });
+}
+
+function upload_captured_image(frm, fieldname, data_url) {
+	const filename = `kilometerstand_${frappe.datetime
+		.now_datetime()
+		.replace(/[: -]/g, '_')}.jpg`;
+
+	fetch(data_url)
+		.then((res) => res.blob())
+		.then((blob) => {
+			const form_data = new FormData();
+			form_data.append('file', blob, filename);
+			form_data.append('is_private', 1);
+			form_data.append('folder', 'Home');
+			form_data.append('doctype', frm.doctype);
+			if (!frm.is_new()) {
+				form_data.append('docname', frm.doc.name);
+			}
+			form_data.append('fieldname', fieldname);
+
+			return fetch('/api/method/upload_file', {
+				method: 'POST',
+				headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
+				body: form_data,
+			});
+		})
+		.then((response) => response.json())
+		.then((result) => {
+			if (result && result.message && result.message.file_url) {
+				frm.set_value(fieldname, result.message.file_url);
+			}
+		})
+		.catch(() => {
+			frappe.show_alert({
+				message: __('Foto konnte nicht hochgeladen werden.'),
+				indicator: 'red',
+			});
+		});
 }

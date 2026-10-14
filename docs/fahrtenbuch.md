@@ -59,10 +59,21 @@ Timer bei einem Neuladen verloren. Deshalb sind Endzeit, Kilometerstände und
 Aktivitätsart nicht auf Feldebene Pflicht, sondern werden erst beim Buchen
 geprüft.
 
-Im Projekt-Formular legt der Knopf **„Fahrt mit Timer starten"** (und das
-„+" bei *Fahrten* unter *Verknüpfungen*) eine Fahrt mit Projekt/Kunde an,
-startet den Timer und öffnet die Kamera für das Start-Foto. Beides einzeln
-abschaltbar in *Zeit Projekt Einstellungen* (Standard: an).
+**Zwei Wege, eine Fahrt anzulegen** (Fahrten-Liste):
+
+- **„Neu":** leeres Formular, nichts startet von selbst.
+- **„Neu mit Timer und Kamera":** legt die Fahrt an, setzt die Startzeit auf jetzt, speichert
+  sofort und öffnet die Kamera für das Start-Foto. Das passiert immer, unabhängig von den
+  Einstellungen.
+
+Im Projekt-Formular legt der Knopf **„Fahrt mit Timer starten"** (und das „+" bei
+*Fahrten* unter *Verknüpfungen*) eine Fahrt mit Projekt/Kunde an, startet den Timer und
+öffnet die Kamera. Dort lässt sich beides einzeln abschalten (*Timer automatisch starten*,
+*Kamera automatisch öffnen* in *Zeit Projekt Einstellungen*, Standard: an).
+
+Manche mobile Browser blockieren das automatische Öffnen der Kamera, wenn es nicht direkt
+auf einen Fingertipp folgt. Dann den Foto-Knopf im Formular benutzen; der Timer läuft
+trotzdem.
 
 ## Kilometerstand-Erkennung
 

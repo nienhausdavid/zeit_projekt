@@ -14,6 +14,10 @@ required_apps = ["frappe/erpnext"]
 # echte Dateien ausgeliefert. Vorteile: sie verschwinden restlos mit der App,
 # sind versionierbar und unterliegen nicht dem Client-Script-Cache im Browser.
 # ---------------------------------------------------------------------------
+doctype_list_js = {
+	"Fahrt": "public/js/fahrt_list.js",
+}
+
 doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js",
 	"Sales Order": "public/js/sales_order.js",
