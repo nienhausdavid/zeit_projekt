@@ -44,6 +44,28 @@ class TestFahrt(IntegrationTestCase):
 			}
 		).insert()
 
+	def test_standorte_werden_gespeichert(self):
+		import json
+
+		karte = {
+			"type": "FeatureCollection",
+			"features": [
+				{
+					"type": "Feature",
+					"properties": {"art": art, "zeit": "2031-03-10 08:00:00", "genauigkeit_m": 12},
+					"geometry": {"type": "Point", "coordinates": [lng, lat]},
+				}
+				for art, lng, lat in (("start", 9.99, 53.55), ("ende", 10.01, 53.56))
+			],
+		}
+		f = self.fahrt()
+		f.route_map = json.dumps(karte)
+		f.save()
+		f.reload()
+		punkte = json.loads(f.route_map)["features"]
+		self.assertEqual([p["properties"]["art"] for p in punkte], ["start", "ende"])
+		self.assertEqual(punkte[0]["geometry"]["coordinates"], [9.99, 53.55])
+
 	def test_buchen_legt_zeitblatt_an_und_laesst_auftrag_unveraendert(self):
 		vorher = len(sales_order_rows(self.so.name))
 		frappe.set_user(TECH)
