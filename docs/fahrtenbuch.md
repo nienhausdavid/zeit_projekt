@@ -68,7 +68,11 @@ Oben im Fahrt-Formular stehen **große Knöpfe** für den Timer (am Handy bildsc
 - **Foto Kilometerstand Start / Ende:** große Knöpfe im Abschnitt *Kilometerstand* (unten
   im Formular), jeder direkt über seinem Foto-Feld. Sie öffnen die Kamera (am Handy der Tipp
   auf den Knopf ist zugleich die Erlaubnis des Browsers dafür). Der Knopf verschwindet, sobald
-  das Foto vorhanden ist; „Ende" erscheint ab dem Start des Timers.
+  das Foto vorhanden ist. „Ende" erscheint erst, wenn der **Startstand feststeht**: Das Startfoto
+  wurde richtig erkannt, oder der Kilometerstand wurde von Hand eingetragen bzw. korrigiert. Wurde
+  er „nicht sicher" erkannt, erscheint stattdessen der Knopf **„Startstand stimmt"**; erst nach
+  seinem Tipp (oder einer Korrektur des Wertes) kommt „Foto Ende". Die „nicht sicher"-Markierung
+  gilt nur in der laufenden Sitzung.
 
 *Fahrzeit (Std.)* ist die Zeit **ohne Pausen**. Beim Buchen entsteht ein **Zeitblatt mit einer
 Zeile je Arbeitsabschnitt** zwischen den Pausen, wie beim Kundeneinsatz: eine Fahrt mit einer

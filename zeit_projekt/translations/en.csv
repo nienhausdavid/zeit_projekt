@@ -262,3 +262,4 @@
 "Bitte einen Mitarbeiter wählen (in den Zeit Projekt Einstellungen ist „Mitarbeiter ist Pflicht“ eingeschaltet).","Please select an employee (""Employee is mandatory"" is enabled in Zeit Projekt Einstellungen)."
 "Pausiert seit {0} – Fahrzeit bisher {1}","Paused since {0} – driving time so far {1}"
 "Zeile {0}: Die Pause muss innerhalb des Zeitraums liegen.","Row {0}: The break must be within the period."
+"Startstand stimmt","Start reading is correct"

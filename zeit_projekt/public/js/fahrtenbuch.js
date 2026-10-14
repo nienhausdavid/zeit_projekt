@@ -99,6 +99,9 @@ frappe.ui.form.on('Fahrt', {
 	// Ändert der Techniker einen erkannten Wert, ist die "nicht sicher"-Markierung erledigt.
 	start_odometer(frm) {
 		setze_hinweis(frm, 'start_odometer');
+		// Von Hand eingetragen oder korrigiert: die "nicht sicher"-Markierung ist erledigt
+		if (frm.__zp_unsicher) frm.__zp_unsicher.start_odometer = false;
+		zeige_foto_knoepfe(frm);
 	},
 
 	end_odometer(frm) {
@@ -202,14 +205,28 @@ function grosser_knopf(text, klasse, aktion) {
 function zeige_foto_knoepfe(frm) {
 	$(frm.layout.wrapper).find('.zp-foto-knopf').remove();
 	if (frm.doc.docstatus !== 0) return;
+	const start_unsicher = !!(frm.__zp_unsicher && frm.__zp_unsicher.start_odometer);
+	// "Foto Ende" erst, wenn der Startstand feststeht: richtig erkannt oder von Hand
+	// eingetragen bzw. korrigiert. Ein "nicht sicher" erkannter Wert zaehlt erst, wenn er
+	// bestaetigt oder geaendert wurde (die Markierung gilt nur in dieser Sitzung).
+	const start_steht = cint(frm.doc.start_odometer) > 0 && !start_unsicher;
 	const knoepfe = [
-		['start_odometer_photo', __('Foto Kilometerstand Start'), !frm.doc.start_odometer_photo],
-		['end_odometer_photo', __('Foto Kilometerstand Ende'), frm.doc.start_time && !frm.doc.end_odometer_photo],
+		['start_odometer_photo', __('Foto Kilometerstand Start'), !frm.doc.start_odometer_photo, () =>
+			capture_photo_for_field(frm, 'start_odometer_photo'),
+		],
+		['start_odometer', __('Startstand stimmt'), start_unsicher, () => {
+			frm.__zp_unsicher.start_odometer = false;
+			setze_hinweis(frm, 'start_odometer');
+			zeige_foto_knoepfe(frm);
+		}],
+		['end_odometer_photo', __('Foto Kilometerstand Ende'), start_steht && !frm.doc.end_odometer_photo, () =>
+			capture_photo_for_field(frm, 'end_odometer_photo'),
+		],
 	];
-	for (const [feld, text, anzeigen] of knoepfe) {
+	for (const [feld, text, anzeigen, aktion] of knoepfe) {
 		const control = frm.fields_dict[feld];
 		if (!anzeigen || !control) continue;
-		grosser_knopf(text, 'btn-default', () => capture_photo_for_field(frm, feld))
+		grosser_knopf(text, 'btn-default', aktion)
 			.addClass('zp-foto-knopf')
 			.css({ marginBottom: '12px' })
 			.insertBefore($(control.wrapper));
@@ -367,6 +384,10 @@ function zeige_erkennung(auftrag, data) {
 				// Die Modellantworten waren nicht einhellig: Wert eintragen, aber
 				// sichtbar markieren, bis der Techniker ihn bestätigt oder ändert.
 				setze_hinweis(frm, data.fieldname, __('Automatisch erkannt, aber nicht sicher - bitte mit dem Foto vergleichen.'));
+				if (data.fieldname === 'start_odometer') {
+					frm.__zp_unsicher = { ...frm.__zp_unsicher, start_odometer: true };
+					zeige_foto_knoepfe(frm); // "Foto Ende" bleibt aus, bis der Startstand bestaetigt ist
+				}
 				frappe.show_alert(
 					{
 						message: __('Kilometerstand erkannt: {0} - nicht sicher, bitte mit dem Foto vergleichen.', [data.reading]),
