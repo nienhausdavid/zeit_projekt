@@ -144,18 +144,46 @@ frappe.ui.form.on('Fahrt', {
 // Dokument nur im Browser existiert.
 function update_timer_toolbar(frm) {
 	stop_ticking(frm);
+	entferne_timer_knopf(frm);
 	if (frm.doc.docstatus !== 0) return;
 
 	if (!frm.doc.start_time) {
-		frm.page.add_button(__('Timer starten'), () => {
+		zeige_timer_knopf(frm, __('Timer starten'), 'btn-primary', () => {
 			frm.set_value('start_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 	} else if (!frm.doc.end_time) {
-		frm.page.add_button(__('Timer stoppen'), () => {
+		zeige_timer_knopf(frm, __('Timer stoppen'), 'btn-danger', () => {
 			frm.set_value('end_time', frappe.datetime.now_datetime()).then(() => frm.save());
 		});
 		start_ticking(frm);
 	}
+}
+
+// Grosser Knopf oben im Formular statt eines kleinen in der Kopfzeile: gerade am Handy
+// ist der wichtigste Knopf der Fahrt sonst leicht zu uebersehen und zu klein zum Treffen.
+// Auf dem Handy bildschirmbreit, am Desktop auf 480 px begrenzt.
+function zeige_timer_knopf(frm, text, klasse, aktion) {
+	const knopf = $(`<button type="button" class="btn ${klasse} btn-lg zp-timer-knopf"></button>`)
+		.text(text)
+		.css({
+			display: 'block',
+			width: 'min(100%, 480px)',
+			minHeight: '64px',
+			margin: '12px 0 16px',
+			fontSize: '1.4rem',
+			fontWeight: '600',
+		})
+		.on('click', function () {
+			const el = $(this);
+			el.prop('disabled', true); // kein Doppelklick: sonst zweimal gespeichert
+			// Scheitert das Speichern (z. B. an einer Pruefung), den Knopf wieder freigeben
+			Promise.resolve(aktion()).finally(() => el.prop('disabled', false));
+		});
+	$(frm.layout.wrapper).prepend(knopf);
+}
+
+function entferne_timer_knopf(frm) {
+	$(frm.layout.wrapper).find('.zp-timer-knopf').remove();
 }
 
 function start_ticking(frm) {

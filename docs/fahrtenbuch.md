@@ -53,7 +53,7 @@ Stunden über den tatsächlichen liegen. 0 = minutengenau.
 
 ## Timer
 
-„Timer starten"/„Timer stoppen" setzen Beginn bzw. Ende und **speichern
+„Timer starten"/„Timer stoppen" (großer Knopf oben im Formular, am Handy bildschirmbreit) setzen Beginn bzw. Ende und **speichern
 sofort** – wie ERPNexts eigener Zeitblatt-Timer. Sonst ginge ein laufender
 Timer bei einem Neuladen verloren. Deshalb sind Endzeit, Kilometerstände und
 Aktivitätsart nicht auf Feldebene Pflicht, sondern werden erst beim Buchen
