@@ -18,6 +18,8 @@
   "end_time",
   "column_break_2",
   "duration_hours",
+  "section_break_pausen",
+  "breaks",
   "section_break_route",
   "start_location",
   "column_break_3",
@@ -118,6 +120,18 @@
    "label": "Dauer (Std.)",
    "precision": "2",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_pausen",
+   "fieldtype": "Section Break",
+   "label": "Pausen"
+  },
+  {
+   "fieldname": "breaks",
+   "fieldtype": "Table",
+   "label": "Pausen",
+   "options": "Site Visit Break",
+   "description": "„Timer pausieren“ legt hier eine Zeile an. Pausen werden nicht als Fahrzeit gezählt: je Arbeitsabschnitt entsteht eine Zeile im Zeitblatt."
   },
   {
    "fieldname": "section_break_route",
@@ -271,7 +285,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-14 22:00:00.000000",
+ "modified": "2026-10-15 08:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrt",

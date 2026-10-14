@@ -66,6 +66,36 @@ class TestFahrt(IntegrationTestCase):
 		self.assertEqual([p["properties"]["art"] for p in punkte], ["start", "ende"])
 		self.assertEqual(punkte[0]["geometry"]["coordinates"], [9.99, 53.55])
 
+	def test_pause_ergibt_zwei_zeilen_und_netto_fahrzeit(self):
+		f = self.fahrt(start="2031-03-20 08:00:00", end="2031-03-20 09:30:00", bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-20 08:30:00", "to_time": "2031-03-20 08:45:00", "reason": "Pause"})
+		f.save()
+		self.assertEqual(flt(f.duration_hours), 1.25)  # ohne die 15 Minuten Pause
+		f.submit()
+		zeilen = frappe.get_doc("Timesheet", f.timesheet).time_logs
+		self.assertEqual(len(zeilen), 2)
+		self.assertEqual([flt(z.hours) for z in zeilen], [0.5, 0.75])
+		self.assertEqual(str(zeilen[0].to_time), "2031-03-20 08:30:00")
+		self.assertEqual(str(zeilen[1].from_time), "2031-03-20 08:45:00")
+
+	def test_laufende_pause_endet_mit_der_fahrt(self):
+		f = self.fahrt(bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-10 09:00:00", "reason": "Pause"})  # noch offen
+		f.save()
+		self.assertEqual(str(f.breaks[0].to_time), "2031-03-10 09:30:00")
+		self.assertEqual(flt(f.duration_hours), 1.0)
+
+	def test_pause_ausserhalb_oder_ueberlappend_abgelehnt(self):
+		f = self.fahrt(bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-10 07:00:00", "to_time": "2031-03-10 07:30:00", "reason": "Pause"})
+		with self.assertRaises(frappe.ValidationError):
+			f.save()
+		f = self.fahrt(bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-10 08:10:00", "to_time": "2031-03-10 08:40:00", "reason": "Pause"})
+		f.append("breaks", {"from_time": "2031-03-10 08:30:00", "to_time": "2031-03-10 08:50:00", "reason": "Pause"})
+		with self.assertRaises(frappe.ValidationError):
+			f.save()
+
 	def test_ohne_mitarbeiter_speichern_und_buchen(self):
 		"""Der Mitarbeiter ist freiwillig: Fahrt speichern und buchen geht ohne, das
 		Zeitblatt entsteht ohne Mitarbeiter mit der Standardfirma."""

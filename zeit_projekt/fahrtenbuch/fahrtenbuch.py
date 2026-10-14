@@ -5,6 +5,7 @@ from frappe import _
 from frappe.utils import cint, flt, format_date
 
 from zeit_projekt.zeit_projekt.billing import cancel_timesheet, create_timesheet
+from zeit_projekt.zeit_projekt.pausen import arbeitsabschnitte
 
 
 def before_submit(doc, method=None):
@@ -19,7 +20,10 @@ def before_submit(doc, method=None):
 		customer=doc.customer,
 		project=doc.project,
 		description=positionstext(doc, _("Fahrzeit")),
-		billing_hours=abrechenbare_stunden(doc.duration_hours),
+		# Mit Pausen je Arbeitsabschnitt eine Zeile (dann ohne Taktung, die Stunden
+		# kommen aus den Zeiten); ohne Pausen wie bisher eine Zeile mit Taktung.
+		billing_hours=None if doc.breaks else abrechenbare_stunden(doc.duration_hours),
+		segments=arbeitsabschnitte(doc) if doc.breaks else None,
 		sales_order=doc.sales_order,
 	)
 

@@ -40,33 +40,22 @@ frappe.ui.form.on('Fahrt', {
 		frm.set_query('vehicle', () => ({ query: `${TECHNICIAN_API}.vehicle_query` }));
 
 		if (!frm.is_new()) return;
-		const employee_geladen = frm.doc.employee
-			? Promise.resolve()
-			: frappe.db
-					.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
-					.then((r) => {
-						if (r.message && r.message.name) frm.set_value('employee', r.message.name);
-					})
-					.catch(() => {});
-		const defaults_geladen = frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
+		if (!frm.doc.employee) {
+			frappe.db
+				.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
+				.then((r) => {
+					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
+				})
+				.catch(() => {});
+		}
+		frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 			const d = r.message || {};
 			if (d.activity_type && !frm.doc.activity_type) frm.set_value('activity_type', d.activity_type);
 			if (d.km_item && !frm.doc.km_item) frm.set_value('km_item', d.km_item);
 		});
-
-		// Kam das Formular vom Knopf "Neu mit Timer und Kamera" (fahrt_list.js)? Dann nach
-		// dem Laden von Mitarbeiter und Vorbelegung Timer und Kamera starten.
-		const wunsch = window.zeit_projekt && window.zeit_projekt.neu_mit_timer_kamera;
-		if (window.zeit_projekt) window.zeit_projekt.neu_mit_timer_kamera = null;
-		if (wunsch && Date.now() - wunsch < 15000 && !frm.doc.start_time) {
-			Promise.all([employee_geladen, defaults_geladen]).then(() => {
-				// onload laeuft noch vor dem fertigen Aufbau des Formulars: erst danach speichern
-				setTimeout(() => timer_und_kamera_starten(frm), 400);
-			});
-		}
-		// Sonst kein automatischer Default fuer start_time - das uebernimmt der
-		// Timer (oder die manuelle Eingabe). Ein Default beim Oeffnen wuerde den
-		// falschen Zeitpunkt festlegen, falls der Techniker erst spaeter losfaehrt.
+		// Kein automatischer Default fuer start_time - das uebernimmt der Timer (grosser
+		// Knopf oben im Formular) oder die manuelle Eingabe. Ein Default beim Oeffnen
+		// wuerde den falschen Zeitpunkt festlegen, falls der Techniker erst spaeter losfaehrt.
 	},
 
 	site_visit(frm) {
@@ -98,10 +87,12 @@ frappe.ui.form.on('Fahrt', {
 	},
 
 	start_odometer_photo(frm) {
+		zeige_foto_knoepfe(frm); // Knopf weg, sobald das Foto da ist
 		fetch_odometer_reading(frm, 'start_odometer_photo', 'start_odometer');
 	},
 
 	end_odometer_photo(frm) {
+		zeige_foto_knoepfe(frm);
 		fetch_odometer_reading(frm, 'end_odometer_photo', 'end_odometer');
 	},
 
@@ -144,60 +135,163 @@ frappe.ui.form.on('Fahrt', {
 // Dokument nur im Browser existiert.
 function update_timer_toolbar(frm) {
 	stop_ticking(frm);
-	entferne_timer_knopf(frm);
+	entferne_knopfleiste(frm);
+	zeige_foto_knoepfe(frm);
 	if (frm.doc.docstatus !== 0) return;
 
+	const jetzt = () => frappe.datetime.now_datetime();
+	const knoepfe = [];
 	if (!frm.doc.start_time) {
-		zeige_timer_knopf(frm, __('Timer starten'), 'btn-primary', () => {
-			frm.set_value('start_time', frappe.datetime.now_datetime()).then(() => frm.save());
-		});
+		knoepfe.push([__('Timer starten'), 'btn-primary', () =>
+			frm.set_value('start_time', jetzt()).then(() => frm.save()),
+		]);
 	} else if (!frm.doc.end_time) {
-		zeige_timer_knopf(frm, __('Timer stoppen'), 'btn-danger', () => {
-			frm.set_value('end_time', frappe.datetime.now_datetime()).then(() => frm.save());
-		});
+		const pause = open_break(frm);
+		if (pause) {
+			knoepfe.push([__('Timer fortsetzen'), 'btn-success', () =>
+				frappe.model.set_value(pause.doctype, pause.name, 'to_time', jetzt()).then(() => frm.save()),
+			]);
+		} else {
+			knoepfe.push([__('Timer pausieren'), 'btn-warning', () => show_pause_dialog(frm)]);
+		}
+		// Eine laufende Pause endet serverseitig automatisch mit der Fahrt
+		// (zeit_projekt/pausen.py, pausen_pruefen).
+		knoepfe.push([__('Timer stoppen'), 'btn-danger', () =>
+			frm.set_value('end_time', jetzt()).then(() => frm.save()),
+		]);
 		start_ticking(frm);
 	}
+	zeige_knopfleiste(frm, knoepfe);
 }
 
-// Grosser Knopf oben im Formular statt eines kleinen in der Kopfzeile: gerade am Handy
-// ist der wichtigste Knopf der Fahrt sonst leicht zu uebersehen und zu klein zum Treffen.
-// Auf dem Handy bildschirmbreit, am Desktop auf 480 px begrenzt.
-function zeige_timer_knopf(frm, text, klasse, aktion) {
-	const knopf = $(`<button type="button" class="btn ${klasse} btn-lg zp-timer-knopf"></button>`)
+// Grosse Knoepfe untereinander oben im Formular statt kleiner in der Kopfzeile: gerade
+// am Handy sind das die wichtigsten Aktionen der Fahrt und sonst leicht zu uebersehen und
+// zu klein zum Treffen. Auf dem Handy bildschirmbreit, am Desktop auf 480 px begrenzt.
+function zeige_knopfleiste(frm, knoepfe) {
+	if (!knoepfe.length) return;
+	const leiste = $('<div class="zp-knopfleiste"></div>').css({
+		display: 'flex',
+		flexDirection: 'column',
+		gap: '10px',
+		maxWidth: '480px',
+		margin: '12px 0 16px',
+	});
+	for (const [text, klasse, aktion] of knoepfe) leiste.append(grosser_knopf(text, klasse, aktion));
+	$(frm.layout.wrapper).prepend(leiste);
+}
+
+function grosser_knopf(text, klasse, aktion) {
+	return $(`<button type="button" class="btn ${klasse} btn-lg"></button>`)
 		.text(text)
-		.css({
-			display: 'block',
-			width: 'min(100%, 480px)',
-			minHeight: '64px',
-			margin: '12px 0 16px',
-			fontSize: '1.4rem',
-			fontWeight: '600',
-		})
+		.css({ width: '100%', minHeight: '64px', fontSize: '1.4rem', fontWeight: '600' })
 		.on('click', function () {
 			const el = $(this);
 			el.prop('disabled', true); // kein Doppelklick: sonst zweimal gespeichert
-			// Scheitert das Speichern (z. B. an einer Pruefung), den Knopf wieder freigeben
-			Promise.resolve(aktion()).finally(() => el.prop('disabled', false));
+			// Scheitert die Aktion (z. B. Speichern an einer Pruefung), Knopf wieder freigeben
+			Promise.resolve()
+				.then(aktion)
+				.catch(() => {})
+				.finally(() => el.prop('disabled', false));
 		});
-	$(frm.layout.wrapper).prepend(knopf);
 }
 
-function entferne_timer_knopf(frm) {
-	$(frm.layout.wrapper).find('.zp-timer-knopf').remove();
+// Die Foto-Knoepfe sitzen im Abschnitt "Kilometerstand", jeder direkt ueber seinem
+// Foto-Feld. Am Handy der schnellste Weg zur Kamera (der Tipp auf den Knopf ist zugleich
+// die Erlaubnis des Browsers, die Kamera zu oeffnen). Der Knopf verschwindet, sobald das
+// Foto vorhanden ist; "Ende" erscheint ab dem Start des Timers.
+function zeige_foto_knoepfe(frm) {
+	$(frm.layout.wrapper).find('.zp-foto-knopf').remove();
+	if (frm.doc.docstatus !== 0) return;
+	const knoepfe = [
+		['start_odometer_photo', __('Foto Kilometerstand Start'), !frm.doc.start_odometer_photo],
+		['end_odometer_photo', __('Foto Kilometerstand Ende'), frm.doc.start_time && !frm.doc.end_odometer_photo],
+	];
+	for (const [feld, text, anzeigen] of knoepfe) {
+		const control = frm.fields_dict[feld];
+		if (!anzeigen || !control) continue;
+		grosser_knopf(text, 'btn-default', () => capture_photo_for_field(frm, feld))
+			.addClass('zp-foto-knopf')
+			.css({ marginBottom: '12px' })
+			.insertBefore($(control.wrapper));
+	}
+}
+
+function entferne_knopfleiste(frm) {
+	$(frm.layout.wrapper).find('.zp-knopfleiste').remove();
+}
+
+function open_break(frm) {
+	return (frm.doc.breaks || []).find((row) => row.from_time && !row.to_time);
+}
+
+function show_pause_dialog(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __('Timer pausieren'),
+		fields: [
+			{
+				fieldname: 'reason',
+				fieldtype: 'Select',
+				label: __('Grund'),
+				options: [
+					{ value: 'Pause', label: __('Pause') },
+					{ value: 'Notfall bei anderem Kunden', label: __('Notfall bei anderem Kunden') },
+					{ value: 'Sonstiges', label: __('Sonstiges') },
+				],
+				default: 'Pause',
+				reqd: 1,
+			},
+			{ fieldname: 'note', fieldtype: 'Small Text', label: __('Notiz') },
+		],
+		primary_action_label: __('Pausieren'),
+		primary_action(values) {
+			dialog.hide();
+			frm.add_child('breaks', {
+				from_time: frappe.datetime.now_datetime(),
+				reason: values.reason,
+				note: values.note,
+			});
+			frm.refresh_field('breaks');
+			frm.save();
+		},
+	});
+	dialog.show();
+}
+
+// Netto-Fahrzeit seit Beginn: abgeschlossene und laufende Pausen abgezogen.
+function worked_seconds(frm, now) {
+	const ms = (value) => frappe.datetime.str_to_obj(value).getTime();
+	let total = now - ms(frm.doc.start_time);
+	for (const row of frm.doc.breaks || []) {
+		if (!row.from_time) continue;
+		total -= (row.to_time ? ms(row.to_time) : now) - ms(row.from_time);
+	}
+	return Math.max(0, Math.floor(total / 1000));
+}
+
+function format_duration(total_seconds) {
+	const h = String(Math.floor(total_seconds / 3600)).padStart(2, '0');
+	const m = String(Math.floor((total_seconds % 3600) / 60)).padStart(2, '0');
+	const s = String(total_seconds % 60).padStart(2, '0');
+	return `${h}:${m}:${s}`;
 }
 
 function start_ticking(frm) {
-	const started_at = frappe.datetime.str_to_obj(frm.doc.start_time).getTime();
 	const tick = () => {
-		const total_seconds = Math.max(0, Math.floor((Date.now() - started_at) / 1000));
-		const h = String(Math.floor(total_seconds / 3600)).padStart(2, '0');
-		const m = String(Math.floor((total_seconds % 3600) / 60)).padStart(2, '0');
-		const s = String(total_seconds % 60).padStart(2, '0');
+		const gefahren = format_duration(worked_seconds(frm, Date.now()));
+		const pause = open_break(frm);
 		// clear_headline() zuerst: show_message() im Frappe-Layout haengt bei
 		// jedem Aufruf nur einen neuen Block an, statt den alten zu ersetzen -
 		// ohne das Clear stapeln sich die Meldungen im Sekundentakt.
 		frm.dashboard.clear_headline();
-		frm.dashboard.set_headline_alert(__('Timer läuft: {0}', [`${h}:${m}:${s}`]), 'orange');
+		if (pause) {
+			const seit = frappe.datetime.str_to_user(pause.from_time).split(' ').pop();
+			frm.dashboard.set_headline_alert(
+				__('Pausiert seit {0} – Fahrzeit bisher {1}', [seit, gefahren]),
+				'blue'
+			);
+		} else {
+			frm.dashboard.set_headline_alert(__('Timer läuft: {0}', [gefahren]), 'orange');
+		}
 	};
 	tick();
 	frm.__fahrtenbuch_timer = setInterval(tick, 1000);
@@ -403,19 +497,6 @@ function parse_standorte(wert) {
 
 // Zeit & Projekt: von mehreren Formularen genutzte Funktionen
 window.zeit_projekt = window.zeit_projekt || {};
-
-// Startzeit auf jetzt setzen, sofort speichern (eine neue, ungespeicherte Fahrt ginge
-// beim Schliessen der Seite verloren) und die Kamera fuer das Start-Kilometerstand-Foto
-// oeffnen. Ausgeloest vom Knopf "Neu mit Timer und Kamera" in der Fahrten-Liste -
-// bewusst immer beides, unabhaengig von den Einstellungen fuer den Projekt-Knopf.
-function timer_und_kamera_starten(frm) {
-	frm.set_value('start_time', frappe.datetime.now_datetime())
-		.then(() => frm.save())
-		.then(() => capture_photo_for_field(frm, 'start_odometer_photo'))
-		.catch(() => {
-			// Speichern fehlgeschlagen: Frappe zeigt den Grund selbst an.
-		});
-}
 
 window.zeit_projekt.foto_aufnehmen = (frm, fieldname) => capture_photo_for_field(frm, fieldname);
 

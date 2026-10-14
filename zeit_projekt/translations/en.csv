@@ -261,4 +261,5 @@
 "Mitarbeiter","Employee"
 "Mitarbeiter ist Pflicht","Employee is mandatory"
 "Bitte einen Mitarbeiter wählen (in den Zeit Projekt Einstellungen ist „Mitarbeiter ist Pflicht“ eingeschaltet).","Please select an employee (""Employee is mandatory"" is enabled in Zeit Projekt Einstellungen)."
-"Neu mit Timer und Kamera","New with timer and camera"
+"Pausiert seit {0} – Fahrzeit bisher {1}","Paused since {0} – driving time so far {1}"
+"Zeile {0}: Die Pause muss innerhalb des Zeitraums liegen.","Row {0}: The break must be within the period."

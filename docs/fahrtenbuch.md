@@ -51,29 +51,36 @@ Viertelstunden auf (50 Minuten → 1,0 Std.). Die tatsächliche Dauer bleibt im
 Zeitblatt erhalten; ERPNext zeigt dann den Hinweis, dass die abrechenbaren
 Stunden über den tatsächlichen liegen. 0 = minutengenau.
 
-## Timer
+## Timer, Pausen und Fotos
 
-„Timer starten"/„Timer stoppen" (großer Knopf oben im Formular, am Handy bildschirmbreit) setzen Beginn bzw. Ende und **speichern
-sofort** – wie ERPNexts eigener Zeitblatt-Timer. Sonst ginge ein laufender
-Timer bei einem Neuladen verloren. Deshalb sind Endzeit, Kilometerstände und
-Aktivitätsart nicht auf Feldebene Pflicht, sondern werden erst beim Buchen
-geprüft.
+Oben im Fahrt-Formular stehen **große Knöpfe** für den Timer (am Handy bildschirmbreit):
 
-**Zwei Wege, eine Fahrt anzulegen** (Fahrten-Liste):
+- **Timer starten / Timer stoppen** setzen Beginn bzw. Ende und **speichern sofort** – wie
+  ERPNexts eigener Zeitblatt-Timer. Sonst ginge ein laufender Timer bei einem Neuladen
+  verloren. Deshalb sind Endzeit, Kilometerstände und Aktivitätsart nicht auf Feldebene
+  Pflicht, sondern werden erst beim Buchen geprüft.
+- **Timer pausieren / Timer fortsetzen:** fragt einen Grund ab (*Pause*, *Notfall bei
+  anderem Kunden*, *Sonstiges*) mit optionaler Notiz und legt eine Zeile unter *Pausen* an.
+  Die Anzeige zeigt die Netto-Fahrzeit, in einer Pause „Pausiert seit …". „Timer stoppen" in
+  einer Pause beendet sie mit der Fahrt. Pausen lassen sich auch von Hand eintragen; sie
+  müssen im Zeitraum der Fahrt liegen und dürfen sich nicht überschneiden.
+- **Foto Kilometerstand Start / Ende:** große Knöpfe im Abschnitt *Kilometerstand* (unten
+  im Formular), jeder direkt über seinem Foto-Feld. Sie öffnen die Kamera (am Handy der Tipp
+  auf den Knopf ist zugleich die Erlaubnis des Browsers dafür). Der Knopf verschwindet, sobald
+  das Foto vorhanden ist; „Ende" erscheint ab dem Start des Timers.
 
-- **„Neu":** leeres Formular, nichts startet von selbst.
-- **„Neu mit Timer und Kamera":** legt die Fahrt an, setzt die Startzeit auf jetzt, speichert
-  sofort und öffnet die Kamera für das Start-Foto. Das passiert immer, unabhängig von den
-  Einstellungen.
+*Fahrzeit (Std.)* ist die Zeit **ohne Pausen**. Beim Buchen entsteht ein **Zeitblatt mit einer
+Zeile je Arbeitsabschnitt** zwischen den Pausen, wie beim Kundeneinsatz: eine Fahrt mit einer
+Pause ergibt zwei Zeilen. So werden Pausen weder abgerechnet, noch kollidieren sie mit einer
+Zeitbuchung, die währenddessen erfasst wird. Die *Taktung* gilt nur für Fahrten ohne Pausen
+(die Stunden einer Zeile kommen dann direkt aus ihren Zeiten).
 
 Im Projekt-Formular legt der Knopf **„Fahrt mit Timer starten"** (und das „+" bei
 *Fahrten* unter *Verknüpfungen*) eine Fahrt mit Projekt/Kunde an, startet den Timer und
-öffnet die Kamera. Dort lässt sich beides einzeln abschalten (*Timer automatisch starten*,
-*Kamera automatisch öffnen* in *Zeit Projekt Einstellungen*, Standard: an).
-
-Manche mobile Browser blockieren das automatische Öffnen der Kamera, wenn es nicht direkt
-auf einen Fingertipp folgt. Dann den Foto-Knopf im Formular benutzen; der Timer läuft
-trotzdem.
+öffnet die Kamera für das Start-Foto. Beides einzeln abschaltbar in
+*Zeit Projekt Einstellungen* (Standard: an). Manche mobile Browser blockieren das
+automatische Öffnen der Kamera, wenn es nicht direkt auf einen Fingertipp folgt; dann den
+Foto-Knopf im Formular benutzen. Eine mit „Neu" angelegte Fahrt startet nichts von selbst.
 
 ## Kilometerstand-Erkennung
 
