@@ -10,8 +10,10 @@ Frappe ruft eigene Link-Queries (set_query mit query=...) ohne eigene
 Rollenpruefung auf (frappe/desk/search.py -> search_widget) - die Pruefung
 passiert deshalb hier in _check_access()."""
 
+import erpnext
 import frappe
 from frappe import _
+from frappe.utils import add_years, getdate, nowdate
 
 from zeit_projekt.zeit_projekt.billing import GESCHLOSSENE_STATUS
 
@@ -138,3 +140,108 @@ def get_open_sales_orders(project, customer=None):
 		order_by="transaction_date desc, creation desc",
 		limit=20,
 	)
+
+
+# --- Eigenen Mitarbeiter anlegen ("Fragebogen") -----------------------------------------
+# Techniker duerfen Mitarbeiter nicht anlegen und nicht lesen. Statt ihnen Rechte auf
+# Employee zu geben, legt diese Methode genau EINEN Mitarbeiter an: den eigenen (Benutzer-ID
+# = angemeldeter Benutzer), mit wenigen Pflichtangaben. Weder Benutzer noch Firma, Abteilung,
+# Vorgesetzte oder Gehalt sind waehlbar.
+#
+# ERPNext haengt die Rolle "Employee" an den Mitarbeiter-Eintrag: beim Speichern mit
+# Benutzer-ID wird sie automatisch vergeben (und ohne Eintrag bei jedem Speichern des
+# Benutzers wieder entfernt, erpnext.setup.doctype.employee.employee.validate_employee_role).
+# Ein Benutzer ohne Mitarbeiter hat sie also nicht - die Selbstanlage kann deshalb keine
+# Rolle voraussetzen. Stattdessen: nur Desk-Benutzer (keine Website-Benutzer, kein Gast), nur
+# der eigene Eintrag, nur einmal, und nur wenn die Verwaltung es in den Zeit Projekt
+# Einstellungen freigeschaltet hat ("employee_self_service", Standard aus). Dazu legt ERPNext
+# Benutzerberechtigungen auf den eigenen Mitarbeiter und die Firma an (schraenkt ein).
+
+
+def _check_desk_user():
+	user = frappe.session.user
+	if user == "Guest" or frappe.db.get_value("User", user, "user_type") != "System User":
+		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+
+
+def _check_self_service():
+	_check_desk_user()
+	if not frappe.get_cached_doc("Zeit Projekt Einstellungen").employee_self_service:
+		frappe.throw(
+			_("Die Selbstanlage ist nicht freigeschaltet. Bitte die Verwaltung informieren."),
+			frappe.PermissionError,
+		)
+
+
+@frappe.whitelist()
+def get_employee_status():
+	"""Eigener Mitarbeiter und ob die Selbstanlage moeglich ist - nur Angaben zum eigenen
+	Benutzer, auch ohne Leserecht auf Employee."""
+	_check_desk_user()
+	name = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"}, "name")
+	freigeschaltet = bool(frappe.get_cached_doc("Zeit Projekt Einstellungen").employee_self_service)
+	return {"employee": name, "self_service": freigeschaltet and not name}
+
+
+@frappe.whitelist()
+def get_employee_form_data():
+	"""Vorbelegung und Auswahl fuer den Fragebogen."""
+	_check_self_service()
+	user = frappe.db.get_value("User", frappe.session.user, ["first_name", "last_name"], as_dict=True)
+	return {
+		"first_name": user.first_name,
+		"last_name": user.last_name,
+		"genders": frappe.get_all("Gender", pluck="name", order_by="name asc"),
+		"company": erpnext.get_default_company(),
+	}
+
+
+@frappe.whitelist()
+def create_own_employee(
+	first_name: str,
+	gender: str,
+	date_of_birth: str,
+	last_name: str | None = None,
+	date_of_joining: str | None = None,
+):
+	"""Legt den Mitarbeiter fuer den angemeldeten Benutzer an (genau einmal)."""
+	_check_self_service()
+
+	vorhanden = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+	if vorhanden:
+		frappe.throw(_("Für Ihren Benutzer gibt es schon einen Mitarbeiter ({0}).").format(vorhanden))
+
+	first_name = (first_name or "").strip()
+	if not first_name:
+		frappe.throw(_("Bitte einen Vornamen angeben."), frappe.MandatoryError)
+	if not frappe.db.exists("Gender", gender):
+		frappe.throw(_("Ungültiges Geschlecht: {0}").format(frappe.bold(gender)))
+
+	heute = getdate(nowdate())
+	geburt = getdate(date_of_birth)
+	if geburt >= add_years(heute, -14) or geburt.year < 1900:
+		frappe.throw(_("Bitte ein plausibles Geburtsdatum angeben."))
+	eintritt = getdate(date_of_joining) if date_of_joining else heute
+	if eintritt > heute:
+		frappe.throw(_("Das Eintrittsdatum darf nicht in der Zukunft liegen."))
+
+	company = erpnext.get_default_company()
+	if not company:
+		frappe.throw(_("Es ist keine Standardfirma eingerichtet. Bitte die Verwaltung informieren."))
+
+	employee = frappe.get_doc(
+		{
+			"doctype": "Employee",
+			"first_name": first_name,
+			"last_name": (last_name or "").strip() or None,
+			"gender": gender,
+			"date_of_birth": geburt,
+			"date_of_joining": eintritt,
+			"company": company,
+			"status": "Active",
+			"user_id": frappe.session.user,
+		}
+	)
+	employee.flags.ignore_permissions = True
+	employee.insert()
+	return employee.name

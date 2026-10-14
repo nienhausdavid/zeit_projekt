@@ -33,17 +33,17 @@
   {
    "child": 0,
    "collapsible": 1,
-   "icon": "settings",
+   "icon": "car",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Einstellungen",
-   "link_to": "Zeit Projekt Einstellungen",
+   "label": "Fahrzeuge",
+   "link_to": "Vehicle",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-10-14 21:00:00.000000",
+ "modified": "2026-10-15 11:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrtenbuch",

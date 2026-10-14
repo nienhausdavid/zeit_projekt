@@ -20,6 +20,31 @@ Wer den Mitarbeiter erzwingen will, schaltet in *Zeit Projekt Einstellungen → 
 **„Mitarbeiter ist Pflicht"** ein (Standard: aus). Dann lehnt das Speichern von Fahrt und
 Kundeneinsatz ohne Mitarbeiter ab.
 
+### Techniker legen sich selbst als Mitarbeiter an (Fragebogen)
+
+Mit **„Benutzer dürfen sich selbst als Mitarbeiter anlegen"** (gleicher Abschnitt, Standard:
+aus) füllen Techniker einen kurzen Fragebogen aus (Vorname, Nachname, Geschlecht,
+Geburtsdatum, Eintrittsdatum) und legen so **ihren eigenen** Mitarbeiter an, ohne dafür
+Rechte auf Mitarbeiter zu bekommen. Der Weg dorthin:
+
+- die Seite **/desk/mitarbeiter-anlegen** (den Link bekommen die Techniker von der Verwaltung),
+- oder der Knopf **„Mich als Mitarbeiter anlegen"** in Fahrt und Kundeneinsatz, solange der
+  Benutzer noch keinen Mitarbeiter hat.
+
+Was dabei passiert und was nicht:
+
+- Nur Desk-Benutzer (keine Website-Benutzer, kein Gast), nur der **eigene** Eintrag (Benutzer-ID =
+  angemeldeter Benutzer, nicht wählbar), nur **einmal**. Firma und alle anderen Felder bestimmt
+  die App, nicht der Techniker.
+- ERPNext hängt die Rolle *Employee* an den Mitarbeiter-Eintrag: Beim Anlegen vergibt es sie
+  automatisch (eigene Fahrten, Einsätze und Zeitblätter) und beschränkt den Benutzer per
+  Benutzerberechtigung auf seinen eigenen Mitarbeiter und die Firma. Weitere Rechte kommen
+  nicht dazu; ein Test prüft, dass sich der Rollensatz genau um *Employee* ändert.
+- **Voraussetzung:** Der Benutzer braucht vorher irgendeine Rolle mit Desk-Zugriff, z. B.
+  *Projects User*. Nur mit *Employee* geht es nicht: ERPNext entfernt diese Rolle bei jedem
+  Speichern des Benutzers wieder, solange kein Mitarbeiter zugeordnet ist, und ein Benutzer
+  ohne Desk-Rolle wird zum Website-Benutzer ohne Zugang zum Desk.
+
 ## Buchen und Abrechnung
 
 Beim Buchen entsteht automatisch ein **Zeitblatt** mit der *Aktivitätsart
@@ -254,9 +279,11 @@ keine Strecke, nur diese zwei Zeitpunkte, jeweils mit Zeit und Genauigkeit in Me
 ## Einstellungen im Überblick
 
 Alle Einstellungen der App (Fahrtenbuch, Kundeneinsatz, Abrechnung, PDF) liegen an einem
-Ort: **Zeit Projekt Einstellungen**. Sie sind aus den Seitenleisten von Fahrtenbuch und
-Kundeneinsätzen über den Eintrag *Einstellungen* erreichbar. Die frühere Seite
-„Fahrtenbuch Einstellungen" gibt es nicht mehr; ein Patch hat ihre Werte übernommen.
+Ort: **Zeit Projekt Einstellungen**. Sie stehen **nicht** in den Seitenleisten von Fahrtenbuch
+und Kundeneinsätzen, sondern im eigenen Modul **„Zeit & Projekt Einstellungen"**: als Symbol
+*Einstellungen* im Desk-Ordner „Zeit & Projekt" und im Modul-Menü der Seitenleiste. Dort stehen
+außerdem *Aktivitätsarten* und *Mitarbeiter*. Die frühere Seite „Fahrtenbuch Einstellungen" gibt
+es nicht mehr; ein Patch hat ihre Werte übernommen.
 
 | Feld | Zweck |
 |---|---|
