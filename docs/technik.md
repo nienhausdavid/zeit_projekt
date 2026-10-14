@@ -23,7 +23,7 @@ zeit_projekt/
     │   └── js/
     │       ├── sales_invoice.js         # Zeitimport-Dialog
     │       ├── sales_order.js           # Hinweise + Sprung zum Projekt nach dem Buchen
-    │       ├── fahrtenbuch.js           # Fahrt: Vorbelegung, Timer, Kilometerstand-Erkennung
+    │       ├── fahrtenbuch.js           # Fahrt: Vorbelegung, Timer, Kilometerstand-Erkennung, Standort
     │       ├── fahrtenbuch_einstellungen.js  # "Verfügbare Modelle abrufen"
     │       ├── project.js               # "Fahrt mit Timer starten"
     │       └── site_visit.js            # Kundeneinsatz: Timer/Pausen, Link-Suchen, "Neuer Auftrag"
@@ -207,7 +207,7 @@ Frappe/ERPNext `version-16`, installiert die App und führt die Tests aus.
 
 - „Neuer Auftrag" direkt aus der Fahrt (wie beim Kundeneinsatz).
 - Kilometer per Route/Adresse berechnen statt über das Tacho-Foto.
-- GPS-Standort beim Anlegen von Fahrt und Kundeneinsatz.
+- Standort bei Beginn und Ende gibt es für die Fahrt (optional, siehe `fahrtenbuch.md`); offen: dasselbe für den Kundeneinsatz und eine laufende Aufzeichnung (im Browser nur im Vordergrund zuverlässig, sonst eine Tracker-App).
 - Externes Signaturpad statt Finger/Stift.
 - Custom Fields oder Property Setter, die später über die Oberfläche
   entstehen, gehören nicht automatisch zur App – in `install.py`

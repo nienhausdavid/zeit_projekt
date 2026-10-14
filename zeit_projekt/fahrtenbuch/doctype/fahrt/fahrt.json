@@ -22,6 +22,8 @@
   "start_location",
   "column_break_3",
   "end_location",
+  "section_break_karte",
+  "route_map",
   "section_break_km",
   "start_odometer_photo",
   "start_odometer",
@@ -137,6 +139,18 @@
    "fieldname": "end_location",
    "fieldtype": "Data",
    "label": "Ziel"
+  },
+  {
+   "fieldname": "section_break_karte",
+   "fieldtype": "Section Break",
+   "label": "Karte"
+  },
+  {
+   "fieldname": "route_map",
+   "fieldtype": "Geolocation",
+   "label": "Standorte",
+   "read_only": 1,
+   "description": "Position des Geräts bei Beginn und Ende der Fahrt (nur diese beiden Zeitpunkte, keine Strecke). Wird vom Browser erfasst, sofern der Standortzugriff erlaubt ist."
   },
   {
    "fieldname": "section_break_km",
@@ -258,7 +272,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-28 10:00:00.000000",
+ "modified": "2026-10-14 08:00:00.000000",
  "modified_by": "Administrator",
  "module": "Fahrtenbuch",
  "name": "Fahrt",

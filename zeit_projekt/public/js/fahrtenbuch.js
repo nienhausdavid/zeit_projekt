@@ -106,6 +106,8 @@ frappe.ui.form.on('Fahrt', {
 		frm.dashboard.clear_headline();
 		setze_foto_hinweise(frm);
 		update_timer_toolbar(frm);
+		frm.toggle_display('section_break_karte', !!frm.doc.route_map);
+		standort_nachtragen(frm);
 		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
 			frm.add_custom_button(__('Zeitblatt öffnen'), () => frappe.set_route('Form', 'Timesheet', frm.doc.timesheet));
 		}
@@ -265,4 +267,96 @@ function fetch_odometer_reading(frm, photo_field, odometer_field) {
 			offene_erkennungen[res.request_id] = { photo_field, file_url };
 			frappe.show_alert({ message: __('Kilometerstand wird im Hintergrund erkannt …'), indicator: 'blue' });
 		});
+}
+
+
+// Standort bei Beginn und Ende der Fahrt (nur diese beiden Zeitpunkte, keine
+// laufende Aufzeichnung). Der Browser fragt den Standort beim ersten Mal
+// selbst ab; ohne HTTPS, ohne Erlaubnis oder ohne Empfang bleibt die Karte
+// einfach leer - die Fahrt ist trotzdem ganz normal buch- und speicherbar.
+//
+// Ausgeloest nicht an den Knoepfen, sondern bei jedem Oeffnen des Entwurfs,
+// wenn Beginn bzw. Ende gerade erst gesetzt wurden (hoechstens 5 Minuten
+// her) und dafuer noch kein Punkt vorliegt. So greift es fuer den Timer im
+// Fahrt-Formular, den Knopf im Projekt und das Eintragen von Hand, ohne dass
+// der Projekt-Knopf (project.js) etwas davon wissen muss. Alte Zeiten, die
+// jemand nachtraeglich korrigiert, bekommen keinen Standort.
+const STANDORT_MAX_ALTER_MIN = 5;
+
+// Einstellung "Standort bei Beginn und Ende erfassen" (Fahrtenbuch
+// Einstellungen, standardmaessig aus). Einmal je Seitenaufruf abgefragt; die
+// Einstellungen selbst duerfen Techniker nicht lesen.
+let standort_einstellung = null;
+
+function standort_aktiv() {
+	if (!standort_einstellung) {
+		standort_einstellung = frappe
+			.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults')
+			.then((r) => !!(r.message && r.message.capture_location));
+	}
+	return standort_einstellung;
+}
+
+function standort_nachtragen(frm) {
+	if (frm.doc.docstatus !== 0 || frm.is_new() || frm._standort_laeuft) return;
+	if (!navigator.geolocation) return;
+	standort_aktiv().then((aktiv) => {
+		if (aktiv) standort_erfassen(frm);
+	});
+}
+
+function standort_erfassen(frm) {
+	if (frm._standort_laeuft) return;
+
+	const karte = parse_standorte(frm.doc.route_map);
+	for (const [art, feld] of [['start', 'start_time'], ['ende', 'end_time']]) {
+		const zeit = frm.doc[feld];
+		frm._standort_versucht = frm._standort_versucht || {};
+		if (!zeit || frm._standort_versucht[art]) continue;
+		if (karte.features.some((f) => f.properties && f.properties.art === art)) continue;
+		const alter_min = (Date.now() - frappe.datetime.str_to_obj(zeit).getTime()) / 60000;
+		if (alter_min < 0 || alter_min > STANDORT_MAX_ALTER_MIN) continue;
+
+		frm._standort_laeuft = true;
+		frm._standort_versucht[art] = true; // je Formular nur ein Versuch, auch bei Fehler
+		navigator.geolocation.getCurrentPosition(
+			(pos) => {
+				const aktuell = parse_standorte(frm.doc.route_map);
+				aktuell.features = aktuell.features.filter((f) => !(f.properties && f.properties.art === art));
+				aktuell.features.push({
+					type: 'Feature',
+					properties: {
+						art,
+						zeit,
+						genauigkeit_m: Math.round(pos.coords.accuracy),
+					},
+					geometry: { type: 'Point', coordinates: [pos.coords.longitude, pos.coords.latitude] },
+				});
+				frm.set_value('route_map', JSON.stringify(aktuell))
+					.then(() => frm.save())
+					.finally(() => (frm._standort_laeuft = false));
+			},
+			(err) => {
+				frm._standort_laeuft = false;
+				frappe.show_alert({
+					message: __('Standort konnte nicht ermittelt werden ({0}). Die Fahrt ist trotzdem gespeichert.', [
+						err.message || err.code,
+					]),
+					indicator: 'orange',
+				});
+			},
+			{ enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+		);
+		return; // jeweils nur ein Punkt pro Aufruf; der nachfolgende Save loest refresh erneut aus
+	}
+}
+
+function parse_standorte(wert) {
+	try {
+		const fc = JSON.parse(wert || '');
+		if (fc && fc.type === 'FeatureCollection' && Array.isArray(fc.features)) return fc;
+	} catch (e) {
+		// leer oder ungueltig: neu beginnen
+	}
+	return { type: 'FeatureCollection', features: [] };
 }

@@ -65,6 +65,7 @@ def get_fahrt_defaults():
 		"km_item": settings.km_item,
 		"auto_start_timer": cint(settings.auto_start_timer),
 		"auto_open_camera": cint(settings.auto_open_camera),
+		"capture_location": cint(settings.capture_location),
 	}
 
 

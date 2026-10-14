@@ -194,6 +194,25 @@ Zuschnitt auf den Zähler (79–82 %) waren schlechter als das ganze Foto mit
 dauerten aber im Median 28 s und liefen teils ins Limit. Echte Handyfotos
 können anders abschneiden - die Werte sind ein Anhaltspunkt, kein Versprechen.
 
+## Standort bei Beginn und Ende (optional)
+
+Mit der Einstellung **„Standort bei Beginn und Ende erfassen"** (Fahrtenbuch
+Einstellungen, **standardmäßig aus**) speichert die Fahrt die Position des Geräts
+beim Beginn und beim Ende der Fahrt und zeigt beide Punkte auf einer Karte
+(Abschnitt *Karte*, Feld *Standorte*). Es gibt **keine laufende Aufzeichnung** und
+keine Strecke, nur diese zwei Zeitpunkte, jeweils mit Zeit und Genauigkeit in Metern.
+
+- Erfasst wird im Browser, wenn Beginn bzw. Ende gerade gesetzt wurden (höchstens 5
+  Minuten her): beim Timer im Formular, beim Knopf im Projekt und beim Eintragen von
+  Hand. Nachträglich geänderte alte Zeiten bekommen keinen Standort.
+- Der Browser fragt beim ersten Mal um Erlaubnis. Ohne HTTPS, ohne Erlaubnis oder ohne
+  Empfang bleibt die Karte leer und es erscheint ein Hinweis; die Fahrt lässt sich
+  trotzdem normal speichern und buchen.
+- Die Karte erscheint nur, wenn Standorte vorliegen. Das Feld ist schreibgeschützt.
+- Standortdaten von Beschäftigten sind personenbezogen: Vor dem Einschalten
+  Rechtsgrundlage, Information der Beschäftigten und ggf. Beteiligung des Betriebsrats
+  klären.
+
 ## Einstellungen im Überblick
 
 | Feld | Zweck |
@@ -203,6 +222,7 @@ können anders abschneiden - die Werte sind ein Anhaltspunkt, kein Versprechen.
 | Fahrzeit abrechnen in Schritten von (Minuten) | Taktung, 0 = minutengenau |
 | Schnittstelle, API-URL, Modell, API-Schlüssel, Bildgröße, Originalauflösung, Kontextfenster, Modell im Speicher halten | Kilometerstand-Erkennung |
 | Timer automatisch starten / Kamera automatisch öffnen | Verhalten beim Anlegen aus dem Projekt |
+| Standort bei Beginn und Ende erfassen | Position bei Beginn und Ende der Fahrt auf einer Karte (Standard: aus) |
 
 Die Einstellungen darf nur der System Manager lesen (API-Schlüssel);
 Techniker erhalten die Vorbelegungen über eine eigene, eingeschränkte
