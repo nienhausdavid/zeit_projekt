@@ -20,6 +20,7 @@ zeit_projekt/
     │   └── de.csv                 # nur die englischen Doctype-Namen von Site Visit
     ├── public/
     │   ├── images/zeit_projekt-logo.svg
+    │   ├── icons/desktop_icons/       # solid/ + subtle/: je ein SVG für Fahrtenbuch und Site Visits
     │   └── js/
     │       ├── sales_invoice.js         # Zeitimport-Dialog
     │       ├── sales_order.js           # Hinweise + Sprung zum Projekt nach dem Buchen
@@ -91,6 +92,13 @@ je Modul unter `fahrtenbuch/sidebar/fahrtenbuch/` und
 `site_visit/sidebar/site_visits/`; Frappe gleicht sie bei jedem `migrate` ab.
 Der Dateiname muss `frappe.scrub(<Bezeichnung>)` entsprechen, sonst löscht
 `migrate` das Symbol als verwaist.
+
+**Bilder der Unter-Symbole:** Der Desk sucht pro Unter-Symbol `public/icons/desktop_icons/
+{solid,subtle}/<frappe.scrub(Bezeichnung)>.svg` der App (hier `fahrtenbuch.svg`,
+`site_visits.svg`; Rahmen im Stil von ERPNext, Glyphen aus Lucide, ISC-Lizenz). Fehlen sie,
+zeigt er nur den Anfangsbuchstaben (F, S). Das App-Symbol selbst nutzt `logo_url`. Die
+Liste kommt beim Seitenaufruf aus `frappe.boot.desktop_icon_urls`; nach dem Anlegen den
+Desk neu laden. Ein Test prüft, dass zu jedem Unter-Symbol beide Dateien existieren.
 
 **Frappe ab 16.51:** Der Desk liest nur noch den Doctype `Sidebar`; `Workspace
 Sidebar` ist wirkungslos, und `workspace_sidebar/` wird nicht mehr importiert
