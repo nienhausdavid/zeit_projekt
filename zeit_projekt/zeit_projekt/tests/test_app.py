@@ -54,6 +54,30 @@ class TestApp(IntegrationTestCase):
 		force_chrome_pdf()
 		self.assertEqual(frappe.local.form_dict.get("pdf_generator"), "chrome")
 
+	def test_symbole_in_gespeichertes_desktop_layout(self):
+		import json
+
+		from zeit_projekt.install import _in_desktop_layouts_eintragen
+		from zeit_projekt.zeit_projekt.tests.utils import TECH, ensure_fixtures
+
+		ensure_fixtures()
+		fremd = {"name": "Fremd", "label": "Fremd", "icon_type": "Link", "parent_icon": None}
+		# Layout eines Benutzers wie vom Desk gespeichert (flache Liste von Objekten) - plus
+		# ein Textwert, wie ihn eine fruehere Fassung der Funktion faelschlich schrieb.
+		frappe.get_doc(
+			{"doctype": "Desktop Layout", "user": TECH, "layout": json.dumps([fremd, "Zeit & Projekt"])}
+		).insert(ignore_permissions=True)
+
+		self.assertTrue(_in_desktop_layouts_eintragen())
+		layout = json.loads(frappe.db.get_value("Desktop Layout", TECH, "layout"))
+		self.assertTrue(all(isinstance(x, dict) for x in layout))
+		self.assertEqual(
+			[x["name"] for x in layout], ["Fremd", "Zeit & Projekt", "Fahrtenbuch", "Site Visits"]
+		)
+		# Der Rest des Layouts bleibt unveraendert, Wiederholung aendert nichts
+		self.assertEqual(layout[0], fremd)
+		self.assertFalse(_in_desktop_layouts_eintragen())
+
 	def test_desk(self):
 		from frappe.apps import get_apps
 
