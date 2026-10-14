@@ -49,7 +49,8 @@ Kilometer bereits in einer gebuchten Rechnung stehen.
 (Minuten)"*: z. B. 15 rundet die abrechenbaren Stunden auf volle
 Viertelstunden auf (50 Minuten → 1,0 Std.). Die tatsächliche Dauer bleibt im
 Zeitblatt erhalten; ERPNext zeigt dann den Hinweis, dass die abrechenbaren
-Stunden über den tatsächlichen liegen. 0 = minutengenau.
+Stunden über den tatsächlichen liegen. 0 = minutengenau. Gilt für die Fahrzeit (nicht für den
+Kundeneinsatz); bei Fahrten mit Pausen für die Summe der Arbeitsabschnitte.
 
 ## Timer, Pausen und Fotos
 
@@ -72,8 +73,11 @@ Oben im Fahrt-Formular stehen **große Knöpfe** für den Timer (am Handy bildsc
 *Fahrzeit (Std.)* ist die Zeit **ohne Pausen**. Beim Buchen entsteht ein **Zeitblatt mit einer
 Zeile je Arbeitsabschnitt** zwischen den Pausen, wie beim Kundeneinsatz: eine Fahrt mit einer
 Pause ergibt zwei Zeilen. So werden Pausen weder abgerechnet, noch kollidieren sie mit einer
-Zeitbuchung, die währenddessen erfasst wird. Die *Taktung* gilt nur für Fahrten ohne Pausen
-(die Stunden einer Zeile kommen dann direkt aus ihren Zeiten).
+Zeitbuchung, die währenddessen erfasst wird. Die *Taktung* (siehe oben) gilt auch hier, und
+zwar für die **Summe** der Abschnitte, nicht je Abschnitt (sonst würde jede Pause zusätzlich
+aufgerundet): Jede Zeile behält ihre tatsächliche Dauer als abrechenbare Stunden, die letzte
+bekommt zusätzlich den Aufschlag bis zur gerundeten Gesamtzeit. Beispiel bei 15 Minuten:
+zweimal 20 Minuten = 40 Minuten netto → 45 Minuten abrechenbar (20 + 25).
 
 Im Projekt-Formular legt der Knopf **„Fahrt mit Timer starten"** (und das „+" bei
 *Fahrten* unter *Verknüpfungen*) eine Fahrt mit Projekt/Kunde an, startet den Timer und

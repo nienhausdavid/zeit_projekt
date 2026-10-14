@@ -40,6 +40,24 @@ def check_employee_required(doc):
 		)
 
 
+def abrechenbare_zeilenstunden(zeilen, billing_hours, mit_abschnitten):
+	"""Abrechenbare Stunden je Zeitblatt-Zeile.
+
+	Ohne Abschnitte (eine Zeile): billing_hours oder 0 (= tatsaechliche Dauer).
+	Mit Abschnitten (Pausen) steht billing_hours fuer die abrechenbare Gesamtzeit
+	(Taktung ueber die Summe, nicht je Abschnitt - sonst wuerde jede Pause
+	zusaetzlich aufgerundet): jede Zeile bekommt ihre tatsaechliche Dauer, die
+	letzte zusaetzlich den Aufschlag bis zur gerundeten Gesamtzeit. Ohne
+	billing_hours bleibt es bei der tatsaechlichen Dauer (0)."""
+	if not mit_abschnitten:
+		return [billing_hours or 0]
+	if not billing_hours:
+		return [0] * len(zeilen)
+	ist = [flt((bis - ab).total_seconds() / 3600, 4) for ab, bis in zeilen]
+	aufschlag = max(0, flt(billing_hours - sum(ist), 4))
+	return ist[:-1] + [flt(ist[-1] + aufschlag, 4)]
+
+
 def create_timesheet(source, activity_type, from_time, to_time, *, customer, project=None,
 		company=None, description=None, billing_hours=None, segments=None, sales_order=None):
 	"""Legt ein abrechenbares Zeitblatt fuer eine Fahrt bzw. einen Site Visit
@@ -47,8 +65,8 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 	des Kunden (siehe sales_invoice.get_billable_time_logs).
 
 	segments: optional Liste von (ab, bis) statt from_time/to_time - je
-	Arbeitsabschnitt eine Zeile (Kundeneinsatz mit Pausen). billing_hours gilt
-	nur ohne segments. sales_order landet in jeder Zeile (custom_sales_order) -
+	Arbeitsabschnitt eine Zeile (Kundeneinsatz mit Pausen). billing_hours ist die abrechenbare
+	Gesamtzeit (Taktung); mit segments wird sie auf die Zeilen verteilt. sales_order landet in jeder Zeile (custom_sales_order) -
 	fuer den Auftragsfilter im Zeitimport.
 
 	Ohne Rollenpruefung: die Rolle "Employee" darf Zeitblaetter in ERPNext
@@ -62,6 +80,7 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 		or (frappe.db.get_value("Employee", source.employee, "company") if source.employee else None)
 		or erpnext.get_default_company()
 	)
+	zeilen = segments or [(from_time, to_time)]
 	ts = frappe.get_doc(
 		{
 			"doctype": "Timesheet",
@@ -78,10 +97,10 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 					"project": project or None,
 					"description": description or source.name,
 					"is_billable": 1,
-					"billing_hours": (billing_hours or 0) if not segments else 0,
+					"billing_hours": stunden,
 					"custom_sales_order": sales_order or None,
 				}
-				for ab, bis in (segments or [(from_time, to_time)])
+				for (ab, bis), stunden in zip(zeilen, abrechenbare_zeilenstunden(zeilen, billing_hours, bool(segments)))
 			],
 		}
 	)

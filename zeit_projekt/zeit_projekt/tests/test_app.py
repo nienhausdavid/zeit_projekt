@@ -100,6 +100,11 @@ class TestApp(IntegrationTestCase):
 				self.assertTrue(os.path.isfile(svg), svg)
 		self.assertGreaterEqual(unterpunkte, 2)
 
+	def test_pause_wird_nicht_zu_anhalten(self):
+		# ERPNext uebersetzt "Pause" im Deutschen mit "Anhalten" (Arbeitsplatz); als Grund
+		# einer Pause im Fahrtenbuch soll es "Pause" bleiben.
+		self.assertEqual(frappe._("Pause", lang="de"), "Pause")
+
 	def test_desk(self):
 		from frappe.apps import get_apps
 

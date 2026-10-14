@@ -20,9 +20,9 @@ def before_submit(doc, method=None):
 		customer=doc.customer,
 		project=doc.project,
 		description=positionstext(doc, _("Fahrzeit")),
-		# Mit Pausen je Arbeitsabschnitt eine Zeile (dann ohne Taktung, die Stunden
-		# kommen aus den Zeiten); ohne Pausen wie bisher eine Zeile mit Taktung.
-		billing_hours=None if doc.breaks else abrechenbare_stunden(doc.duration_hours),
+		# Mit Pausen je Arbeitsabschnitt eine Zeile; die Taktung gilt fuer die Summe der
+		# Abschnitte (siehe billing.abrechenbare_zeilenstunden).
+		billing_hours=abrechenbare_stunden(doc.duration_hours),
 		segments=arbeitsabschnitte(doc) if doc.breaks else None,
 		sales_order=doc.sales_order,
 	)

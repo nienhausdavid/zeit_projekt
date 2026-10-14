@@ -78,6 +78,18 @@ class TestFahrt(IntegrationTestCase):
 		self.assertEqual(str(zeilen[0].to_time), "2031-03-20 08:30:00")
 		self.assertEqual(str(zeilen[1].from_time), "2031-03-20 08:45:00")
 
+	def test_taktung_gilt_auch_mit_pausen(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 15)
+		f = self.fahrt(start="2031-03-21 08:00:00", end="2031-03-21 08:50:00", bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-21 08:20:00", "to_time": "2031-03-21 08:30:00", "reason": "Pause"})
+		f.save()  # netto 40 Minuten, 2 x 20
+		f.submit()
+		zeilen = frappe.get_doc("Timesheet", f.timesheet).time_logs
+		self.assertEqual(len(zeilen), 2)
+		self.assertAlmostEqual(flt(zeilen[0].billing_hours), 0.3333, places=3)  # tatsaechlich 20 min
+		# 40 Minuten netto -> auf 45 aufgerundet; der Aufschlag haengt an der letzten Zeile
+		self.assertAlmostEqual(sum(flt(z.billing_hours) for z in zeilen), 0.75, places=3)
+
 	def test_laufende_pause_endet_mit_der_fahrt(self):
 		f = self.fahrt(bill_km=0)
 		f.append("breaks", {"from_time": "2031-03-10 09:00:00", "reason": "Pause"})  # noch offen
