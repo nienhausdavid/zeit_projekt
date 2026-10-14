@@ -72,7 +72,7 @@ class TestApp(IntegrationTestCase):
 		layout = json.loads(frappe.db.get_value("Desktop Layout", TECH, "layout"))
 		self.assertTrue(all(isinstance(x, dict) for x in layout))
 		self.assertEqual(
-			[x["name"] for x in layout], ["Fremd", "Zeit & Projekt", "Fahrtenbuch", "Site Visits"]
+			[x["name"] for x in layout], ["Fremd", "Zeit & Projekt", "Fahrtenbuch", "Site Visits", "Einstellungen"]
 		)
 		# Der Rest des Layouts bleibt unveraendert, Wiederholung aendert nichts
 		self.assertEqual(layout[0], fremd)
@@ -105,6 +105,20 @@ class TestApp(IntegrationTestCase):
 		# einer Pause im Fahrtenbuch soll es "Pause" bleiben.
 		self.assertEqual(frappe._("Pause", lang="de"), "Pause")
 
+	def test_einstellungen_nur_im_eigenen_modul(self):
+		"""Die Einstellungen stehen nicht mehr in den Seitenleisten von Fahrtenbuch und
+		Kundeneinsaetzen, sondern in der eigenen mit erkennbarem Titel."""
+		for leiste in ("Fahrtenbuch", "Site Visits"):
+			self.assertFalse(
+				frappe.db.exists("Sidebar Item", {"parent": leiste, "link_to": "Zeit Projekt Einstellungen"}), leiste
+			)
+		self.assertEqual(frappe.db.get_value("Sidebar", "Zeit & Projekt Einstellungen", "module"), "Zeit Projekt")
+		self.assertTrue(
+			frappe.db.exists("Sidebar Item", {"parent": "Zeit & Projekt Einstellungen", "link_to": "Zeit Projekt Einstellungen"})
+		)
+		icon = frappe.db.get_value("Desktop Icon", "Einstellungen", ["parent_icon", "link_to"])
+		self.assertEqual(icon, ("Zeit & Projekt", "Zeit & Projekt Einstellungen"))
+
 	def test_fahrzeuge_in_der_seitenleiste(self):
 		self.assertTrue(frappe.db.exists("Sidebar Item", {"parent": "Fahrtenbuch", "link_to": "Vehicle"}))
 
@@ -113,7 +127,7 @@ class TestApp(IntegrationTestCase):
 
 		self.assertEqual(frappe.db.get_value("Desktop Icon", "Zeit & Projekt", "icon_type"), "App")
 		kinder = frappe.get_all("Desktop Icon", filters={"parent_icon": "Zeit & Projekt"}, pluck="link_to")
-		self.assertEqual(sorted(kinder), ["Fahrtenbuch", "Site Visits"])
+		self.assertEqual(sorted(kinder), ["Fahrtenbuch", "Site Visits", "Zeit & Projekt Einstellungen"])
 		# Frappe >= 16.51 liest "Sidebar"; "Workspace Sidebar" ist dort wirkungslos.
 		doctype = "Sidebar" if frappe.db.table_exists("Sidebar") else "Workspace Sidebar"
 		for sidebar in kinder:

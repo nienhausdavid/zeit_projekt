@@ -85,10 +85,12 @@ so auch auf bestehenden Sites an.
 
 `add_to_apps_screen` registriert **ein** App-Symbol „Zeit & Projekt" (Logo,
 Ziel `/desk/fahrt?sidebar=Fahrtenbuch`). Darunter liegen die Symbole
-*Fahrtenbuch* und *Site Visits*, die je eine eigene Seitenleiste öffnen. Die
+*Fahrtenbuch*, *Site Visits* und *Einstellungen*, die je eine eigene Seitenleiste öffnen
+(*Zeit & Projekt Einstellungen*, Modul „Zeit Projekt": Einstellungen, Aktivitätsarten, Mitarbeiter;
+Frappe benennt eine Seitenleiste nach ihrem Titel, Name und Titel müssen gleich sein). Die
 Symbole liegen als JSON in `desktop_icon/`, die Seitenleisten als `Sidebar`
 je Modul unter `fahrtenbuch/sidebar/fahrtenbuch/` und
-`site_visit/sidebar/site_visits/`; Frappe gleicht sie bei jedem `migrate` ab.
+`site_visit/sidebar/site_visits/` und `zeit_projekt/sidebar/zeit_&_projekt_einstellungen/`; Frappe gleicht sie bei jedem `migrate` ab.
 Der Dateiname muss `frappe.scrub(<Bezeichnung>)` entsprechen, sonst löscht
 `migrate` das Symbol als verwaist.
 

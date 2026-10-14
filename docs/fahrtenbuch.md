@@ -279,9 +279,11 @@ keine Strecke, nur diese zwei Zeitpunkte, jeweils mit Zeit und Genauigkeit in Me
 ## Einstellungen im Überblick
 
 Alle Einstellungen der App (Fahrtenbuch, Kundeneinsatz, Abrechnung, PDF) liegen an einem
-Ort: **Zeit Projekt Einstellungen**. Sie sind aus den Seitenleisten von Fahrtenbuch und
-Kundeneinsätzen über den Eintrag *Einstellungen* erreichbar. Die frühere Seite
-„Fahrtenbuch Einstellungen" gibt es nicht mehr; ein Patch hat ihre Werte übernommen.
+Ort: **Zeit Projekt Einstellungen**. Sie stehen **nicht** in den Seitenleisten von Fahrtenbuch
+und Kundeneinsätzen, sondern im eigenen Modul **„Zeit & Projekt Einstellungen"**: als Symbol
+*Einstellungen* im Desk-Ordner „Zeit & Projekt" und im Modul-Menü der Seitenleiste. Dort stehen
+außerdem *Aktivitätsarten* und *Mitarbeiter*. Die frühere Seite „Fahrtenbuch Einstellungen" gibt
+es nicht mehr; ein Patch hat ihre Werte übernommen.
 
 | Feld | Zweck |
 |---|---|

@@ -1,0 +1,21 @@
+{
+ "app": "zeit_projekt",
+ "creation": "2026-10-15 11:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon": "settings",
+ "icon_type": "Link",
+ "idx": 3,
+ "label": "Einstellungen",
+ "link_to": "Zeit & Projekt Einstellungen",
+ "link_type": "Workspace Sidebar",
+ "parent_icon": "Zeit & Projekt",
+ "modified": "2026-10-15 11:30:00.000000",
+ "modified_by": "Administrator",
+ "name": "Einstellungen",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}
