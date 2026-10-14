@@ -36,7 +36,11 @@ Rollenprüfung angelegt und gebucht – maßgeblich ist die Berechtigung auf den
 Einsatz, denn die Rolle „Employee" darf in ERPNext keine Zeitblätter buchen.
 
 Überschneidet sich der Zeitraum mit einer anderen Zeitbuchung desselben
-Mitarbeiters, bricht das Buchen mit einer klaren Meldung ab.
+Mitarbeiters, bricht das Buchen mit einer klaren Meldung ab. Der Mitarbeiter ist
+freiwillig (siehe [Fahrtenbuch – Mitarbeiter](fahrtenbuch.md#mitarbeiter-freiwillig)):
+ohne ihn entfällt diese Prüfung, und die Firma kommt aus der Einsatz-Firma bzw. der
+Standardfirma. Mit der Einstellung *Mitarbeiter ist Pflicht* lässt sich der
+Mitarbeiter erzwingen.
 
 ## Zusatzartikel und Auftrag
 

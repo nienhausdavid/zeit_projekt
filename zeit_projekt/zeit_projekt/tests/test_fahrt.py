@@ -25,11 +25,11 @@ class TestFahrt(IntegrationTestCase):
 		frappe.set_user("Administrator")
 		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 0)
 
-	def fahrt(self, start="2031-03-10 08:00:00", end="2031-03-10 09:30:00", km=(1000, 1042), bill_km=1, so=True):
+	def fahrt(self, start="2031-03-10 08:00:00", end="2031-03-10 09:30:00", km=(1000, 1042), bill_km=1, so=True, employee=True):
 		return frappe.get_doc(
 			{
 				"doctype": "Fahrt",
-				"employee": self.ctx.employee,
+				"employee": self.ctx.employee if employee else None,
 				"date": start[:10],
 				"sales_order": self.so.name if so else None,
 				"start_time": start,
@@ -65,6 +65,73 @@ class TestFahrt(IntegrationTestCase):
 		punkte = json.loads(f.route_map)["features"]
 		self.assertEqual([p["properties"]["art"] for p in punkte], ["start", "ende"])
 		self.assertEqual(punkte[0]["geometry"]["coordinates"], [9.99, 53.55])
+
+	def test_pause_ergibt_zwei_zeilen_und_netto_fahrzeit(self):
+		f = self.fahrt(start="2031-03-20 08:00:00", end="2031-03-20 09:30:00", bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-20 08:30:00", "to_time": "2031-03-20 08:45:00", "reason": "Pause"})
+		f.save()
+		self.assertEqual(flt(f.duration_hours), 1.25)  # ohne die 15 Minuten Pause
+		f.submit()
+		zeilen = frappe.get_doc("Timesheet", f.timesheet).time_logs
+		self.assertEqual(len(zeilen), 2)
+		self.assertEqual([flt(z.hours) for z in zeilen], [0.5, 0.75])
+		self.assertEqual(str(zeilen[0].to_time), "2031-03-20 08:30:00")
+		self.assertEqual(str(zeilen[1].from_time), "2031-03-20 08:45:00")
+
+	def test_taktung_gilt_auch_mit_pausen(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 15)
+		f = self.fahrt(start="2031-03-21 08:00:00", end="2031-03-21 08:50:00", bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-21 08:20:00", "to_time": "2031-03-21 08:30:00", "reason": "Pause"})
+		f.save()  # netto 40 Minuten, 2 x 20
+		f.submit()
+		zeilen = frappe.get_doc("Timesheet", f.timesheet).time_logs
+		self.assertEqual(len(zeilen), 2)
+		self.assertAlmostEqual(flt(zeilen[0].billing_hours), 0.3333, places=3)  # tatsaechlich 20 min
+		# 40 Minuten netto -> auf 45 aufgerundet; der Aufschlag haengt an der letzten Zeile
+		self.assertAlmostEqual(sum(flt(z.billing_hours) for z in zeilen), 0.75, places=3)
+
+	def test_laufende_pause_endet_mit_der_fahrt(self):
+		f = self.fahrt(bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-10 09:00:00", "reason": "Pause"})  # noch offen
+		f.save()
+		self.assertEqual(str(f.breaks[0].to_time), "2031-03-10 09:30:00")
+		self.assertEqual(flt(f.duration_hours), 1.0)
+
+	def test_pause_ausserhalb_oder_ueberlappend_abgelehnt(self):
+		f = self.fahrt(bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-10 07:00:00", "to_time": "2031-03-10 07:30:00", "reason": "Pause"})
+		with self.assertRaises(frappe.ValidationError):
+			f.save()
+		f = self.fahrt(bill_km=0)
+		f.append("breaks", {"from_time": "2031-03-10 08:10:00", "to_time": "2031-03-10 08:40:00", "reason": "Pause"})
+		f.append("breaks", {"from_time": "2031-03-10 08:30:00", "to_time": "2031-03-10 08:50:00", "reason": "Pause"})
+		with self.assertRaises(frappe.ValidationError):
+			f.save()
+
+	def test_ohne_mitarbeiter_speichern_und_buchen(self):
+		"""Der Mitarbeiter ist freiwillig: Fahrt speichern und buchen geht ohne, das
+		Zeitblatt entsteht ohne Mitarbeiter mit der Standardfirma."""
+		import erpnext
+
+		f = self.fahrt(employee=False)
+		self.assertFalse(f.employee)
+		f.submit()
+		ts = frappe.get_doc("Timesheet", f.timesheet)
+		self.assertEqual(ts.docstatus, 1)
+		self.assertFalse(ts.employee)
+		self.assertEqual(ts.company, erpnext.get_default_company())
+		self.assertEqual(flt(ts.time_logs[0].hours), 1.5)
+
+	def test_mitarbeiter_pflicht_per_einstellung(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_required", 1)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		try:
+			with self.assertRaises(frappe.MandatoryError):
+				self.fahrt(employee=False)
+			self.assertTrue(self.fahrt(employee=True).name)  # mit Mitarbeiter geht es
+		finally:
+			frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_required", 0)
+			frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 
 	def test_buchen_legt_zeitblatt_an_und_laesst_auftrag_unveraendert(self):
 		vorher = len(sales_order_rows(self.so.name))

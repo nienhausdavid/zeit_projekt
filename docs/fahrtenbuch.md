@@ -8,6 +8,18 @@ korrigieren.
 Kein Finanzamt-taugliches Fahrtenbuch (keine Geschäftlich/Privat-Trennung,
 keine lückenlose Erfassung) – ein praktisches Log für Kundenbesuche.
 
+## Mitarbeiter (freiwillig)
+
+Der **Mitarbeiter** ist bei Fahrt und Kundeneinsatz **kein Pflichtfeld**. Das Formular trägt
+automatisch den aktiven Mitarbeiter ein, dessen *Benutzer-ID* der angemeldete Benutzer ist,
+falls es einen gibt; sonst bleibt das Feld leer und man kann trotzdem speichern und buchen.
+Ohne Mitarbeiter entsteht das Zeitblatt ohne Mitarbeiter, die Firma kommt aus der
+Standardfirma, und die Überschneidungsprüfung je Mitarbeiter entfällt.
+
+Wer den Mitarbeiter erzwingen will, schaltet in *Zeit Projekt Einstellungen → Mitarbeiter*
+**„Mitarbeiter ist Pflicht"** ein (Standard: aus). Dann lehnt das Speichern von Fahrt und
+Kundeneinsatz ohne Mitarbeiter ab.
+
 ## Buchen und Abrechnung
 
 Beim Buchen entsteht automatisch ein **Zeitblatt** mit der *Aktivitätsart
@@ -37,20 +49,42 @@ Kilometer bereits in einer gebuchten Rechnung stehen.
 (Minuten)"*: z. B. 15 rundet die abrechenbaren Stunden auf volle
 Viertelstunden auf (50 Minuten → 1,0 Std.). Die tatsächliche Dauer bleibt im
 Zeitblatt erhalten; ERPNext zeigt dann den Hinweis, dass die abrechenbaren
-Stunden über den tatsächlichen liegen. 0 = minutengenau.
+Stunden über den tatsächlichen liegen. 0 = minutengenau. Gilt für die Fahrzeit (nicht für den
+Kundeneinsatz); bei Fahrten mit Pausen für die Summe der Arbeitsabschnitte.
 
-## Timer
+## Timer, Pausen und Fotos
 
-„Timer starten"/„Timer stoppen" setzen Beginn bzw. Ende und **speichern
-sofort** – wie ERPNexts eigener Zeitblatt-Timer. Sonst ginge ein laufender
-Timer bei einem Neuladen verloren. Deshalb sind Endzeit, Kilometerstände und
-Aktivitätsart nicht auf Feldebene Pflicht, sondern werden erst beim Buchen
-geprüft.
+Oben im Fahrt-Formular stehen **große Knöpfe** für den Timer (am Handy bildschirmbreit):
 
-Im Projekt-Formular legt der Knopf **„Fahrt mit Timer starten"** (und das
-„+" bei *Fahrten* unter *Verknüpfungen*) eine Fahrt mit Projekt/Kunde an,
-startet den Timer und öffnet die Kamera für das Start-Foto. Beides einzeln
-abschaltbar in *Zeit Projekt Einstellungen* (Standard: an).
+- **Timer starten / Timer stoppen** setzen Beginn bzw. Ende und **speichern sofort** – wie
+  ERPNexts eigener Zeitblatt-Timer. Sonst ginge ein laufender Timer bei einem Neuladen
+  verloren. Deshalb sind Endzeit, Kilometerstände und Aktivitätsart nicht auf Feldebene
+  Pflicht, sondern werden erst beim Buchen geprüft.
+- **Timer pausieren / Timer fortsetzen:** fragt einen Grund ab (*Pause*, *Notfall bei
+  anderem Kunden*, *Sonstiges*) mit optionaler Notiz und legt eine Zeile unter *Pausen* an.
+  Die Anzeige zeigt die Netto-Fahrzeit, in einer Pause „Pausiert seit …". „Timer stoppen" in
+  einer Pause beendet sie mit der Fahrt. Pausen lassen sich auch von Hand eintragen; sie
+  müssen im Zeitraum der Fahrt liegen und dürfen sich nicht überschneiden.
+- **Foto Kilometerstand Start / Ende:** große Knöpfe im Abschnitt *Kilometerstand* (unten
+  im Formular), jeder direkt über seinem Foto-Feld. Sie öffnen die Kamera (am Handy der Tipp
+  auf den Knopf ist zugleich die Erlaubnis des Browsers dafür). Der Knopf verschwindet, sobald
+  das Foto vorhanden ist; „Ende" erscheint ab dem Start des Timers.
+
+*Fahrzeit (Std.)* ist die Zeit **ohne Pausen**. Beim Buchen entsteht ein **Zeitblatt mit einer
+Zeile je Arbeitsabschnitt** zwischen den Pausen, wie beim Kundeneinsatz: eine Fahrt mit einer
+Pause ergibt zwei Zeilen. So werden Pausen weder abgerechnet, noch kollidieren sie mit einer
+Zeitbuchung, die währenddessen erfasst wird. Die *Taktung* (siehe oben) gilt auch hier, und
+zwar für die **Summe** der Abschnitte, nicht je Abschnitt (sonst würde jede Pause zusätzlich
+aufgerundet): Jede Zeile behält ihre tatsächliche Dauer als abrechenbare Stunden, die letzte
+bekommt zusätzlich den Aufschlag bis zur gerundeten Gesamtzeit. Beispiel bei 15 Minuten:
+zweimal 20 Minuten = 40 Minuten netto → 45 Minuten abrechenbar (20 + 25).
+
+Im Projekt-Formular legt der Knopf **„Fahrt mit Timer starten"** (und das „+" bei
+*Fahrten* unter *Verknüpfungen*) eine Fahrt mit Projekt/Kunde an, startet den Timer und
+öffnet die Kamera für das Start-Foto. Beides einzeln abschaltbar in
+*Zeit Projekt Einstellungen* (Standard: an). Manche mobile Browser blockieren das
+automatische Öffnen der Kamera, wenn es nicht direkt auf einen Fingertipp folgt; dann den
+Foto-Knopf im Formular benutzen. Eine mit „Neu" angelegte Fahrt startet nichts von selbst.
 
 ## Kilometerstand-Erkennung
 
@@ -226,6 +260,7 @@ Kundeneinsätzen über den Eintrag *Einstellungen* erreichbar. Die frühere Seit
 | Artikel Kilometer | Vorbelegung für neue Fahrten |
 | Fahrzeit abrechnen in Schritten von (Minuten) | Taktung, 0 = minutengenau |
 | Schnittstelle, API-URL, Modell, API-Schlüssel, Bildgröße, Originalauflösung, Kontextfenster, Modell im Speicher halten | Kilometerstand-Erkennung |
+| Mitarbeiter ist Pflicht | Fahrt und Kundeneinsatz nur mit Mitarbeiter speichern (Standard: aus) |
 | Timer automatisch starten / Kamera automatisch öffnen | Verhalten beim Anlegen aus dem Projekt |
 | Standort bei Beginn und Ende erfassen | Position bei Beginn und Ende der Fahrt auf einer Karte (Standard: aus) |
 

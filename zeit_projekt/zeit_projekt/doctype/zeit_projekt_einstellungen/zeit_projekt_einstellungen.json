@@ -14,6 +14,8 @@
   "excluded_item_groups",
   "pdf_section",
   "force_chrome_pdf",
+  "section_break_mitarbeiter",
+  "employee_required",
   "section_break_abrechnung",
   "activity_type",
   "km_item",
@@ -98,6 +100,18 @@
    "label": "PDFs immer mit Chrome erzeugen"
   },
   {
+   "fieldname": "section_break_mitarbeiter",
+   "fieldtype": "Section Break",
+   "label": "Mitarbeiter"
+  },
+  {
+   "fieldname": "employee_required",
+   "fieldtype": "Check",
+   "label": "Mitarbeiter ist Pflicht",
+   "default": "0",
+   "description": "Fahrt und Kundeneinsatz lassen sich nur mit gewähltem Mitarbeiter speichern. Aus (Standard): Der Mitarbeiter ist überall freiwillig. Ohne Mitarbeiter entsteht das Zeitblatt ohne Mitarbeiter, die Firma kommt aus der Standardfirma, und die Überschneidungsprüfung je Mitarbeiter entfällt."
+  },
+  {
    "fieldname": "section_break_abrechnung",
    "fieldtype": "Section Break",
    "label": "Fahrtenbuch: Abrechnung"
@@ -131,14 +145,14 @@
   },
   {
    "default": "1",
-   "description": "Beim Anlegen einer Fahrt über die Verknüpfung im Projekt sofort die Startzeit setzen und speichern (Timer läuft direkt)",
+   "description": "Beim Anlegen einer Fahrt über die Verknüpfung im Projekt (Knopf „Fahrt mit Timer starten“) sofort die Startzeit setzen und speichern (Timer läuft direkt).",
    "fieldname": "auto_start_timer",
    "fieldtype": "Check",
    "label": "Timer automatisch starten"
   },
   {
    "default": "1",
-   "description": "Beim Anlegen einer Fahrt über die Verknüpfung im Projekt sofort die Kamera für das Start-Kilometerstand-Foto öffnen",
+   "description": "Beim Anlegen einer Fahrt über die Verknüpfung im Projekt sofort die Kamera für das Start-Kilometerstand-Foto öffnen. Manche mobile Browser blockieren das, wenn es nicht direkt auf einen Fingertipp folgt; dann den Foto-Knopf im Formular benutzen.",
    "fieldname": "auto_open_camera",
    "fieldtype": "Check",
    "label": "Kamera automatisch öffnen"
@@ -225,7 +239,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-14 21:00:00.000000",
+ "modified": "2026-10-15 08:30:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",

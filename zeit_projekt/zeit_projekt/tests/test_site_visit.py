@@ -25,12 +25,12 @@ class TestSiteVisit(IntegrationTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 
-	def site_visit(self, tag, sales_order=None, items=None, customer=KUNDE_A):
+	def site_visit(self, tag, sales_order=None, items=None, customer=KUNDE_A, employee=True):
 		return frappe.get_doc(
 			{
 				"doctype": "Site Visit",
 				"customer": customer,
-				"employee": self.ctx.employee,
+				"employee": self.ctx.employee if employee else None,
 				"activity_type": MONTAGE,
 				"date": f"2031-04-{tag:02d}",
 				"from_time": f"2031-04-{tag:02d} 10:00:00",
@@ -40,6 +40,29 @@ class TestSiteVisit(IntegrationTestCase):
 				"extra_items": items or [],
 			}
 		).insert()
+
+	def test_ohne_mitarbeiter_speichern_und_buchen(self):
+		import erpnext
+
+		so = make_sales_order(self.ctx.company)
+		sv = self.site_visit(21, so.name, employee=False)
+		self.assertFalse(sv.employee)
+		sv.submit()
+		ts = frappe.get_doc("Timesheet", sv.timesheet)
+		self.assertEqual((ts.docstatus, ts.employee), (1, None))
+		self.assertEqual(ts.company, sv.company or erpnext.get_default_company())
+
+	def test_mitarbeiter_pflicht_per_einstellung(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_required", 1)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		try:
+			so = make_sales_order(self.ctx.company)
+			with self.assertRaises(frappe.MandatoryError):
+				self.site_visit(22, so.name, employee=False)
+			self.assertTrue(self.site_visit(22, so.name, employee=True).name)
+		finally:
+			frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_required", 0)
+			frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 
 	def test_techniker_bucht_mit_zusatzartikel(self):
 		so = make_sales_order(self.ctx.company)

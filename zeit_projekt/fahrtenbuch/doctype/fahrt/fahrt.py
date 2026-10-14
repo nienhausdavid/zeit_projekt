@@ -3,9 +3,13 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, flt, get_datetime, time_diff_in_hours
 
+from zeit_projekt.zeit_projekt.billing import check_employee_required
+from zeit_projekt.zeit_projekt.pausen import arbeitsabschnitte, pausen_pruefen
+
 
 class Fahrt(Document):
 	def validate(self):
+		check_employee_required(self)
 		"""Ende/Kilometerstand sind erst beim Buchen Pflicht (siehe
 		before_submit) - beim Speichern als Entwurf, z. B. durch den Timer,
 		sind sie oft noch leer. Hier nur rechnen, wenn die Werte vorliegen.
@@ -16,6 +20,12 @@ class Fahrt(Document):
 			if get_datetime(self.end_time) <= get_datetime(self.start_time):
 				frappe.throw(_("Das Ende muss nach dem Beginn liegen."))
 			self.duration_hours = flt(time_diff_in_hours(self.end_time, self.start_time), 2)
+		pausen_pruefen(self)
+		if self.breaks and self.start_time and self.end_time:
+			# Fahrzeit ohne Pausen (Netto), wie die Arbeitszeit beim Kundeneinsatz
+			self.duration_hours = flt(
+				sum((bis - ab).total_seconds() for ab, bis in arbeitsabschnitte(self)) / 3600, 2
+			)
 
 		# Kein throw bei end < start: ein falscher OCR-Treffer soll speicherbar
 		# bleiben, bis er korrigiert ist - nur das Buchen blockiert (unten).
