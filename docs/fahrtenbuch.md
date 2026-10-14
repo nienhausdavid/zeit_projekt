@@ -8,16 +8,17 @@ korrigieren.
 Kein Finanzamt-taugliches Fahrtenbuch (keine Geschäftlich/Privat-Trennung,
 keine lückenlose Erfassung) – ein praktisches Log für Kundenbesuche.
 
-## Voraussetzung: Mitarbeiter
+## Mitarbeiter (freiwillig)
 
-Jede Fahrt (und jeder Kundeneinsatz) gehört zu einem **Mitarbeiter** (Pflichtfeld). Das
-Zeitblatt entsteht pro Mitarbeiter, die Firma kommt aus dem Mitarbeiter, und die
-Überschneidungsprüfung gilt je Mitarbeiter. Das Formular trägt automatisch den aktiven
-Mitarbeiter ein, dessen *Benutzer-ID* der angemeldete Benutzer ist. Gibt es keinen,
-fragt die App, ob sie das Anlegen eines Mitarbeiters öffnen soll (*Benutzer-ID* und
-Firma vorbelegt); ohne Mitarbeiter lässt sich nichts speichern. Der Knopf **„Fahrt mit
-Timer starten"** im Projekt holt den Mitarbeiter vor dem Anlegen, damit das sofortige
-Speichern und das Öffnen der Kamera nicht am Pflichtfeld scheitern.
+Der **Mitarbeiter** ist bei Fahrt und Kundeneinsatz **kein Pflichtfeld**. Das Formular trägt
+automatisch den aktiven Mitarbeiter ein, dessen *Benutzer-ID* der angemeldete Benutzer ist,
+falls es einen gibt; sonst bleibt das Feld leer und man kann trotzdem speichern und buchen.
+Ohne Mitarbeiter entsteht das Zeitblatt ohne Mitarbeiter, die Firma kommt aus der
+Standardfirma, und die Überschneidungsprüfung je Mitarbeiter entfällt.
+
+Wer den Mitarbeiter erzwingen will, schaltet in *Zeit Projekt Einstellungen → Mitarbeiter*
+**„Mitarbeiter ist Pflicht"** ein (Standard: aus). Dann lehnt das Speichern von Fahrt und
+Kundeneinsatz ohne Mitarbeiter ab.
 
 ## Buchen und Abrechnung
 
@@ -237,6 +238,7 @@ Kundeneinsätzen über den Eintrag *Einstellungen* erreichbar. Die frühere Seit
 | Artikel Kilometer | Vorbelegung für neue Fahrten |
 | Fahrzeit abrechnen in Schritten von (Minuten) | Taktung, 0 = minutengenau |
 | Schnittstelle, API-URL, Modell, API-Schlüssel, Bildgröße, Originalauflösung, Kontextfenster, Modell im Speicher halten | Kilometerstand-Erkennung |
+| Mitarbeiter ist Pflicht | Fahrt und Kundeneinsatz nur mit Mitarbeiter speichern (Standard: aus) |
 | Timer automatisch starten / Kamera automatisch öffnen | Verhalten beim Anlegen aus dem Projekt |
 | Standort bei Beginn und Ende erfassen | Position bei Beginn und Ende der Fahrt auf einer Karte (Standard: aus) |
 

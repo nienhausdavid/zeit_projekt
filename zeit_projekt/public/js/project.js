@@ -25,19 +25,18 @@ frappe.ui.form.on('Project', {
 });
 
 function start_fahrt_aus_projekt(frm) {
-	// Mitarbeiter zuerst holen und gleich mitgeben: das Fahrt-Formular sucht ihn
-	// selbst erst asynchron beim Oeffnen, das sofortige Speichern unten kaeme
-	// dem zuvor und scheiterte am Pflichtfeld - dann oeffnete auch die Kamera nie.
+	// Mitarbeiter (falls dem Benutzer einer zugeordnet ist) zuerst holen und gleich
+	// mitgeben: das Fahrt-Formular sucht ihn selbst erst asynchron beim Oeffnen,
+	// das sofortige Speichern unten kaeme dem zuvor - ist "Mitarbeiter ist Pflicht"
+	// an, scheiterte es, und die Kamera oeffnete nie. Ohne Mitarbeiter geht es
+	// trotzdem weiter (er ist freiwillig).
 	frappe.db
 		.get_value('Employee', { user_id: frappe.session.user, status: 'Active' }, 'name')
-		.then((e) => {
-			const employee = e.message && e.message.name;
-			if (!employee) {
-				hinweis_kein_mitarbeiter();
-				return;
-			}
-			fahrt_anlegen(frm, employee);
-		});
+		.then(
+			(e) => fahrt_anlegen(frm, e.message && e.message.name),
+			// z. B. keine Leseberechtigung auf Employee: ohne Mitarbeiter weitermachen
+			() => fahrt_anlegen(frm)
+		);
 }
 
 function fahrt_anlegen(frm, employee) {
@@ -45,7 +44,8 @@ function fahrt_anlegen(frm, employee) {
 	// System Manager lesen, Techniker bekaemen einen Rechte-Fehler.
 	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 		const { auto_start_timer, auto_open_camera } = r.message || {};
-		const values = { project: frm.doc.name, customer: frm.doc.customer, employee };
+		const values = { project: frm.doc.name, customer: frm.doc.customer };
+		if (employee) values.employee = employee;
 		if (auto_start_timer) {
 			values.start_time = frappe.datetime.now_datetime();
 		}
@@ -178,21 +178,4 @@ function upload_captured_image(frm, fieldname, data_url) {
 				indicator: 'red',
 			});
 		});
-}
-
-// Fehlt dem Benutzer ein Mitarbeiter, kann man nicht speichern (Pflichtfeld) -
-// und die Meldung dazu sagt nicht, woran es liegt. Deshalb ein klarer Hinweis
-// mit Weg zum Anlegen (Mitarbeiter mit "Benutzer-ID" = dieser Benutzer).
-function hinweis_kein_mitarbeiter() {
-	frappe.confirm(
-		__(
-			'Ihrem Benutzer ist kein aktiver Mitarbeiter zugeordnet, deshalb lässt sich hier nichts speichern. Mitarbeiter jetzt anlegen? (Das Feld „Benutzer-ID“ wird mit Ihrem Benutzer vorbelegt.)'
-		),
-		() => {
-			frappe.new_doc('Employee', {
-				user_id: frappe.session.user,
-				company: frappe.defaults.get_user_default('Company'),
-			});
-		}
-	);
 }

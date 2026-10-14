@@ -258,4 +258,6 @@
 "Standorte","Locations"
 "Standort konnte nicht ermittelt werden ({0}). Die Fahrt ist trotzdem gespeichert.","Location could not be determined ({0}). The trip is saved anyway."
 "Standort bei Beginn und Ende erfassen","Record location at start and end"
-"Ihrem Benutzer ist kein aktiver Mitarbeiter zugeordnet, deshalb lässt sich hier nichts speichern. Mitarbeiter jetzt anlegen? (Das Feld „Benutzer-ID“ wird mit Ihrem Benutzer vorbelegt.)","Your user has no active employee assigned, so nothing can be saved here. Create an employee now? (The field ""User ID"" will be pre-filled with your user.)"
+"Mitarbeiter","Employee"
+"Mitarbeiter ist Pflicht","Employee is mandatory"
+"Bitte einen Mitarbeiter wählen (in den Zeit Projekt Einstellungen ist „Mitarbeiter ist Pflicht“ eingeschaltet).","Please select an employee (""Employee is mandatory"" is enabled in Zeit Projekt Einstellungen)."

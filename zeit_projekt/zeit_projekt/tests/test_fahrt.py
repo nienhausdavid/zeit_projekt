@@ -25,11 +25,11 @@ class TestFahrt(IntegrationTestCase):
 		frappe.set_user("Administrator")
 		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 0)
 
-	def fahrt(self, start="2031-03-10 08:00:00", end="2031-03-10 09:30:00", km=(1000, 1042), bill_km=1, so=True):
+	def fahrt(self, start="2031-03-10 08:00:00", end="2031-03-10 09:30:00", km=(1000, 1042), bill_km=1, so=True, employee=True):
 		return frappe.get_doc(
 			{
 				"doctype": "Fahrt",
-				"employee": self.ctx.employee,
+				"employee": self.ctx.employee if employee else None,
 				"date": start[:10],
 				"sales_order": self.so.name if so else None,
 				"start_time": start,
@@ -65,6 +65,31 @@ class TestFahrt(IntegrationTestCase):
 		punkte = json.loads(f.route_map)["features"]
 		self.assertEqual([p["properties"]["art"] for p in punkte], ["start", "ende"])
 		self.assertEqual(punkte[0]["geometry"]["coordinates"], [9.99, 53.55])
+
+	def test_ohne_mitarbeiter_speichern_und_buchen(self):
+		"""Der Mitarbeiter ist freiwillig: Fahrt speichern und buchen geht ohne, das
+		Zeitblatt entsteht ohne Mitarbeiter mit der Standardfirma."""
+		import erpnext
+
+		f = self.fahrt(employee=False)
+		self.assertFalse(f.employee)
+		f.submit()
+		ts = frappe.get_doc("Timesheet", f.timesheet)
+		self.assertEqual(ts.docstatus, 1)
+		self.assertFalse(ts.employee)
+		self.assertEqual(ts.company, erpnext.get_default_company())
+		self.assertEqual(flt(ts.time_logs[0].hours), 1.5)
+
+	def test_mitarbeiter_pflicht_per_einstellung(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_required", 1)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		try:
+			with self.assertRaises(frappe.MandatoryError):
+				self.fahrt(employee=False)
+			self.assertTrue(self.fahrt(employee=True).name)  # mit Mitarbeiter geht es
+		finally:
+			frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_required", 0)
+			frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 
 	def test_buchen_legt_zeitblatt_an_und_laesst_auftrag_unveraendert(self):
 		vorher = len(sales_order_rows(self.so.name))

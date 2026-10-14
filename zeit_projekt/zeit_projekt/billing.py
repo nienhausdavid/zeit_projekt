@@ -1,6 +1,7 @@
 import copy
 from contextlib import contextmanager
 
+import erpnext
 import frappe
 from frappe import _
 from frappe.utils import cint, flt
@@ -27,6 +28,18 @@ def as_administrator():
 		frappe.local.form_dict = form_dict_backup
 
 
+def check_employee_required(doc):
+	"""Ist in den Zeit Projekt Einstellungen "Mitarbeiter ist Pflicht" an, muss
+	Fahrt/Kundeneinsatz einen Mitarbeiter haben - sonst ist er ueberall freiwillig."""
+	if not doc.employee and frappe.get_cached_doc("Zeit Projekt Einstellungen").employee_required:
+		frappe.throw(
+			_(
+				"Bitte einen Mitarbeiter wählen (in den Zeit Projekt Einstellungen ist „Mitarbeiter ist Pflicht“ eingeschaltet)."
+			),
+			frappe.MandatoryError,
+		)
+
+
 def create_timesheet(source, activity_type, from_time, to_time, *, customer, project=None,
 		company=None, description=None, billing_hours=None, segments=None, sales_order=None):
 	"""Legt ein abrechenbares Zeitblatt fuer eine Fahrt bzw. einen Site Visit
@@ -43,7 +56,12 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 	Quellbeleg."""
 	from erpnext.projects.doctype.timesheet.timesheet import OverlapError
 
-	company = company or frappe.db.get_value("Employee", source.employee, "company")
+	# Ohne Mitarbeiter (er ist freiwillig) kommt die Firma aus der Standardfirma
+	company = (
+		company
+		or (frappe.db.get_value("Employee", source.employee, "company") if source.employee else None)
+		or erpnext.get_default_company()
+	)
 	ts = frappe.get_doc(
 		{
 			"doctype": "Timesheet",
@@ -75,7 +93,7 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 	except OverlapError:
 		frappe.throw(
 			_("Dieser Zeitraum überschneidet sich mit einer bereits erfassten Zeitbuchung für {0}.").format(
-				source.employee
+				source.employee or source.owner
 			),
 			title=_("Zeitüberschneidung"),
 		)

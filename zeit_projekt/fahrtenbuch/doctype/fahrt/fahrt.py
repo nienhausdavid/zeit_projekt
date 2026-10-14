@@ -3,9 +3,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, flt, get_datetime, time_diff_in_hours
 
+from zeit_projekt.zeit_projekt.billing import check_employee_required
+
 
 class Fahrt(Document):
 	def validate(self):
+		check_employee_required(self)
 		"""Ende/Kilometerstand sind erst beim Buchen Pflicht (siehe
 		before_submit) - beim Speichern als Entwurf, z. B. durch den Timer,
 		sind sie oft noch leer. Hier nur rechnen, wenn die Werte vorliegen.

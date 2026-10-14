@@ -4,9 +4,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, get_datetime, nowdate
 
+from zeit_projekt.zeit_projekt.billing import check_employee_required
+
 
 class SiteVisit(Document):
 	def validate(self):
+		check_employee_required(self)
 		if not self.company:
 			self.company = erpnext.get_default_company()
 		if self.is_new() and not self.amended_from:
