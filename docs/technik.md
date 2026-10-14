@@ -24,7 +24,6 @@ zeit_projekt/
     │       ├── sales_invoice.js         # Zeitimport-Dialog
     │       ├── sales_order.js           # Hinweise + Sprung zum Projekt nach dem Buchen
     │       ├── fahrtenbuch.js           # Fahrt: Vorbelegung, Timer, Kilometerstand-Erkennung, Standort
-    │       ├── fahrtenbuch_einstellungen.js  # "Verfügbare Modelle abrufen"
     │       ├── project.js               # "Fahrt mit Timer starten"
     │       └── site_visit.js            # Kundeneinsatz: Timer/Pausen, Link-Suchen, "Neuer Auftrag"
     ├── zeit_projekt/              # Modul "Zeit Projekt"
