@@ -156,7 +156,14 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self.assertEqual(event, "zeit_projekt_odometer")
 		self.assertEqual(
 			daten,
-			{"request_id": res["request_id"], "fieldname": "start_odometer", "reading": 123456, "unsicher": False},
+			{
+				"request_id": res["request_id"],
+				"fieldname": "start_odometer",
+				"reading": 123456,
+				"unsicher": False,
+				"fehler": None,
+				"limit": 45,
+			},
 		)
 
 	def _melde(self, antworten):
@@ -165,6 +172,10 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		with patch("frappe.publish_realtime") as publish:
 			run_odometer_ocr(self.file.name, "end_odometer", "req", "Administrator")
 		return publish.call_args.args[1]
+
+	def test_ohne_antwort_wird_kein_fehler_gemeldet_wenn_nur_nichts_erkannt(self):
+		daten = self._melde(["111", "222", "333"])
+		self.assertIsNone(daten["fehler"])  # nichts erkannt ist kein Fehler
 
 	def test_einhellig_ist_sicher(self):
 		daten = self._melde(["55055", "55055"])
@@ -227,6 +238,8 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 
 	def test_api_nicht_erreichbar(self):
 		frappe.db.set_single_value("Zeit Projekt Einstellungen", {"api_url": "http://127.0.0.1:1/v1", "model": "x"})
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		self.assertEqual(ocr.read_odometer_detail(self.file)["fehler"], "nicht_erreichbar")
 		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		self.assertIsNone(ocr.read_odometer(self.file))
 
@@ -328,6 +341,11 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		self.assertEqual((ocr.zeitlimit(), ocr.job_timeout()), (1, 76))
 		self.assertEqual(ocr.read_odometer_mit_vertrauen(self.file), (None, False))  # zu langsam fuer 1 s
+		self.assertEqual(ocr.read_odometer_detail(self.file), {"wert": None, "sicher": False, "fehler": "timeout"})
+		with patch("frappe.publish_realtime") as publish:
+			run_odometer_ocr(self.file.name, "start_odometer", "req", "Administrator")
+		daten = publish.call_args.args[1]
+		self.assertEqual((daten["reading"], daten["fehler"], daten["limit"]), (None, "timeout", 1))
 
 		frappe.db.set_single_value("Zeit Projekt Einstellungen", "request_timeout", 10)
 		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")

@@ -161,8 +161,9 @@ Einrichtung in *Zeit Projekt Einstellungen*:
 - **Zeitlimit je Anfrage (Sekunden)**: wie lange die App auf die Antwort wartet (Standard 45,
   zulässig 10 bis 600). Ollama antwortet erst, wenn es fertig gerechnet hat, das Limit gilt also für
   die ganze Anfrage. Gesamtzeit aller Anfragen eines Fotos (Limit + 55 s) und das Limit des
-  Hintergrund-Jobs (Limit + 75 s) richten sich danach. Zu knapp eingestellt heißt: „nichts erkannt",
-  ohne Fehlermeldung. Richtwerte auf dem Steam Deck (`docs/modellvergleich.md`, Abschnitt 11):
+  Hintergrund-Jobs (Limit + 75 s) richten sich danach. Ist es zu knapp eingestellt, meldet das Formular
+  eine rote **Zeitüberschreitung** mit dem Limit (statt still „nicht erkannt"); ebenso, wenn das Modell
+  nicht erreichbar ist oder seine Antwort nicht lesbar war. Richtwerte auf dem Steam Deck (`docs/modellvergleich.md`, Abschnitt 11):
   `minicpm-v4.5` 17 s bei 1024 px und 32 s im Original (jeweils mit Laden), `qwen3-vl:8b-instruct`
   bei 2048 px etwa 96 s, also dort mindestens 120 einstellen.
 - **Kontextfenster (Token)** (nur *Ollama (nativ)*): leer = Standard des Servers.

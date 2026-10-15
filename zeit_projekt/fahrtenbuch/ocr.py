@@ -171,7 +171,17 @@ def read_odometer(file_doc) -> int | None:
 	return read_odometer_mit_vertrauen(file_doc)[0]
 
 
+def _ergebnis(wert=None, sicher=False, fehler=None) -> dict:
+	return {"wert": wert, "sicher": sicher, "fehler": fehler}
+
+
 def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
+	"""(Wert, sicher) - siehe read_odometer_detail."""
+	ergebnis = read_odometer_detail(file_doc)
+	return ergebnis["wert"], ergebnis["sicher"]
+
+
+def read_odometer_detail(file_doc) -> dict:
 	"""Liest den Kilometerstand ueber eine OpenAI-kompatible Chat-Completions-
 	API (Ollama, LM Studio, echtes OpenAI, ...) - konfiguriert in
 	"Zeit Projekt Einstellungen", keine Standard-URL/kein Standard-Modell
@@ -183,13 +193,15 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	Modul: die einzige Stelle, die sich aendern muesste, falls das
 	API-Format spaeter wechseln sollte.
 
-	Rueckgabe: (Wert, sicher). "Sicher" heisst: schon die ersten beiden
+	Rueckgabe: {"wert", "sicher", "fehler"}. "fehler" ist None oder der Grund, warum gar keine
+	Antwort kam ("timeout", "nicht_erreichbar", "antwort_unlesbar", "bild_unlesbar") - nicht zu
+	verwechseln mit "nichts erkannt" (fehler None, wert None). "Sicher" heisst: schon die ersten beiden
 	Antworten stimmen ueberein. Brauchte es die dritte Anfrage, gab es eine
 	abweichende Antwort - der Wert ist dann nur die Mehrheit und der Techniker
 	soll ihn gegen das Foto pruefen."""
 	settings = frappe.get_cached_doc("Zeit Projekt Einstellungen")
 	if not settings.api_url or not settings.model:
-		return None, False
+		return _ergebnis()
 
 	with open(file_doc.get_full_path(), "rb") as f:
 		image_bytes = f.read()
@@ -198,8 +210,7 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 				image_bytes, ORIGINAL_GROESSE if settings.get("image_original") else settings.max_image_px
 			)).decode()
 	except (OSError, Image.DecompressionBombError):
-		# Kein (lesbares) Bild - wie "nichts erkannt" behandeln
-		return None, False
+		return _ergebnis(fehler="bild_unlesbar")
 
 	headers = {"Content-Type": "application/json", **_auth_headers(settings)}
 	zeit = zeitlimit(settings)
@@ -223,22 +234,26 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	for _ in range(ANFRAGEN):
 		try:
 			stimmen.append(frage())
-		except (requests.RequestException, KeyError, IndexError, ValueError):
-			# API nicht erreichbar oder Antwort nicht lesbar: weitere Anfragen
+		except (requests.RequestException, KeyError, IndexError, ValueError) as e:
+			# API nicht erreichbar, zu langsam oder Antwort nicht lesbar: weitere Anfragen
 			# wuerden nur dieselbe Wartezeit kosten.
 			frappe.logger("fahrtenbuch").error("Kilometerstand-Erkennung fehlgeschlagen", exc_info=True)
-			return None, False
+			if isinstance(e, requests.Timeout):
+				return _ergebnis(fehler="timeout")
+			if isinstance(e, requests.RequestException):
+				return _ergebnis(fehler="nicht_erreichbar")
+			return _ergebnis(fehler="antwort_unlesbar")
 
 		haeufigste = Counter(s for s in stimmen if s is not None).most_common(1)
 		if haeufigste and haeufigste[0][1] >= 2:
 			# zwei gleiche Antworten genuegen, die dritte spart man sich
-			return haeufigste[0][0], len(stimmen) == 2
+			return _ergebnis(haeufigste[0][0], len(stimmen) == 2)
 		if time.monotonic() > ende:
 			break
 
 	# Keine zwei gleichen Antworten: lieber kein Wert, als einen unsicheren
 	# einzutragen - der Techniker tippt ihn dann selbst ein.
-	return None, False
+	return _ergebnis()
 
 
 def _frage_openai(
