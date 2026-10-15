@@ -97,9 +97,14 @@ class TestTechnikerRechte(IntegrationTestCase):
 		frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_self_service", 1 if an else 0)
 		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 
+	def _selbstanpassung(self, an):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "employee_self_edit", 1 if an else 0)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		self._selbstanlage(False)
+		self._selbstanpassung(False)
 
 	def test_eigenen_mitarbeiter_anlegen_nur_employee_rolle_dazu(self):
 		mail = self._neuer_benutzer()
@@ -109,12 +114,12 @@ class TestTechnikerRechte(IntegrationTestCase):
 		self._selbstanlage(True)
 
 		frappe.set_user(mail)
-		self.assertEqual(technician.get_employee_status(), {"employee": None, "self_service": True})
+		self.assertEqual(technician.get_employee_status(), {"employee": None, "self_service": True, "self_edit": False})
 		name = technician.create_own_employee("Selbst", geschlecht, "1991-05-17", "Techniker")
 
 		emp = frappe.get_doc("Employee", name)
 		self.assertEqual((emp.user_id, emp.status, emp.first_name), (mail, "Active", "Selbst"))
-		self.assertEqual(technician.get_employee_status(), {"employee": name, "self_service": False})
+		self.assertEqual(technician.get_employee_status(), {"employee": name, "self_service": False, "self_edit": False})
 		frappe.set_user("Administrator")
 		frappe.clear_cache(user=mail)
 		# ERPNext vergibt mit dem Mitarbeiter die Rolle Employee - sonst kommt nichts dazu
@@ -146,11 +151,63 @@ class TestTechnikerRechte(IntegrationTestCase):
 		self.assertTrue(ergebnis[tech])  # Techniker: auf den eigenen Mitarbeiter beschraenkt
 		self.assertFalse(ergebnis[admin])  # System Manager: keine Beschraenkung
 
+	def test_eigene_mitarbeiterdaten_anpassen(self):
+		mail = self._neuer_benutzer("zp-selbst-edit@example.com")
+		genders = frappe.get_all("Gender", pluck="name", order_by="name asc")
+		self._selbstanlage(True)
+		frappe.set_user(mail)
+		name = technician.create_own_employee("Alt", genders[0], "1991-05-17", "Name", "2020-01-01")
+		self.assertFalse(technician.get_employee_status()["self_edit"])  # Standard: aus
+
+		with self.assertRaises(frappe.PermissionError):
+			technician.update_own_employee("Neu", genders[0], "1992-06-18")
+		with self.assertRaises(frappe.PermissionError):
+			technician.get_employee_form_data(1)
+
+		frappe.set_user("Administrator")
+		self._selbstanpassung(True)
+		frappe.clear_cache(user=mail)
+		rollen_vorher = set(frappe.get_roles(mail))
+		vorher = frappe.db.get_value("Employee", name, ["company", "status", "user_id", "department"], as_dict=True)
+
+		frappe.set_user(mail)
+		self.assertTrue(technician.get_employee_status()["self_edit"])
+		daten = technician.get_employee_form_data(1)
+		self.assertEqual((daten["first_name"], daten["last_name"], daten["date_of_birth"]), ("Alt", "Name", "1991-05-17"))
+
+		self.assertEqual(technician.update_own_employee("Neu", genders[1], "1992-06-18", "Nachname", "2021-02-03"), name)
+		frappe.set_user("Administrator")
+		emp = frappe.get_doc("Employee", name)
+		self.assertEqual((emp.first_name, emp.last_name, emp.gender), ("Neu", "Nachname", genders[1]))
+		self.assertEqual((str(emp.date_of_birth), str(emp.date_of_joining)), ("1992-06-18", "2021-02-03"))
+		# alles andere bleibt unberuehrt
+		nachher = frappe.db.get_value("Employee", name, ["company", "status", "user_id", "department"], as_dict=True)
+		self.assertEqual(nachher, vorher)
+		frappe.clear_cache(user=mail)
+		self.assertEqual(set(frappe.get_roles(mail)), rollen_vorher)
+
+		# ungueltige Angaben werden abgelehnt, nichts wird geaendert
+		frappe.set_user(mail)
+		for args in (("", genders[0], "1992-06-18"), ("X", "Gibtsnicht", "1992-06-18"), ("X", genders[0], "2999-01-01")):
+			with self.assertRaises(frappe.ValidationError, msg=str(args)):
+				technician.update_own_employee(*args)
+		frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Employee", name, "first_name"), "Neu")
+
+	def test_anpassen_ohne_eigenen_mitarbeiter(self):
+		mail = self._neuer_benutzer("zp-selbst-leer@example.com")
+		genders = frappe.get_all("Gender", pluck="name", order_by="name asc")
+		self._selbstanpassung(True)
+		frappe.set_user(mail)
+		self.assertFalse(technician.get_employee_status()["self_edit"])
+		with self.assertRaises(frappe.ValidationError):
+			technician.update_own_employee("X", genders[0], "1992-06-18")
+
 	def test_selbstanlage_nur_wenn_freigeschaltet(self):
 		mail = self._neuer_benutzer("zp-selbst-aus@example.com")
 		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
 		frappe.set_user(mail)
-		self.assertEqual(technician.get_employee_status(), {"employee": None, "self_service": False})
+		self.assertEqual(technician.get_employee_status(), {"employee": None, "self_service": False, "self_edit": False})
 		with self.assertRaises(frappe.PermissionError):
 			technician.create_own_employee("X", geschlecht, "1991-05-17")
 		with self.assertRaises(frappe.PermissionError):

@@ -173,26 +173,76 @@ def _check_self_service():
 		)
 
 
+def _check_self_edit():
+	"""Eigene Mitarbeiterdaten aendern: Desk-Benutzer, Einstellung an, eigener Mitarbeiter da."""
+	_check_desk_user()
+	if not frappe.get_cached_doc("Zeit Projekt Einstellungen").employee_self_edit:
+		frappe.throw(
+			_("Das Ändern der eigenen Mitarbeiterdaten ist nicht freigeschaltet. Bitte die Verwaltung informieren."),
+			frappe.PermissionError,
+		)
+	name = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+	if not name:
+		frappe.throw(_("Für Ihren Benutzer gibt es noch keinen Mitarbeiter."))
+	return name
+
+
 @frappe.whitelist()
 def get_employee_status():
-	"""Eigener Mitarbeiter und ob die Selbstanlage moeglich ist - nur Angaben zum eigenen
-	Benutzer, auch ohne Leserecht auf Employee."""
+	"""Eigener Mitarbeiter und was moeglich ist (Selbstanlage, eigene Daten aendern) - nur
+	Angaben zum eigenen Benutzer, auch ohne Leserecht auf Employee."""
 	_check_desk_user()
 	name = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"}, "name")
-	freigeschaltet = bool(frappe.get_cached_doc("Zeit Projekt Einstellungen").employee_self_service)
-	return {"employee": name, "self_service": freigeschaltet and not name}
+	einstellungen = frappe.get_cached_doc("Zeit Projekt Einstellungen")
+	return {
+		"employee": name,
+		"self_service": bool(einstellungen.employee_self_service) and not name,
+		"self_edit": bool(einstellungen.employee_self_edit) and bool(name),
+	}
 
 
 @frappe.whitelist()
-def get_employee_form_data():
-	"""Vorbelegung und Auswahl fuer den Fragebogen."""
-	_check_self_service()
-	user = frappe.db.get_value("User", frappe.session.user, ["first_name", "last_name"], as_dict=True)
+def get_employee_form_data(bearbeiten: int = 0):
+	"""Vorbelegung und Auswahl fuer den Fragebogen. Mit bearbeiten=1 die Daten des eigenen
+	Mitarbeiters (nur die aenderbaren Felder), sonst Name aus dem Benutzer."""
+	if int(bearbeiten):
+		name = _check_self_edit()
+		emp = frappe.db.get_value(
+			"Employee", name, ["first_name", "last_name", "gender", "date_of_birth", "date_of_joining"], as_dict=True
+		)
+		daten = {k: (str(v) if v else None) for k, v in emp.items()}
+	else:
+		_check_self_service()
+		user = frappe.db.get_value("User", frappe.session.user, ["first_name", "last_name"], as_dict=True)
+		daten = {"first_name": user.first_name, "last_name": user.last_name}
 	return {
-		"first_name": user.first_name,
-		"last_name": user.last_name,
+		**daten,
 		"genders": frappe.get_all("Gender", pluck="name", order_by="name asc"),
 		"company": erpnext.get_default_company(),
+	}
+
+
+def _pruefe_angaben(first_name, gender, date_of_birth, last_name, date_of_joining):
+	"""Gemeinsame Pruefung fuer Anlegen und Aendern; gibt die bereinigten Werte zurueck."""
+	first_name = (first_name or "").strip()
+	if not first_name:
+		frappe.throw(_("Bitte einen Vornamen angeben."), frappe.MandatoryError)
+	if not frappe.db.exists("Gender", gender):
+		frappe.throw(_("Ungültiges Geschlecht: {0}").format(frappe.bold(gender)))
+
+	heute = getdate(nowdate())
+	geburt = getdate(date_of_birth)
+	if geburt >= add_years(heute, -14) or geburt.year < 1900:
+		frappe.throw(_("Bitte ein plausibles Geburtsdatum angeben."))
+	eintritt = getdate(date_of_joining) if date_of_joining else heute
+	if eintritt > heute:
+		frappe.throw(_("Das Eintrittsdatum darf nicht in der Zukunft liegen."))
+	return {
+		"first_name": first_name,
+		"last_name": (last_name or "").strip() or None,
+		"gender": gender,
+		"date_of_birth": geburt,
+		"date_of_joining": eintritt,
 	}
 
 
@@ -211,20 +261,7 @@ def create_own_employee(
 	if vorhanden:
 		frappe.throw(_("Für Ihren Benutzer gibt es schon einen Mitarbeiter ({0}).").format(vorhanden))
 
-	first_name = (first_name or "").strip()
-	if not first_name:
-		frappe.throw(_("Bitte einen Vornamen angeben."), frappe.MandatoryError)
-	if not frappe.db.exists("Gender", gender):
-		frappe.throw(_("Ungültiges Geschlecht: {0}").format(frappe.bold(gender)))
-
-	heute = getdate(nowdate())
-	geburt = getdate(date_of_birth)
-	if geburt >= add_years(heute, -14) or geburt.year < 1900:
-		frappe.throw(_("Bitte ein plausibles Geburtsdatum angeben."))
-	eintritt = getdate(date_of_joining) if date_of_joining else heute
-	if eintritt > heute:
-		frappe.throw(_("Das Eintrittsdatum darf nicht in der Zukunft liegen."))
-
+	angaben = _pruefe_angaben(first_name, gender, date_of_birth, last_name, date_of_joining)
 	company = erpnext.get_default_company()
 	if not company:
 		frappe.throw(_("Es ist keine Standardfirma eingerichtet. Bitte die Verwaltung informieren."))
@@ -232,11 +269,7 @@ def create_own_employee(
 	employee = frappe.get_doc(
 		{
 			"doctype": "Employee",
-			"first_name": first_name,
-			"last_name": (last_name or "").strip() or None,
-			"gender": gender,
-			"date_of_birth": geburt,
-			"date_of_joining": eintritt,
+			**angaben,
 			"company": company,
 			"status": "Active",
 			"user_id": frappe.session.user,
@@ -248,4 +281,23 @@ def create_own_employee(
 	)
 	employee.flags.ignore_permissions = True
 	employee.insert()
+	return employee.name
+
+
+@frappe.whitelist()
+def update_own_employee(
+	first_name: str,
+	gender: str,
+	date_of_birth: str,
+	last_name: str | None = None,
+	date_of_joining: str | None = None,
+):
+	"""Aendert die erlaubten Angaben des EIGENEN Mitarbeiters (nur mit freigeschalteter
+	Einstellung). Firma, Status, Benutzer und alles andere bleiben unberuehrt."""
+	name = _check_self_edit()
+	angaben = _pruefe_angaben(first_name, gender, date_of_birth, last_name, date_of_joining)
+	employee = frappe.get_doc("Employee", name)
+	employee.update(angaben)
+	employee.flags.ignore_permissions = True
+	employee.save()
 	return employee.name

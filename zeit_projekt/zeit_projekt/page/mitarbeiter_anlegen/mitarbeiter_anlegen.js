@@ -20,6 +20,13 @@ frappe.pages['mitarbeiter-anlegen'].on_page_load = function (wrapper) {
 		const status = r.message || {};
 		if (status.employee) {
 			text(__('Sie sind bereits als Mitarbeiter angelegt: {0}.', [frappe.utils.escape_html(status.employee)]));
+			if (status.self_edit) {
+				knopf(__('Meine Daten anpassen'), () => {
+					frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js', () =>
+						window.zeit_projekt.mitarbeiter_fragebogen(null, true)
+					);
+				});
+			}
 			knopf(__('Zum Fahrtenbuch'), () => frappe.set_route('List', 'Fahrt'));
 		} else if (status.self_service) {
 			text(

@@ -17,6 +17,7 @@
   "section_break_mitarbeiter",
   "employee_required",
   "employee_self_service",
+  "employee_self_edit",
   "section_break_abrechnung",
   "activity_type",
   "km_item",
@@ -118,6 +119,13 @@
    "label": "Benutzer dürfen sich selbst als Mitarbeiter anlegen",
    "default": "0",
    "description": "Jeder angemeldete Desk-Benutzer ohne Mitarbeiter kann sich über die Seite /desk/mitarbeiter-anlegen (oder den Knopf „Mich als Mitarbeiter anlegen“ in Fahrt und Kundeneinsatz) mit einem kurzen Fragebogen selbst anlegen. ERPNext gibt dem Benutzer dabei automatisch die Rolle Employee (eigene Fahrten, Einsätze und Zeitblätter) und beschränkt ihn auf seinen eigenen Mitarbeiter und die Firma; weitere Rechte gibt es nicht. Aus (Standard): Mitarbeiter legt die Verwaltung an."
+  },
+  {
+   "fieldname": "employee_self_edit",
+   "fieldtype": "Check",
+   "label": "Benutzer dürfen ihre Mitarbeiterdaten selbst anpassen",
+   "default": "0",
+   "description": "Auf der Seite /desk/mitarbeiter-anlegen können Benutzer mit eigenem Mitarbeiter danach Vorname, Nachname, Geschlecht, Geburtsdatum und Eintrittsdatum selbst ändern. Alles andere (Firma, Status, Abteilung, Vorgesetzte, Benutzer) bleibt der Verwaltung vorbehalten, und nur der eigene Eintrag ist änderbar. Aus (Standard): Änderungen macht die Verwaltung."
   },
   {
    "fieldname": "section_break_abrechnung",
@@ -247,7 +255,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-15 10:00:00.000000",
+ "modified": "2026-10-15 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",

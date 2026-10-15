@@ -33,6 +33,13 @@ Rechte auf Mitarbeiter zu bekommen. Der Weg dorthin:
 - oder der große orange Knopf **„Mich als Mitarbeiter anlegen"** oben in Fahrt und Kundeneinsatz,
   solange der Benutzer noch keinen Mitarbeiter hat.
 
+**Eigene Angaben später anpassen:** Mit der Einstellung **„Benutzer dürfen ihre
+Mitarbeiterdaten selbst anpassen"** (gleicher Abschnitt, Standard: aus) erscheint auf der Seite
+*Mitarbeiter anlegen* für Benutzer mit eigenem Mitarbeiter der Knopf **„Meine Daten anpassen"**.
+Änderbar sind nur Vorname, Nachname, Geschlecht, Geburtsdatum und Eintrittsdatum, und nur beim
+eigenen Eintrag. Firma, Status, Abteilung, Vorgesetzte und der Benutzer bleiben der Verwaltung
+vorbehalten; es ändern sich auch keine Rollen.
+
 Was dabei passiert und was nicht:
 
 - Nur Desk-Benutzer (keine Website-Benutzer, kein Gast), nur der **eigene** Eintrag (Benutzer-ID =
