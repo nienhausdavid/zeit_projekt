@@ -28,7 +28,10 @@ frappe.pages['mitarbeiter-anlegen'].on_page_load = function (wrapper) {
 				)
 			);
 			knopf(__('Fragebogen ausfüllen'), () => {
-				frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js?v=2', () =>
+				// Kein ?v=... anhaengen: frappe.assets.extn() liest bei einem "?" den Teil danach als
+				// Dateityp, dann gibt es keinen Lader und es passiert lautlos nichts. Die Version
+				// haengt Frappe selbst an.
+				frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js', () =>
 					window.zeit_projekt.mitarbeiter_fragebogen()
 				);
 			});

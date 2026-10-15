@@ -634,7 +634,7 @@ function mitarbeiter_pruefen(frm) {
 		$(frm.layout.wrapper).find('.zp-mitarbeiter-knopf').remove();
 		if (!status.self_service) return;
 		const oeffnen = () =>
-			frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js?v=2', () =>
+			frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js', () =>
 				window.zeit_projekt.mitarbeiter_fragebogen()
 			);
 		// Am Handy verschwinden normale Knoepfe im "..."-Menue - deshalb gut sichtbar im Formular
