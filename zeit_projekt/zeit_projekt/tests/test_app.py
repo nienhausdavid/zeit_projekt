@@ -119,6 +119,13 @@ class TestApp(IntegrationTestCase):
 		icon = frappe.db.get_value("Desktop Icon", "Einstellungen", ["parent_icon", "link_to"])
 		self.assertEqual(icon, ("Zeit & Projekt", "Zeit & Projekt Einstellungen"))
 
+	def test_onboarding_seite_in_den_seitenleisten(self):
+		for leiste in ("Fahrtenbuch", "Site Visits"):
+			self.assertTrue(
+				frappe.db.exists("Sidebar Item", {"parent": leiste, "link_to": "mitarbeiter-anlegen", "link_type": "Page"}), leiste
+			)
+		self.assertTrue(frappe.db.exists("Page", "mitarbeiter-anlegen"))
+
 	def test_fahrzeuge_in_der_seitenleiste(self):
 		self.assertTrue(frappe.db.exists("Sidebar Item", {"parent": "Fahrtenbuch", "link_to": "Vehicle"}))
 

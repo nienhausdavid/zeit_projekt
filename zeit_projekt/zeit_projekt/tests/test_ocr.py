@@ -1,5 +1,6 @@
 import io
 import json
+import time
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest.mock import patch
@@ -25,6 +26,7 @@ class FakeVisionApi(BaseHTTPRequestHandler):
 	pfade: list = []
 	lehnt_reasoning_ab = False
 	lehnt_think_ab = False
+	verzoegerung = 0  # Sekunden vor der Antwort (langsames Modell)
 
 	def do_GET(self):
 		FakeVisionApi.pfade.append(self.path)
@@ -39,6 +41,7 @@ class FakeVisionApi(BaseHTTPRequestHandler):
 
 	def do_POST(self):
 		body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+		time.sleep(FakeVisionApi.verzoegerung)
 		FakeVisionApi.anfragen.append(body)
 		FakeVisionApi.pfade.append(self.path)
 		if FakeVisionApi.lehnt_reasoning_ab and "reasoning_effort" in body:
@@ -96,9 +99,11 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				"keep_alive": None,
 				"max_image_px": None,
 				"image_original": 0,
+				"request_timeout": None,
 			},
 		)
 		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		FakeVisionApi.verzoegerung = 0
 		ocr._OHNE_DENKEN_PARAMETER.clear()
 
 	def _api(self, antworten=None, ollama=False, kontext=None, keep_alive=None, bild_px=None):
@@ -151,7 +156,14 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self.assertEqual(event, "zeit_projekt_odometer")
 		self.assertEqual(
 			daten,
-			{"request_id": res["request_id"], "fieldname": "start_odometer", "reading": 123456, "unsicher": False},
+			{
+				"request_id": res["request_id"],
+				"fieldname": "start_odometer",
+				"reading": 123456,
+				"unsicher": False,
+				"fehler": None,
+				"limit": 45,
+			},
 		)
 
 	def _melde(self, antworten):
@@ -160,6 +172,10 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		with patch("frappe.publish_realtime") as publish:
 			run_odometer_ocr(self.file.name, "end_odometer", "req", "Administrator")
 		return publish.call_args.args[1]
+
+	def test_ohne_antwort_wird_kein_fehler_gemeldet_wenn_nur_nichts_erkannt(self):
+		daten = self._melde(["111", "222", "333"])
+		self.assertIsNone(daten["fehler"])  # nichts erkannt ist kein Fehler
 
 	def test_einhellig_ist_sicher(self):
 		daten = self._melde(["55055", "55055"])
@@ -222,6 +238,8 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 
 	def test_api_nicht_erreichbar(self):
 		frappe.db.set_single_value("Zeit Projekt Einstellungen", {"api_url": "http://127.0.0.1:1/v1", "model": "x"})
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		self.assertEqual(ocr.read_odometer_detail(self.file)["fehler"], "nicht_erreichbar")
 		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		self.assertIsNone(ocr.read_odometer(self.file))
 
@@ -311,6 +329,36 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				self._api(ollama=ollama, bild_px=px)
 				ocr.read_odometer(self.file)
 				self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), px)
+
+	def test_zeitlimit_aus_den_einstellungen(self):
+		"""Ein langsames Modell (grosses Bild, grosses Modell) braucht mehr als die 45 s Standard;
+		das Limit je Anfrage ist einstellbar und bestimmt auch Gesamtzeit und Job-Limit."""
+		self.assertEqual((ocr.zeitlimit(), ocr.gesamtzeit(), ocr.job_timeout()), (45, 100, 120))
+
+		FakeVisionApi.verzoegerung = 2.5
+		self._api(ollama=True)
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "request_timeout", 1)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		self.assertEqual((ocr.zeitlimit(), ocr.job_timeout()), (1, 76))
+		self.assertEqual(ocr.read_odometer_mit_vertrauen(self.file), (None, False))  # zu langsam fuer 1 s
+		self.assertEqual(ocr.read_odometer_detail(self.file), {"wert": None, "sicher": False, "fehler": "timeout"})
+		with patch("frappe.publish_realtime") as publish:
+			run_odometer_ocr(self.file.name, "start_odometer", "req", "Administrator")
+		daten = publish.call_args.args[1]
+		self.assertEqual((daten["reading"], daten["fehler"], daten["limit"]), (None, "timeout", 1))
+
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "request_timeout", 10)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		self.assertEqual(ocr.read_odometer_mit_vertrauen(self.file)[0], 123456)  # mit 10 s klappt es
+
+	def test_einstellungen_pruefen_zeitlimit(self):
+		einstellungen = frappe.get_doc("Zeit Projekt Einstellungen")
+		for sekunden in (5, 601):
+			einstellungen.request_timeout = sekunden
+			with self.assertRaises(frappe.ValidationError):
+				einstellungen.validate()
+		einstellungen.request_timeout = 120
+		einstellungen.validate()
 
 	def test_bildgroesse_vergroessert_nicht(self):
 		self._api(bild_px=4096)  # das Testbild ist nur 2000 px breit

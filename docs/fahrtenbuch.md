@@ -24,12 +24,21 @@ Kundeneinsatz ohne Mitarbeiter ab.
 
 Mit **„Benutzer dürfen sich selbst als Mitarbeiter anlegen"** (gleicher Abschnitt, Standard:
 aus) füllen Techniker einen kurzen Fragebogen aus (Vorname, Nachname, Geschlecht,
-Geburtsdatum, Eintrittsdatum) und legen so **ihren eigenen** Mitarbeiter an, ohne dafür
+Geburtsdatum, Eintrittsdatum; die Datumsfelder sind die nativen Datumsfelder des Browsers, am
+Handy also das Standard-Datumsrad) und legen so **ihren eigenen** Mitarbeiter an, ohne dafür
 Rechte auf Mitarbeiter zu bekommen. Der Weg dorthin:
 
-- die Seite **/desk/mitarbeiter-anlegen** (den Link bekommen die Techniker von der Verwaltung),
-- oder der Knopf **„Mich als Mitarbeiter anlegen"** in Fahrt und Kundeneinsatz, solange der
-  Benutzer noch keinen Mitarbeiter hat.
+- der Eintrag **„Mitarbeiter anlegen"** in den Seitenleisten von Fahrtenbuch und Kundeneinsätzen
+  (Seite **/desk/mitarbeiter-anlegen**, auch als Link weiterzugeben),
+- oder der große orange Knopf **„Mich als Mitarbeiter anlegen"** oben in Fahrt und Kundeneinsatz,
+  solange der Benutzer noch keinen Mitarbeiter hat.
+
+**Eigene Angaben später anpassen:** Mit der Einstellung **„Benutzer dürfen ihre
+Mitarbeiterdaten selbst anpassen"** (gleicher Abschnitt, Standard: aus) erscheint auf der Seite
+*Mitarbeiter anlegen* für Benutzer mit eigenem Mitarbeiter der Knopf **„Meine Daten anpassen"**.
+Änderbar sind nur Vorname, Nachname, Geschlecht, Geburtsdatum und Eintrittsdatum, und nur beim
+eigenen Eintrag. Firma, Status, Abteilung, Vorgesetzte und der Benutzer bleiben der Verwaltung
+vorbehalten; es ändern sich auch keine Rollen.
 
 Was dabei passiert und was nicht:
 
@@ -38,8 +47,8 @@ Was dabei passiert und was nicht:
   die App, nicht der Techniker.
 - ERPNext hängt die Rolle *Employee* an den Mitarbeiter-Eintrag: Beim Anlegen vergibt es sie
   automatisch (eigene Fahrten, Einsätze und Zeitblätter) und beschränkt den Benutzer per
-  Benutzerberechtigung auf seinen eigenen Mitarbeiter und die Firma. Weitere Rechte kommen
-  nicht dazu; ein Test prüft, dass sich der Rollensatz genau um *Employee* ändert.
+  Benutzerberechtigung auf seinen eigenen Mitarbeiter und die Firma (nicht bei System
+  Managern, die sonst nur noch sich selbst sähen). Weitere Rechte kommen nicht dazu; ein Test prüft, dass sich der Rollensatz genau um *Employee* ändert.
 - **Voraussetzung:** Der Benutzer braucht vorher irgendeine Rolle mit Desk-Zugriff, z. B.
   *Projects User*. Nur mit *Employee* geht es nicht: ERPNext entfernt diese Rolle bei jedem
   Speichern des Benutzers wieder, solange kein Mitarbeiter zugeordnet ist, und ein Benutzer
@@ -149,6 +158,14 @@ Einrichtung in *Zeit Projekt Einstellungen*:
   auf dem Steam Deck lieferten `qwen3-vl:8b-instruct` ab etwa 4,9 MP und `qwen2.5vl:7b`
   ab etwa 3,2 MP leere Antworten, nur `minicpm-v4.5` verarbeitete das Original. Bei
   *Ollama (nativ)* dann das Kontextfenster auf 16384 oder mehr stellen.
+- **Zeitlimit je Anfrage (Sekunden)**: wie lange die App auf die Antwort wartet (Standard 45,
+  zulässig 10 bis 600). Ollama antwortet erst, wenn es fertig gerechnet hat, das Limit gilt also für
+  die ganze Anfrage. Gesamtzeit aller Anfragen eines Fotos (Limit + 55 s) und das Limit des
+  Hintergrund-Jobs (Limit + 75 s) richten sich danach. Ist es zu knapp eingestellt, meldet das Formular
+  eine rote **Zeitüberschreitung** mit dem Limit (statt still „nicht erkannt"); ebenso, wenn das Modell
+  nicht erreichbar ist oder seine Antwort nicht lesbar war. Richtwerte auf dem Steam Deck (`docs/modellvergleich.md`, Abschnitt 11):
+  `minicpm-v4.5` 17 s bei 1024 px und 32 s im Original (jeweils mit Laden), `qwen3-vl:8b-instruct`
+  bei 2048 px etwa 96 s, also dort mindestens 120 einstellen.
 - **Kontextfenster (Token)** (nur *Ollama (nativ)*): leer = Standard des Servers.
   Erlaubt sind 2048 bis 262144. Ein Foto braucht nur etwa 1.000 bis 1.500 Token;
   ein sehr großes Fenster belegt viel Speicher (bei `qwen3-vl:4b-instruct` lud der

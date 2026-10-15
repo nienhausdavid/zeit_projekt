@@ -41,9 +41,21 @@
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "user-plus",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Mitarbeiter anlegen",
+   "link_to": "mitarbeiter-anlegen",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-10-15 11:00:00.000000",
+ "modified": "2026-10-15 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Site Visit",
  "name": "Site Visits",

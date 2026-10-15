@@ -20,6 +20,13 @@ frappe.pages['mitarbeiter-anlegen'].on_page_load = function (wrapper) {
 		const status = r.message || {};
 		if (status.employee) {
 			text(__('Sie sind bereits als Mitarbeiter angelegt: {0}.', [frappe.utils.escape_html(status.employee)]));
+			if (status.self_edit) {
+				knopf(__('Meine Daten anpassen'), () => {
+					frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js', () =>
+						window.zeit_projekt.mitarbeiter_fragebogen(null, true)
+					);
+				});
+			}
 			knopf(__('Zum Fahrtenbuch'), () => frappe.set_route('List', 'Fahrt'));
 		} else if (status.self_service) {
 			text(
@@ -28,7 +35,10 @@ frappe.pages['mitarbeiter-anlegen'].on_page_load = function (wrapper) {
 				)
 			);
 			knopf(__('Fragebogen ausfüllen'), () => {
-				frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js?v=2', () =>
+				// Kein ?v=... anhaengen: frappe.assets.extn() liest bei einem "?" den Teil danach als
+				// Dateityp, dann gibt es keinen Lader und es passiert lautlos nichts. Die Version
+				// haengt Frappe selbst an.
+				frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js', () =>
 					window.zeit_projekt.mitarbeiter_fragebogen()
 				);
 			});

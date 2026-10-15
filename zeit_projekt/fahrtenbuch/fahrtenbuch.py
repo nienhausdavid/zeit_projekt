@@ -82,7 +82,7 @@ def get_odometer_reading(file_url, fieldname):
 
 	Rueckgabe: {"request_id": ...} oder {"queued": False}, wenn die Erkennung
 	nicht eingerichtet ist (dann traegt der Techniker manuell ein)."""
-	from zeit_projekt.fahrtenbuch.ocr import is_configured
+	from zeit_projekt.fahrtenbuch.ocr import is_configured, job_timeout
 
 	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
 		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
@@ -97,7 +97,7 @@ def get_odometer_reading(file_url, fieldname):
 			frappe.enqueue(
 				"zeit_projekt.fahrtenbuch.fahrtenbuch.run_odometer_ocr",
 				queue="short",
-				timeout=120,
+				timeout=job_timeout(),
 				enqueue_after_commit=True,
 				file_name=name,
 				fieldname=fieldname,
@@ -111,17 +111,22 @@ def get_odometer_reading(file_url, fieldname):
 def run_odometer_ocr(file_name, fieldname, request_id, user):
 	"""Hintergrund-Job: Erkennung ausfuehren und das Ergebnis (oder None) an
 	das offene Formular des Nutzers melden."""
-	from zeit_projekt.fahrtenbuch.ocr import read_odometer_mit_vertrauen
+	from zeit_projekt.fahrtenbuch.ocr import read_odometer_detail, zeitlimit
 
-	reading, sicher = read_odometer_mit_vertrauen(frappe.get_doc("File", file_name))
+	ergebnis = read_odometer_detail(frappe.get_doc("File", file_name))
+	reading, sicher = ergebnis["wert"], ergebnis["sicher"]
 	frappe.publish_realtime(
 		"zeit_projekt_odometer",
-		# unsicher: es gab eine abweichende Antwort, der Techniker soll gegenpruefen
+		# unsicher: es gab eine abweichende Antwort, der Techniker soll gegenpruefen.
+		# fehler: Grund, warum gar keine Antwort kam (Zeitueberschreitung, nicht erreichbar, ...);
+		# limit: das Zeitlimit je Anfrage in Sekunden, fuer die Meldung bei einem Timeout.
 		{
 			"request_id": request_id,
 			"fieldname": fieldname,
 			"reading": reading,
 			"unsicher": bool(reading) and not sicher,
+			"fehler": ergebnis["fehler"],
+			"limit": zeitlimit(),
 		},
 		user=user,
 		after_commit=False,

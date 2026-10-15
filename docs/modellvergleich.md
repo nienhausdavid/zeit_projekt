@@ -314,6 +314,24 @@ Anfragen (ein Foto richtig, eines nicht). `granite3.2-vision` liefert 6 von 6 Ma
   Commons-Fotos nur noch leere Antworten (0 %). Diese drei Läufe wurden nach dem Entladen des Modells wiederholt; die Tabelle zeigt die
   Wiederholung. Ein weiterer Lauf (`ornith-1.5:9b`, 8 192) wurde wiederholt, weil meine parallele Sondierung die Zeiten verfälscht hatte.
 
+## 11. Laden und Rechnen getrennt (ein eigenes Foto, SLK R170, 12,5 MP)
+
+Ein eigenes Foto mit Gesamtstand **185460** (Tageszähler 357,9, Uhr 17:35, 19,5 °C), 3072 × 4080 px. *Laden* =
+Modell aus dem Speicher entladen und mit einer Minimalanfrage neu laden; *Rechnen* = erste echte Anfrage mit Bild
+(Ollama nativ, Denken aus, aktueller Prompt). Das Zeitlimit je Anfrage der App (Standard 45 s) gilt für die
+**Rechenzeit der Anfrage**; das Laden zählt zusätzlich, wenn das Modell nicht schon im Speicher liegt.
+
+| Modell, Bildgröße, Kontext | Laden | Rechnen | kalt gesamt | Ergebnis |
+|---|---|---|---|---|
+| `minicpm-v4.5`, Original, 8 192 | 8,8 s | 22,7 s | 31,5 s | 185460 ✓ |
+| `minicpm-v4.5`, 1024 px, 8 192 | 5,3 s | 11,8 s | 17,2 s | 185460 ✓ |
+| `qwen3-vl:8b-instruct`, 2048 px, 16 384 | 9,5 s | 86,4 s | 96,0 s | 185460 ✓ |
+
+Beide Modelle lesen das Foto richtig. Mit dem Standardlimit von 45 s erkennt die App nur die ersten beiden Zeilen; die dritte
+bricht ab und meldet „nichts erkannt" (ohne Fehlermeldung), obwohl das Modell richtig liest. Das Laden ist mit 5 bis 10 s nicht
+die Hauptursache; entscheidend ist die Rechenzeit, die mit Bildgröße und Modellgröße wächst. Deshalb ist das Zeitlimit jetzt in den
+Einstellungen einstellbar. Mit 150 s liefert der echte App-Weg bei `qwen3-vl:8b-instruct`, 2048 px: 185460 (sicher) nach 95,5 s.
+
 ## Grenzen
 
 - 27 Fotos mit je 3 Anfragen: Unterschiede von wenigen Punkten sind nicht gesichert.

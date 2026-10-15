@@ -17,6 +17,7 @@
   "section_break_mitarbeiter",
   "employee_required",
   "employee_self_service",
+  "employee_self_edit",
   "section_break_abrechnung",
   "activity_type",
   "km_item",
@@ -33,7 +34,8 @@
   "image_original",
   "max_image_px",
   "context_length",
-  "keep_alive"
+  "keep_alive",
+  "request_timeout"
  ],
  "fields": [
   {
@@ -118,6 +120,13 @@
    "label": "Benutzer dürfen sich selbst als Mitarbeiter anlegen",
    "default": "0",
    "description": "Jeder angemeldete Desk-Benutzer ohne Mitarbeiter kann sich über die Seite /desk/mitarbeiter-anlegen (oder den Knopf „Mich als Mitarbeiter anlegen“ in Fahrt und Kundeneinsatz) mit einem kurzen Fragebogen selbst anlegen. ERPNext gibt dem Benutzer dabei automatisch die Rolle Employee (eigene Fahrten, Einsätze und Zeitblätter) und beschränkt ihn auf seinen eigenen Mitarbeiter und die Firma; weitere Rechte gibt es nicht. Aus (Standard): Mitarbeiter legt die Verwaltung an."
+  },
+  {
+   "fieldname": "employee_self_edit",
+   "fieldtype": "Check",
+   "label": "Benutzer dürfen ihre Mitarbeiterdaten selbst anpassen",
+   "default": "0",
+   "description": "Auf der Seite /desk/mitarbeiter-anlegen können Benutzer mit eigenem Mitarbeiter danach Vorname, Nachname, Geschlecht, Geburtsdatum und Eintrittsdatum selbst ändern. Alles andere (Firma, Status, Abteilung, Vorgesetzte, Benutzer) bleibt der Verwaltung vorbehalten, und nur der eigene Eintrag ist änderbar. Aus (Standard): Änderungen macht die Verwaltung."
   },
   {
    "fieldname": "section_break_abrechnung",
@@ -242,12 +251,20 @@
    "depends_on": "eval:doc.api_type=='Ollama (nativ)'",
    "description": "Nur Ollama. Wie lange das Modell nach der letzten Anfrage geladen bleibt, z. B. 30m, 2h oder -1 (dauerhaft). Leer = Standard des Servers. So entfällt das Neuladen beim ersten Foto nach einer Pause.",
    "permlevel": 1
+  },
+  {
+   "fieldname": "request_timeout",
+   "fieldtype": "Int",
+   "label": "Zeitlimit je Anfrage (Sekunden)",
+   "default": "45",
+   "permlevel": 1,
+   "description": "Wie lange die App auf die Antwort des Vision-Modells wartet, bevor sie aufgibt (dann bleibt der Kilometerstand leer). 45 s reichen für ein geladenes Modell bei 1024 px. Größere Bilder und größere Modelle brauchen länger: qwen3-vl:8b-instruct bei 2048 px etwa 90 s. Zulässig 10 bis 600; die Gesamtzeit und das Limit des Hintergrund-Jobs richten sich danach."
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-15 10:00:00.000000",
+ "modified": "2026-10-15 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",

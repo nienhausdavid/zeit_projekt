@@ -356,6 +356,21 @@ function zeige_erkennung(auftrag, data) {
 	// eingetragen? (Der Name einer neuen Fahrt ändert sich beim Speichern,
 	// deshalb wird am Foto erkannt, ob es noch dieselbe Fahrt ist.)
 	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
+	// Gar keine Antwort (zu langsam, Modell nicht erreichbar ...): ausdruecklich melden, statt
+	// still "nicht erkannt" zu sagen - sonst wartet der Techniker auf etwas, das nicht kommt.
+	if (data.fehler) {
+		const texte = {
+			timeout: __(
+				'Zeitüberschreitung: Das Erkennungsmodell hat nicht innerhalb von {0} Sekunden geantwortet. Bitte den Kilometerstand von Hand eintragen.',
+				[data.limit]
+			),
+			nicht_erreichbar: __('Das Erkennungsmodell ist nicht erreichbar oder hat einen Fehler gemeldet. Bitte den Kilometerstand von Hand eintragen.'),
+			antwort_unlesbar: __('Die Antwort des Erkennungsmodells war nicht lesbar. Bitte den Kilometerstand von Hand eintragen.'),
+			bild_unlesbar: __('Das Foto konnte nicht gelesen werden. Bitte den Kilometerstand von Hand eintragen.'),
+		};
+		frappe.show_alert({ message: texte[data.fehler] || __('Die Erkennung ist fehlgeschlagen. Bitte den Kilometerstand von Hand eintragen.'), indicator: 'red' }, 20);
+		return;
+	}
 	// Ein Endstand unter dem Startstand kann nicht stimmen (das Buchen würde ihn
 	// ohnehin ablehnen) - dann lieber nichts eintragen als einen falschen Wert.
 	if (
@@ -627,15 +642,22 @@ function mitarbeiter_pruefen(frm) {
 	if (frm.doc.docstatus !== 0) return;
 	const zeige = (status) => {
 		if (status.employee) {
+			$(frm.layout.wrapper).find('.zp-mitarbeiter-knopf').remove();
 			if (frm.is_new() && !frm.doc.employee) frm.set_value('employee', status.employee);
 			return;
 		}
+		$(frm.layout.wrapper).find('.zp-mitarbeiter-knopf').remove();
 		if (!status.self_service) return;
-		frm.add_custom_button(__('Mich als Mitarbeiter anlegen'), () => {
-			frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js?v=2', () =>
+		const oeffnen = () =>
+			frappe.require('/assets/zeit_projekt/js/mitarbeiter_fragebogen.js', () =>
 				window.zeit_projekt.mitarbeiter_fragebogen()
 			);
-		});
+		// Am Handy verschwinden normale Knoepfe im "..."-Menue - deshalb gut sichtbar im Formular
+		$('<button type="button" class="btn btn-warning btn-lg zp-mitarbeiter-knopf"></button>')
+			.text(__('Mich als Mitarbeiter anlegen'))
+			.css({ display: 'block', width: 'min(100%, 480px)', minHeight: '64px', fontSize: '1.4rem', fontWeight: '600', margin: '12px 0 16px' })
+			.on('click', oeffnen)
+			.prependTo($(frm.layout.wrapper));
 	};
 	if (frm.__mitarbeiter_status) return zeige(frm.__mitarbeiter_status);
 	frappe
