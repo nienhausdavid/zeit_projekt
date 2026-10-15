@@ -360,6 +360,27 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		einstellungen.request_timeout = 120
 		einstellungen.validate()
 
+	def test_handyfoto_wird_nach_exif_gedreht(self):
+		"""Hochformat-Aufnahme = Querformat-Pixel + Orientation 6: das Modell soll sie aufrecht sehen."""
+		bild = Image.new("RGB", (4080, 3072), (200, 200, 200))
+		exif = Image.Exif()
+		exif[0x0112] = 6  # 90 Grad im Uhrzeigersinn drehen
+		puffer = io.BytesIO()
+		bild.save(puffer, "JPEG", exif=exif)
+		ergebnis = Image.open(io.BytesIO(ocr._downscale_to_jpeg(puffer.getvalue(), 1024)))
+		self.assertEqual(ergebnis.size, (771, 1024))  # Hochformat
+
+		# ohne Drehvermerk bleibt das Format
+		ohne = io.BytesIO()
+		bild.save(ohne, "JPEG")
+		self.assertEqual(Image.open(io.BytesIO(ocr._downscale_to_jpeg(ohne.getvalue(), 1024))).size, (1024, 771))
+
+	def test_50_megapixel_foto_wird_verkleinert(self):
+		bild = Image.new("RGB", (8160, 6120), (180, 180, 180))  # 50 MP
+		puffer = io.BytesIO()
+		bild.save(puffer, "JPEG", quality=80)
+		self.assertEqual(Image.open(io.BytesIO(ocr._downscale_to_jpeg(puffer.getvalue(), 1024))).size, (1024, 768))
+
 	def test_bildgroesse_vergroessert_nicht(self):
 		self._api(bild_px=4096)  # das Testbild ist nur 2000 px breit
 		ocr.read_odometer(self.file)

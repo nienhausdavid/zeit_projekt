@@ -8,7 +8,7 @@ import frappe
 import requests
 from frappe import _
 from frappe.utils import cint
-from PIL import Image
+from PIL import Image, ImageOps
 
 # Prompt-Vergleich (docs/fahrtenbuch.md): Der fruehere Prompt verlangte immer
 # Ziffern - bei Fotos ohne Gesamtstand (nur Temperatur oder Tageszaehler) erfanden
@@ -85,6 +85,9 @@ def _downscale_to_jpeg(image_bytes: bytes, max_px: int | None = None) -> bytes:
 	data:-URL unten (immer "image/jpeg") garantiert zum Inhalt passt, egal
 	welches Format das Original hatte."""
 	image = Image.open(io.BytesIO(image_bytes))
+	# Handyfotos im Hochformat sind oft Querformat-Pixel plus EXIF-Drehvermerk (Orientation).
+	# Ohne Drehen bekaeme das Modell ein seitliches Bild.
+	image = ImageOps.exif_transpose(image)
 	max_px = max_px or MAX_IMAGE_DIMENSION
 	if max_px != ORIGINAL_GROESSE and max(image.size) > max_px:
 		image.thumbnail((max_px, max_px))

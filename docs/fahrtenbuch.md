@@ -158,6 +158,12 @@ Einrichtung in *Zeit Projekt Einstellungen*:
   auf dem Steam Deck lieferten `qwen3-vl:8b-instruct` ab etwa 4,9 MP und `qwen2.5vl:7b`
   ab etwa 3,2 MP leere Antworten, nur `minicpm-v4.5` verarbeitete das Original. Bei
   *Ollama (nativ)* dann das Kontextfenster auf 16384 oder mehr stellen.
+- **Fotos vom Handy, auch 50 MP:** Die App verkleinert jedes Foto vor dem Versand auf die Bildgröße
+  und dreht es nach dem EXIF-Vermerk der Kamera (Hochformat-Aufnahmen liegen oft als Querformat-Pixel
+  mit Drehvermerk vor). Ein 50-MP-Bild verarbeitet sie in etwa 1 s mit bis zu 750 MB Arbeitsspeicher
+  (Pillow-Grenze: 89 MP). Begrenzt wird der **Upload**: Frappe erlaubt 25 MB je Datei (nginx 50 MB). Ein
+  50-MP-JPEG liegt je nach Motiv bei 10 bis 30 MB. Für die Erkennung bringt mehr als 12 MP nichts, weil
+  auf 1024 bis 2048 px verkleinert wird; die Handykamera also im normalen Modus lassen.
 - **Zeitlimit je Anfrage (Sekunden)**: wie lange die App auf die Antwort wartet (Standard 45,
   zulässig 10 bis 600). Ollama antwortet erst, wenn es fertig gerechnet hat, das Limit gilt also für
   die ganze Anfrage. Gesamtzeit aller Anfragen eines Fotos (Limit + 55 s) und das Limit des
