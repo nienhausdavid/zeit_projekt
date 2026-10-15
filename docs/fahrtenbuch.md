@@ -24,7 +24,8 @@ Kundeneinsatz ohne Mitarbeiter ab.
 
 Mit **„Benutzer dürfen sich selbst als Mitarbeiter anlegen"** (gleicher Abschnitt, Standard:
 aus) füllen Techniker einen kurzen Fragebogen aus (Vorname, Nachname, Geschlecht,
-Geburtsdatum, Eintrittsdatum) und legen so **ihren eigenen** Mitarbeiter an, ohne dafür
+Geburtsdatum, Eintrittsdatum; die Datumsfelder sind die nativen Datumsfelder des Browsers, am
+Handy also das Standard-Datumsrad) und legen so **ihren eigenen** Mitarbeiter an, ohne dafür
 Rechte auf Mitarbeiter zu bekommen. Der Weg dorthin:
 
 - der Eintrag **„Mitarbeiter anlegen"** in den Seitenleisten von Fahrtenbuch und Kundeneinsätzen

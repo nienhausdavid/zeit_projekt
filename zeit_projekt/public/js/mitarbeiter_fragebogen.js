@@ -25,10 +25,13 @@ window.zeit_projekt.mitarbeiter_fragebogen = function (fertig) {
 					reqd: 1,
 					options: ['', ...(d.genders || [])].join('\n'),
 				},
-				{ fieldname: 'date_of_birth', fieldtype: 'Date', label: __('Geburtsdatum'), reqd: 1 },
+				// Data-Felder, die unten zu nativen Datumsfeldern werden (Werte im Format JJJJ-MM-TT,
+				// wie der Server sie erwartet). Frappes eigener Datumswaehler blaettert die Jahre in
+				// Zehnerbloecken und oeffnet am Handy die Tastatur - der Dialog sprang dabei nach unten.
+				{ fieldname: 'date_of_birth', fieldtype: 'Data', label: __('Geburtsdatum'), reqd: 1 },
 				{
 					fieldname: 'date_of_joining',
-					fieldtype: 'Date',
+					fieldtype: 'Data',
 					label: __('Eintrittsdatum'),
 					default: frappe.datetime.get_today(),
 				},
@@ -52,5 +55,14 @@ window.zeit_projekt.mitarbeiter_fragebogen = function (fertig) {
 			},
 		});
 		dialog.show();
+		// Natives Datumsfeld des Browsers: am Handy das Standard-Datumsrad, keine Tastatur, schnelle
+		// Jahresauswahl. min/max halten die Eingabe plausibel (der Server prueft sie ebenfalls).
+		const heute = frappe.datetime.get_today();
+		const nativ = (feld, min) => {
+			const $input = dialog.fields_dict[feld].$input;
+			if ($input) $input.attr({ type: 'date', min, max: heute, placeholder: '' });
+		};
+		nativ('date_of_birth', '1900-01-01');
+		nativ('date_of_joining', '1990-01-01');
 	});
 };
