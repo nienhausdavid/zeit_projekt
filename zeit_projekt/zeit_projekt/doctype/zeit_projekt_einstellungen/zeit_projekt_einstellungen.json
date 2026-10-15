@@ -34,7 +34,8 @@
   "image_original",
   "max_image_px",
   "context_length",
-  "keep_alive"
+  "keep_alive",
+  "request_timeout"
  ],
  "fields": [
   {
@@ -250,12 +251,20 @@
    "depends_on": "eval:doc.api_type=='Ollama (nativ)'",
    "description": "Nur Ollama. Wie lange das Modell nach der letzten Anfrage geladen bleibt, z. B. 30m, 2h oder -1 (dauerhaft). Leer = Standard des Servers. So entfällt das Neuladen beim ersten Foto nach einer Pause.",
    "permlevel": 1
+  },
+  {
+   "fieldname": "request_timeout",
+   "fieldtype": "Int",
+   "label": "Zeitlimit je Anfrage (Sekunden)",
+   "default": "45",
+   "permlevel": 1,
+   "description": "Wie lange die App auf die Antwort des Vision-Modells wartet, bevor sie aufgibt (dann bleibt der Kilometerstand leer). 45 s reichen für ein geladenes Modell bei 1024 px. Größere Bilder und größere Modelle brauchen länger: qwen3-vl:8b-instruct bei 2048 px etwa 90 s. Zulässig 10 bis 600; die Gesamtzeit und das Limit des Hintergrund-Jobs richten sich danach."
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-15 13:00:00.000000",
+ "modified": "2026-10-15 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",

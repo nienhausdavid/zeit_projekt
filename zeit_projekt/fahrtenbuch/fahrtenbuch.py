@@ -82,7 +82,7 @@ def get_odometer_reading(file_url, fieldname):
 
 	Rueckgabe: {"request_id": ...} oder {"queued": False}, wenn die Erkennung
 	nicht eingerichtet ist (dann traegt der Techniker manuell ein)."""
-	from zeit_projekt.fahrtenbuch.ocr import is_configured
+	from zeit_projekt.fahrtenbuch.ocr import is_configured, job_timeout
 
 	if not (frappe.has_permission("Fahrt", "create") or frappe.has_permission("Fahrt", "write")):
 		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
@@ -97,7 +97,7 @@ def get_odometer_reading(file_url, fieldname):
 			frappe.enqueue(
 				"zeit_projekt.fahrtenbuch.fahrtenbuch.run_odometer_ocr",
 				queue="short",
-				timeout=120,
+				timeout=job_timeout(),
 				enqueue_after_commit=True,
 				file_name=name,
 				fieldname=fieldname,

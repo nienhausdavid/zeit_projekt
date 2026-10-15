@@ -158,6 +158,13 @@ Einrichtung in *Zeit Projekt Einstellungen*:
   auf dem Steam Deck lieferten `qwen3-vl:8b-instruct` ab etwa 4,9 MP und `qwen2.5vl:7b`
   ab etwa 3,2 MP leere Antworten, nur `minicpm-v4.5` verarbeitete das Original. Bei
   *Ollama (nativ)* dann das Kontextfenster auf 16384 oder mehr stellen.
+- **Zeitlimit je Anfrage (Sekunden)**: wie lange die App auf die Antwort wartet (Standard 45,
+  zulässig 10 bis 600). Ollama antwortet erst, wenn es fertig gerechnet hat, das Limit gilt also für
+  die ganze Anfrage. Gesamtzeit aller Anfragen eines Fotos (Limit + 55 s) und das Limit des
+  Hintergrund-Jobs (Limit + 75 s) richten sich danach. Zu knapp eingestellt heißt: „nichts erkannt",
+  ohne Fehlermeldung. Richtwerte auf dem Steam Deck (`docs/modellvergleich.md`, Abschnitt 11):
+  `minicpm-v4.5` 17 s bei 1024 px und 32 s im Original (jeweils mit Laden), `qwen3-vl:8b-instruct`
+  bei 2048 px etwa 96 s, also dort mindestens 120 einstellen.
 - **Kontextfenster (Token)** (nur *Ollama (nativ)*): leer = Standard des Servers.
   Erlaubt sind 2048 bis 262144. Ein Foto braucht nur etwa 1.000 bis 1.500 Token;
   ein sehr großes Fenster belegt viel Speicher (bei `qwen3-vl:4b-instruct` lud der

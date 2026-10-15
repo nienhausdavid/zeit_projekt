@@ -1,5 +1,6 @@
 import io
 import json
+import time
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest.mock import patch
@@ -25,6 +26,7 @@ class FakeVisionApi(BaseHTTPRequestHandler):
 	pfade: list = []
 	lehnt_reasoning_ab = False
 	lehnt_think_ab = False
+	verzoegerung = 0  # Sekunden vor der Antwort (langsames Modell)
 
 	def do_GET(self):
 		FakeVisionApi.pfade.append(self.path)
@@ -39,6 +41,7 @@ class FakeVisionApi(BaseHTTPRequestHandler):
 
 	def do_POST(self):
 		body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+		time.sleep(FakeVisionApi.verzoegerung)
 		FakeVisionApi.anfragen.append(body)
 		FakeVisionApi.pfade.append(self.path)
 		if FakeVisionApi.lehnt_reasoning_ab and "reasoning_effort" in body:
@@ -96,9 +99,11 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				"keep_alive": None,
 				"max_image_px": None,
 				"image_original": 0,
+				"request_timeout": None,
 			},
 		)
 		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		FakeVisionApi.verzoegerung = 0
 		ocr._OHNE_DENKEN_PARAMETER.clear()
 
 	def _api(self, antworten=None, ollama=False, kontext=None, keep_alive=None, bild_px=None):
@@ -311,6 +316,31 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 				self._api(ollama=ollama, bild_px=px)
 				ocr.read_odometer(self.file)
 				self.assertEqual(self._gesendete_bildkante(FakeVisionApi.anfragen[0]), px)
+
+	def test_zeitlimit_aus_den_einstellungen(self):
+		"""Ein langsames Modell (grosses Bild, grosses Modell) braucht mehr als die 45 s Standard;
+		das Limit je Anfrage ist einstellbar und bestimmt auch Gesamtzeit und Job-Limit."""
+		self.assertEqual((ocr.zeitlimit(), ocr.gesamtzeit(), ocr.job_timeout()), (45, 100, 120))
+
+		FakeVisionApi.verzoegerung = 2.5
+		self._api(ollama=True)
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "request_timeout", 1)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		self.assertEqual((ocr.zeitlimit(), ocr.job_timeout()), (1, 76))
+		self.assertEqual(ocr.read_odometer_mit_vertrauen(self.file), (None, False))  # zu langsam fuer 1 s
+
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "request_timeout", 10)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+		self.assertEqual(ocr.read_odometer_mit_vertrauen(self.file)[0], 123456)  # mit 10 s klappt es
+
+	def test_einstellungen_pruefen_zeitlimit(self):
+		einstellungen = frappe.get_doc("Zeit Projekt Einstellungen")
+		for sekunden in (5, 601):
+			einstellungen.request_timeout = sekunden
+			with self.assertRaises(frappe.ValidationError):
+				einstellungen.validate()
+		einstellungen.request_timeout = 120
+		einstellungen.validate()
 
 	def test_bildgroesse_vergroessert_nicht(self):
 		self._api(bild_px=4096)  # das Testbild ist nur 2000 px breit

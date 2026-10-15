@@ -7,6 +7,7 @@ from collections import Counter
 import frappe
 import requests
 from frappe import _
+from frappe.utils import cint
 from PIL import Image
 
 # Prompt-Vergleich (docs/fahrtenbuch.md): Der fruehere Prompt verlangte immer
@@ -49,8 +50,29 @@ ANFRAGEN = 3
 # Laenger ist kein Kilometerstand, sondern Zahlensalat (im Test kam einmal eine
 # 25-stellige Antwort).
 MAX_STELLEN = 7
-# Der Hintergrund-Job laeuft mit timeout=120 (fahrtenbuch.get_odometer_reading).
-GESAMT_ZEIT = 100
+# Wartezeit je Anfrage (Standard; einstellbar: "Zeitlimit je Anfrage"). Ollama sendet im
+# Nicht-Streaming-Betrieb erst nach der fertigen Antwort, das Limit gilt also faktisch fuer
+# die ganze Anfrage. Gesamtzeit aller Anfragen und Limit des Hintergrund-Jobs (siehe
+# fahrtenbuch.get_odometer_reading) richten sich danach: Standard 45 -> 100 s bzw. 120 s.
+ANFRAGE_ZEIT = 45
+ZUSCHLAG_GESAMT = 55
+ZUSCHLAG_JOB = 20
+
+
+def zeitlimit(settings=None) -> int:
+	"""Wartezeit je Anfrage in Sekunden (Einstellung, sonst Standard)."""
+	settings = settings or frappe.get_cached_doc("Zeit Projekt Einstellungen")
+	return cint(settings.get("request_timeout")) or ANFRAGE_ZEIT
+
+
+def gesamtzeit(settings=None) -> int:
+	"""Obergrenze fuer alle Anfragen eines Fotos zusammen."""
+	return zeitlimit(settings) + ZUSCHLAG_GESAMT
+
+
+def job_timeout() -> int:
+	"""Limit des Hintergrund-Jobs: etwas ueber der Gesamtzeit."""
+	return gesamtzeit() + ZUSCHLAG_JOB
 
 # API-URLs, die reasoning_effort ablehnen (z. B. aeltere OpenAI-Modelle): dort
 # wird nicht jedes Mal erst die abgelehnte Anfrage geschickt.
@@ -180,21 +202,22 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 		return None, False
 
 	headers = {"Content-Type": "application/json", **_auth_headers(settings)}
+	zeit = zeitlimit(settings)
 	if settings.api_type == API_TYP_OLLAMA:
 		basis = _ollama_basis(settings.api_url)
 
 		def frage():
 			return _frage_ollama(
-				basis, headers, settings.model, image_b64, settings.context_length, settings.keep_alive
+				basis, headers, settings.model, image_b64, settings.context_length, settings.keep_alive, zeit
 			)
 
 	else:
 		api_url = settings.api_url.rstrip("/")
 
 		def frage():
-			return _frage_openai(api_url, headers, settings.model, image_b64)
+			return _frage_openai(api_url, headers, settings.model, image_b64, zeit)
 
-	ende = time.monotonic() + GESAMT_ZEIT
+	ende = time.monotonic() + gesamtzeit(settings)
 
 	stimmen = []
 	for _ in range(ANFRAGEN):
@@ -218,7 +241,9 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	return None, False
 
 
-def _frage_openai(api_url: str, headers: dict, model: str, image_b64: str) -> int | None:
+def _frage_openai(
+	api_url: str, headers: dict, model: str, image_b64: str, timeout: int = ANFRAGE_ZEIT
+) -> int | None:
 	"""Eine Anfrage an die Vision-API. None, wenn die Antwort keine brauchbare
 	Zahl enthaelt; Netzwerk- und Formatfehler werden an den Aufrufer gereicht."""
 	body = {
@@ -243,7 +268,7 @@ def _frage_openai(api_url: str, headers: dict, model: str, image_b64: str) -> in
 			# Grosszuegig: ein kaltes, noch nicht geladenes Modell brauchte im
 			# Test 10-15s zusaetzlich zur eigentlichen Anfrage, ein echtes
 			# (statt synthetisches) Testfoto weitere ca. 20s statt <2s.
-			timeout=45,
+			timeout=timeout,
 		)
 
 	# Ohne Denken, siehe oben. Lehnt die API den Parameter ab (HTTP 400), geht es
@@ -264,6 +289,7 @@ def _frage_ollama(
 	image_b64: str,
 	num_ctx: int | None = None,
 	keep_alive: str | None = None,
+	timeout: int = ANFRAGE_ZEIT,
 ) -> int | None:
 	"""Eine Anfrage ueber Ollamas eigene Schnittstelle (/api/chat). Dort gehoeren
 	Kontextfenster (options.num_ctx), Denken aus (think) und Verweildauer im
@@ -296,7 +322,7 @@ def _frage_ollama(
 			f"{basis}/api/chat",
 			headers=headers,
 			json=body if mit_think else {k: v for k, v in body.items() if k != "think"},
-			timeout=45,
+			timeout=timeout,
 		)
 
 	# Modelle ohne Denkfunktion koennen think ablehnen (HTTP 400): einmal ohne den

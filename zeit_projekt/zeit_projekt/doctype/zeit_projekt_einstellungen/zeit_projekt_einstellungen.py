@@ -9,6 +9,7 @@ from frappe.utils.nestedset import get_descendants_of
 
 MIN_KONTEXT, MAX_KONTEXT = 2048, 262144
 MIN_BILD, MAX_BILD = 256, 4096
+MIN_ZEIT, MAX_ZEIT = 10, 600
 
 # Tabellenspalte -> Feld der Aktivitaetsart
 AKTIVITAET_FELDER = {
@@ -71,6 +72,8 @@ class ZeitProjektEinstellungen(Document):
 			frappe.throw(
 				_("Das Kontextfenster muss zwischen {0} und {1} Token liegen.").format(MIN_KONTEXT, MAX_KONTEXT)
 			)
+		if self.request_timeout and not MIN_ZEIT <= self.request_timeout <= MAX_ZEIT:
+			frappe.throw(_("Das Zeitlimit muss zwischen {0} und {1} Sekunden liegen.").format(MIN_ZEIT, MAX_ZEIT))
 		if self.keep_alive and not re.fullmatch(r"-?\d+(\.\d+)?(ns|us|µs|ms|s|m|h)?", self.keep_alive.strip()):
 			frappe.throw(_("Ungültige Verweildauer. Beispiele: 30m, 2h, 300s oder -1 (dauerhaft)."))
 
