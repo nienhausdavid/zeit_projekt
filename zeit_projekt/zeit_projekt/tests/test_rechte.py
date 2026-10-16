@@ -60,7 +60,7 @@ class TestTechnikerRechte(IntegrationTestCase):
 		d = get_fahrt_defaults()
 		self.assertEqual((d["auto_start_timer"], d["auto_open_camera"]), (1, 1))
 		self.assertEqual(d["capture_location"], 0)  # Standort ist standardmaessig aus
-		for knopf in ("knopf_timer", "knopf_foto", "knopf_timer_foto"):
+		for knopf in ("knopf_timer", "knopf_foto", "knopf_timer_foto", "knopf_ende_foto"):
 			self.assertEqual(d[knopf], 1)  # Knoepfe sind standardmaessig an
 		self.assertIn("activity_type", d)
 		self.assertNotIn("api_key", d)

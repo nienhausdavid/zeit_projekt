@@ -343,7 +343,7 @@ def read_odometer_mit_vertrauen(file_doc) -> tuple[int | None, bool]:
 	return ergebnis["wert"], ergebnis["sicher"]
 
 
-def read_odometer_detail(file_doc) -> dict:
+def read_odometer_detail(file_doc, fortschritt=None) -> dict:
 	"""Liest den Kilometerstand ueber eine OpenAI-kompatible Chat-Completions-
 	API (Ollama, LM Studio, echtes OpenAI, ...) - konfiguriert in
 	"Zeit Projekt Einstellungen", keine Standard-URL/kein Standard-Modell
@@ -360,10 +360,15 @@ def read_odometer_detail(file_doc) -> dict:
 	verwechseln mit "nichts erkannt" (fehler None, wert None). "Sicher" heisst: schon die ersten beiden
 	Antworten stimmen ueberein. Brauchte es die dritte Anfrage, gab es eine
 	abweichende Antwort - der Wert ist dann nur die Mehrheit und der Techniker
-	soll ihn gegen das Foto pruefen."""
+	soll ihn gegen das Foto pruefen.
+
+	fortschritt: optionale Funktion(phase, **angaben), die den genauen Stand meldet (Phasen "bild",
+	"frage" mit nr/von/modell, "antwort" mit nr/von/wert) - fuer die Statuszeile im Formular."""
+	melde = fortschritt or (lambda phase, **angaben: None)
 	settings = frappe.get_cached_doc("Zeit Projekt Einstellungen")
 	if not is_configured():
 		return _ergebnis()
+	melde("bild")
 
 	with open(file_doc.get_full_path(), "rb") as f:
 		image_bytes = f.read()
@@ -402,9 +407,11 @@ def read_odometer_detail(file_doc) -> dict:
 	ende = time.monotonic() + gesamtzeit(settings)
 
 	stimmen = []
-	for _ in range(ANFRAGEN):
+	for nr in range(1, ANFRAGEN + 1):
+		melde("frage", nr=nr, von=ANFRAGEN, modell=settings.model)
 		try:
 			stimmen.append(frage())
+			melde("antwort", nr=nr, von=ANFRAGEN, wert=stimmen[-1])
 		except (requests.RequestException, KeyError, IndexError, ValueError) as e:
 			# API nicht erreichbar, zu langsam oder Antwort nicht lesbar: weitere Anfragen
 			# wuerden nur dieselbe Wartezeit kosten.

@@ -216,6 +216,19 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 			},
 		)
 
+	def test_genauer_status_der_erkennung(self):
+		"""Der Job meldet vor dem Ergebnis die Phasen: start, bild, frage/antwort je Anfrage."""
+		self._api(["55055", "55055"])
+		with patch("frappe.publish_realtime") as publish:
+			run_odometer_ocr(self.file.name, "start_odometer", "req", "Administrator")
+		status = [c.args[1] for c in publish.call_args_list if c.args[0] == "zeit_projekt_odometer_status"]
+		self.assertEqual([m["phase"] for m in status], ["start", "bild", "frage", "antwort", "frage", "antwort"])
+		self.assertTrue(all(m["request_id"] == "req" and m["fieldname"] == "start_odometer" for m in status))
+		self.assertEqual((status[2]["nr"], status[2]["von"]), (1, 3))
+		self.assertEqual(status[3]["wert"], 55055)
+		# das Ergebnis kommt als letztes Ereignis
+		self.assertEqual(publish.call_args.args[0], "zeit_projekt_odometer")
+
 	def _melde(self, antworten):
 		"""Fuehrt den Hintergrund-Job gegen den Fake-Server aus und liefert die Meldung ans Formular."""
 		self._api(antworten)

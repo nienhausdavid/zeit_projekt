@@ -79,12 +79,12 @@ frappe.ui.form.on('Fahrt', {
 	},
 
 	start_odometer_photo(frm) {
-		zeige_foto_knoepfe(frm); // Knopf weg, sobald das Foto da ist
+		update_timer_toolbar(frm); // Knopf weg, sobald das Foto da ist
 		fetch_odometer_reading(frm, 'start_odometer_photo', 'start_odometer');
 	},
 
 	end_odometer_photo(frm) {
-		zeige_foto_knoepfe(frm);
+		update_timer_toolbar(frm);
 		fetch_odometer_reading(frm, 'end_odometer_photo', 'end_odometer');
 	},
 
@@ -93,7 +93,7 @@ frappe.ui.form.on('Fahrt', {
 		setze_hinweis(frm, 'start_odometer');
 		// Von Hand eingetragen oder korrigiert: die "nicht sicher"-Markierung ist erledigt
 		if (frm.__zp_unsicher) frm.__zp_unsicher.start_odometer = false;
-		zeige_foto_knoepfe(frm);
+		update_timer_toolbar(frm);
 	},
 
 	end_odometer(frm) {
@@ -131,15 +131,16 @@ frappe.ui.form.on('Fahrt', {
 // Dokument nur im Browser existiert.
 // Einstellungen "Knoepfe im Fahrt-Formular": einmal je Seitenaufruf geladen (Techniker duerfen
 // die Einstellungen nicht lesen). Bis sie da sind, gelten alle Knoepfe als an.
-const knopf_einstellung = { knopf_timer: 1, knopf_foto: 1, knopf_timer_foto: 1, geladen: false };
+const KNOPF_SCHALTER = ['knopf_timer', 'knopf_foto', 'knopf_timer_foto', 'knopf_ende_foto'];
+const knopf_einstellung = { knopf_timer: 1, knopf_foto: 1, knopf_timer_foto: 1, knopf_ende_foto: 1, geladen: false };
 
 function lade_knopf_einstellung(frm) {
 	if (knopf_einstellung.geladen) return;
 	knopf_einstellung.geladen = true;
 	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 		const d = r.message || {};
-		const neu = ['knopf_timer', 'knopf_foto', 'knopf_timer_foto'].some((k) => k in d && cint(d[k]) !== knopf_einstellung[k]);
-		['knopf_timer', 'knopf_foto', 'knopf_timer_foto'].forEach((k) => {
+		const neu = KNOPF_SCHALTER.some((k) => k in d && cint(d[k]) !== knopf_einstellung[k]);
+		KNOPF_SCHALTER.forEach((k) => {
 			if (k in d) knopf_einstellung[k] = cint(d[k]);
 		});
 		if (neu && cur_frm === frm) update_timer_toolbar(frm);
@@ -184,6 +185,20 @@ function update_timer_toolbar(frm) {
 		}
 		// Eine laufende Pause endet serverseitig automatisch mit der Fahrt
 		// (zeit_projekt/pausen.py, pausen_pruefen).
+		// Einmalig: Kamera zuerst (synchron im Klick), gleichzeitig Fahrt beenden und speichern.
+		// Wie "Foto Ende" erst, wenn der Startstand feststeht.
+		const start_unsicher = !!(frm.__zp_unsicher && frm.__zp_unsicher.start_odometer);
+		if (
+			knopf_einstellung.knopf_ende_foto &&
+			cint(frm.doc.start_odometer) > 0 &&
+			!start_unsicher &&
+			!frm.doc.end_odometer_photo
+		) {
+			knoepfe.push([__('Endstand fotografieren und Fahrt beenden'), 'btn-danger', () => {
+				capture_photo_for_field(frm, 'end_odometer_photo');
+				return frm.set_value('end_time', jetzt()).then(() => frm.save());
+			}]);
+		}
 		if (timer_knoepfe) {
 			knoepfe.push([__('Timer stoppen'), 'btn-danger', () =>
 				frm.set_value('end_time', jetzt()).then(() => frm.save()),
@@ -244,7 +259,7 @@ function zeige_foto_knoepfe(frm) {
 		['start_odometer', __('Startstand stimmt'), start_unsicher, () => {
 			frm.__zp_unsicher.start_odometer = false;
 			setze_hinweis(frm, 'start_odometer');
-			zeige_foto_knoepfe(frm);
+			update_timer_toolbar(frm);
 		}],
 		['end_odometer_photo', __('Foto Kilometerstand Ende'), start_steht && !frm.doc.end_odometer_photo, () =>
 			capture_photo_for_field(frm, 'end_odometer_photo'),
@@ -355,12 +370,47 @@ function stop_ticking(frm) {
 window.zeit_projekt_ocr = window.zeit_projekt_ocr || { offen: {}, listener: false };
 const offene_erkennungen = window.zeit_projekt_ocr.offen;
 
+// Genauer Stand der Erkennung (Phase vom Server) plus mitlaufende Sekunden, in der Statuszeile
+// am Foto-Feld. Die Sekunden zaehlen ab dem Hochladen, damit man sieht, dass es weitergeht.
+function erkennung_statustext(phase) {
+	const m = phase || {};
+	switch (m.phase) {
+		case 'warteschlange':
+			return __('Erkennung wartet in der Warteschlange');
+		case 'bild':
+			return __('Foto wird für die Erkennung aufbereitet');
+		case 'frage':
+			return __('Modell {0} liest das Foto (Anfrage {1} von höchstens {2})', [m.modell, m.nr, m.von]);
+		case 'antwort':
+			return m.wert
+				? __('Antwort {0}: {1} – wird mit weiteren Antworten abgeglichen', [m.nr, m.wert])
+				: __('Antwort {0}: nichts erkannt – nächste Anfrage', [m.nr]);
+		default:
+			return __('Erkennung gestartet');
+	}
+}
+
+function aktualisiere_erkennungsstatus(auftrag) {
+	const frm = cur_frm;
+	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
+	const sek = Math.round((Date.now() - auftrag.start) / 1000);
+	if (sek > 900) return clearInterval(auftrag.takt); // Sicherheitsnetz: nie endlos mitzaehlen
+	setze_status(frm, auftrag.photo_field, `${erkennung_statustext(auftrag.phase)} … ${sek} s`, null);
+}
+
 if (!window.zeit_projekt_ocr.listener) {
 	window.zeit_projekt_ocr.listener = true;
+	frappe.realtime.on('zeit_projekt_odometer_status', (data) => {
+		const auftrag = window.zeit_projekt_ocr.offen[data.request_id];
+		if (!auftrag) return;
+		auftrag.phase = data;
+		aktualisiere_erkennungsstatus(auftrag);
+	});
 	frappe.realtime.on('zeit_projekt_odometer', (data) => {
 		const auftrag = window.zeit_projekt_ocr.offen[data.request_id];
 		if (!auftrag) return;
 		delete window.zeit_projekt_ocr.offen[data.request_id];
+		clearInterval(auftrag.takt);
 		zeige_erkennung(auftrag, data);
 	});
 }
@@ -436,7 +486,7 @@ function zeige_erkennung(auftrag, data) {
 				setze_hinweis(frm, data.fieldname, __('Automatisch erkannt, aber nicht sicher - bitte mit dem Foto vergleichen.'));
 				if (data.fieldname === 'start_odometer') {
 					frm.__zp_unsicher = { ...frm.__zp_unsicher, start_odometer: true };
-					zeige_foto_knoepfe(frm); // "Foto Ende" bleibt aus, bis der Startstand bestaetigt ist
+					update_timer_toolbar(frm); // "Foto Ende" bleibt aus, bis der Startstand bestaetigt ist
 				}
 				frappe.show_alert(
 					{
@@ -471,9 +521,11 @@ function fetch_odometer_reading(frm, photo_field, odometer_field) {
 		.then((r) => {
 			const res = r.message || {};
 			if (!res.queued) return; // Erkennung nicht eingerichtet
-			offene_erkennungen[res.request_id] = { photo_field, file_url };
+			const auftrag = { photo_field, file_url, start: Date.now(), phase: { phase: 'warteschlange' } };
+			offene_erkennungen[res.request_id] = auftrag;
 			frm.__zp_erkennung_laeuft = { ...frm.__zp_erkennung_laeuft, [photo_field]: true };
-			setze_status(frm, photo_field, __('Kilometerstand wird im Hintergrund erkannt …'), null);
+			setze_status(frm, photo_field, __('Erkennung wartet in der Warteschlange …'), null);
+			auftrag.takt = setInterval(() => aktualisiere_erkennungsstatus(auftrag), 1000);
 		});
 }
 

@@ -30,6 +30,7 @@
   "knopf_timer",
   "knopf_foto",
   "knopf_timer_foto",
+  "knopf_ende_foto",
   "section_break_ocr",
   "api_type",
   "opencode_zugang",
@@ -211,6 +212,13 @@
    "fieldname": "knopf_timer_foto",
    "fieldtype": "Check",
    "label": "Knopf „Timer starten und Kilometerstand fotografieren“ anzeigen"
+  },
+  {
+   "default": "1",
+   "description": "Knopf „Endstand fotografieren und Fahrt beenden“ bei laufendem Timer (einmalig, sobald der Startstand feststeht und noch kein Endfoto vorhanden ist).",
+   "fieldname": "knopf_ende_foto",
+   "fieldtype": "Check",
+   "label": "Knopf „Endstand fotografieren und Fahrt beenden“ anzeigen"
   },
   {
    "fieldname": "section_break_ocr",

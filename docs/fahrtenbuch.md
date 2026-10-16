@@ -135,12 +135,22 @@ Beim Hochladen eines Fotos über einen der Foto-Knöpfe zeigt eine **Statuszeile
 Speichern und „Kilometerstand wird im Hintergrund erkannt …“. Sie verschwindet, sobald das Ergebnis
 da ist; bei einem Fehler bleibt eine rote Meldung kurz stehen.
 
+Die Statuszeile zeigt bei der Erkennung den **genauen Stand**: „wartet in der Warteschlange“, „Foto wird
+aufbereitet“, „Modell … liest das Foto (Anfrage 1 von höchstens 3)“, „Antwort 1: 185479 – wird abgeglichen“
+bzw. „nichts erkannt – nächste Anfrage“, dazu mitlaufende Sekunden. Technisch meldet der Hintergrund-Job
+dafür Realtime-Ereignisse `zeit_projekt_odometer_status` (Phasen `start`, `bild`, `frage`, `antwort`) vor dem
+Ergebnis-Ereignis `zeit_projekt_odometer`.
+
 Das Foto wird nach dem Upload **sofort mit der Fahrt gespeichert** – auch wenn die Erkennung
 nichts findet; der Stand ist dann von Hand einzutragen, das Foto bleibt erhalten.
 
+Bei laufendem Timer erscheint – sobald der Startstand feststeht und noch kein Endfoto vorhanden ist – der
+Knopf **„Endstand fotografieren und Fahrt beenden“**: öffnet die Kamera und beendet gleichzeitig die Fahrt
+(Ende-Zeit setzen, speichern). Auch er erscheint nur einmalig.
+
 Die Knöpfe im Fahrt-Formular lassen sich in *Zeit Projekt Einstellungen → Knöpfe im Fahrt-Formular*
-einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und der
-Kombi-Knopf unten. Ohne Timer-Knöpfe laufen Start und Ende von Hand über die Felder.
+einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und die beiden
+Kombi-Knöpfe (Start bzw. Ende). Ohne Timer-Knöpfe laufen Start und Ende von Hand über die Felder.
 
 Oben im neuen Entwurf steht der Knopf **„Timer starten und Kilometerstand fotografieren“**: er öffnet die
 Kamera und startet gleichzeitig den Timer. Er erscheint nur einmalig – sobald der Timer läuft oder
