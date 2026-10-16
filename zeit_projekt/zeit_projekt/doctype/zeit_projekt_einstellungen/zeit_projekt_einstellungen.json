@@ -28,6 +28,7 @@
   "capture_location",
   "section_break_ocr",
   "api_type",
+  "opencode_zugang",
   "api_url",
   "model",
   "api_key",
@@ -192,22 +193,33 @@
    "fieldname": "api_type",
    "fieldtype": "Select",
    "label": "Schnittstelle",
-   "options": "OpenAI-kompatibel\nOllama (nativ)",
+   "options": "OpenAI-kompatibel\nOllama (nativ)\nOpenCode",
    "default": "OpenAI-kompatibel",
-   "description": "OpenAI-kompatibel funktioniert mit Ollama, LM Studio, OpenAI u. a. Ollama (nativ) nutzt Ollamas eigene Schnittstelle und erlaubt Kontextfenster und Verweildauer, geht aber nur mit Ollama.",
+   "description": "OpenAI-kompatibel funktioniert mit Ollama, LM Studio, OpenAI u. a. Ollama (nativ) nutzt Ollamas eigene Schnittstelle und erlaubt Kontextfenster und Verweildauer, geht aber nur mit Ollama. OpenCode (opencode.ai): keine URL nötig; API-Schlüssel aus der OpenCode Console, Zugang Go (Abo) oder Zen (Pay per use). Die App sendet die Pflicht-Header von OpenCode und findet das Protokoll des Modells selbst (Chat, Anthropic, Responses, Gemini).",
    "permlevel": 1
   },
   {
-   "description": "Adresse des Servers. OpenAI-kompatibel: Basis-URL ohne /chat/completions am Ende - z. B. http://<ip-des-servers>:11434/v1 für Ollama oder https://api.openai.com/v1. Ollama (nativ): z. B. http://<ip-des-servers>:11434 (ein angehängtes /v1 wird ignoriert).",
+   "fieldname": "opencode_zugang",
+   "fieldtype": "Select",
+   "label": "OpenCode-Zugang",
+   "options": "Go (Abo)\nZen (Pay per use)",
+   "default": "Go (Abo)",
+   "permlevel": 1,
+   "depends_on": "eval:doc.api_type=='OpenCode'",
+   "description": "Go (Abo): die im Go-Abo enthaltenen Modelle. Zen (Pay per use): die Modelle von OpenCode Zen, die über das Guthaben abgerechnet werden (ohne Guthaben antwortet OpenCode mit „Insufficient account funds“). Die kostenlosen Modelle („-free“) erlaubt der Anbieter nur innerhalb von OpenCode, sie fehlen deshalb in der Auswahl. Bei jedem Wechsel lädt die Modellauswahl neu."
+  },
+  {
+   "description": "Adresse des Servers. OpenAI-kompatibel: Basis-URL ohne /chat/completions am Ende - z. B. http://<ip-des-servers>:11434/v1 für Ollama oder https://api.openai.com/v1. Ollama (nativ): z. B. http://<ip-des-servers>:11434 (ein angehängtes /v1 wird ignoriert). Bei OpenCode entfällt die Eingabe.",
    "fieldname": "api_url",
    "fieldtype": "Data",
    "label": "API-URL",
-   "permlevel": 1
+   "permlevel": 1,
+   "depends_on": "eval:doc.api_type!='OpenCode'"
   },
   {
-   "description": "Name des zu verwendenden Vision-Modells, z. B. qwen3.5:9b - der Knopf oben zeigt die bei der API tatsächlich verfügbaren Modelle an",
+   "description": "Vision-Modell, das den Kilometerstand liest, z. B. minicpm-v4.5 (Ollama) oder kimi-k3 (OpenCode). Die Auswahl lädt die bei der API tatsächlich verfügbaren Modelle von selbst; ein anderer Name lässt sich auch eintippen. Das Modell muss Bilder lesen können.",
    "fieldname": "model",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Modell",
    "permlevel": 1
   },
@@ -264,7 +276,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-15 15:00:00.000000",
+ "modified": "2026-10-16 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Zeit Projekt",
  "name": "Zeit Projekt Einstellungen",

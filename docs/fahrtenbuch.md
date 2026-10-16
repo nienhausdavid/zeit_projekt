@@ -135,15 +135,37 @@ Einrichtung in *Zeit Projekt Einstellungen*:
 - **Schnittstelle**: `OpenAI-kompatibel` (Standard; geht mit Ollama, LM Studio,
   OpenAI u. a.) oder `Ollama (nativ)` (Ollamas eigene Schnittstelle `/api/chat`,
   nur für Ollama; erlaubt Kontextfenster und Verweildauer)
+- **OpenCode** (dritte Schnittstelle, opencode.ai): **keine URL nötig**, nur der API-Schlüssel aus
+  der OpenCode Console. Dazu **OpenCode-Zugang**: *Go (Abo)* (die im Go-Abo enthaltenen Modelle)
+  oder *Zen (Pay per use)* (Modelle über das Guthaben; ohne Guthaben antwortet OpenCode mit
+  „Insufficient account funds"). Die App erledigt für OpenCode von selbst:
+  - die **Pflicht-Header** (`x-opencode-session`, eigener User-Agent). Ohne sie lehnt OpenCode jede
+    Anfrage mit HTTP 400 ab; das war der Grund, warum die normale OpenAI-kompatible Schnittstelle nicht
+    ging.
+  - das **Protokoll je Modell**: OpenCode spricht je nach Modell Chat Completions, Anthropic Messages,
+    OpenAI Responses oder Gemini. Die App probiert der Reihe nach und merkt sich das passende Protokoll
+    je Modell (12 Stunden bzw. bis zum Neustart des Caches).
+  - die **Modellliste**: sie liegt bei OpenCode unter `…/v1/models`, nicht neben dem Chat-Pfad.
+  - **nur Modelle mit Bild-Eingabe** in der Auswahl: Textmodelle verwerfen das Foto still und raten eine
+    Zahl (im Test 44591, 139872 statt 185460). Die Eigenschaft kommt aus dem öffentlichen Verzeichnis
+    models.dev (Eingabe-Modalitäten, 12 Stunden zwischengespeichert; Modelle, die es dort nicht gibt,
+    bleiben sichtbar; ist das Verzeichnis nicht erreichbar, wird nichts gefiltert). Modelle, die mit den
+    gesendeten Daten trainieren („Contributor"), fehlen ebenfalls.
+  - **Free-Modelle:** Die kostenlosen Zen-Modelle (`…-free`) erlaubt der Anbieter nur innerhalb von
+    OpenCode (HTTP 403 `FreeTierError`, seit etwa September 2026, laut Maintainer gewollt); sie fehlen
+    bei Zen in der Auswahl, und die App tarnt sich nicht als OpenCode-Client. Im Go-Abo sind zwei
+    Free-Modelle enthalten, die über Go laufen: `longcat-2.5-preview-free` (liest Bilder) und
+    `cat-jam-free` (liest keine Bilder).
 - **API-URL**: bei *OpenAI-kompatibel* die Basis-URL ohne `/chat/completions`, z. B.
   `http://<ip-des-servers>:11434/v1` oder `https://api.openai.com/v1`; bei
   *Ollama (nativ)* die Server-Adresse, z. B. `http://<ip-des-servers>:11434` (ein
   angehängtes `/v1` wird ignoriert)
-- **Modell**: empfohlen `minicpm-v4.5` (schnell, auch mit großen Bildern; ca. 5,6 GB bei Kontext 8192) oder
+- **Modell**: eine **Auswahlliste**, die sich beim Öffnen und bei Änderungen an Schnittstelle, URL,
+  Schlüssel oder Zugang von selbst mit den Modellen der API füllt (ein anderer Name lässt sich eintippen;
+  den Grund eines Fehlers zeigt das Feld darunter). Empfohlen `minicpm-v4.5` (schnell, auch mit großen Bildern; ca. 5,6 GB bei Kontext 8192) oder
   `qwen3-vl:8b-instruct` (gleich genau, aber langsamer); `ornith-1.5:9b` liest dunkle Fotos teils besser
-  (siehe *Genauigkeit* unten und `docs/modellvergleich.md`, Abschnitt 10) – der Knopf
-  **„Verfügbare Modelle abrufen"** fragt die API nach ihren Modellen (nur
-  System Manager)
+  (siehe *Genauigkeit* unten und `docs/modellvergleich.md`, Abschnitt 10) – die Auswahl ist nur für den
+  System Manager sichtbar (der Abschnitt enthält den API-Schlüssel)
 - **API-Schlüssel**: nur falls die API einen verlangt
 - **Bildgröße (längste Kante, Pixel)**: Standard 1024. Größer macht kleine Ziffern
   besser lesbar, ist aber langsamer und braucht mehr Kontext. Bei zwei echten, dunklen

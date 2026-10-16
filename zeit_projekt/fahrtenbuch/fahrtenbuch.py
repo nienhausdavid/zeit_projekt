@@ -134,7 +134,7 @@ def run_odometer_ocr(file_name, fieldname, request_id, user):
 
 
 @frappe.whitelist()
-def get_available_models(api_url=None, api_key=None, api_type=None):
+def get_available_models(api_url=None, api_key=None, api_type=None, opencode_zugang=None):
 	"""Fuer den "Modelle abrufen"-Button in Zeit Projekt Einstellungen -
 	api_url/api_key/api_type optional, damit ein gerade eingetipptes, noch nicht
 	gespeichertes Feld direkt getestet werden kann. Nur System Manager: der
