@@ -367,6 +367,12 @@ function zeige_erkennung(auftrag, data) {
 			nicht_erreichbar: __('Das Erkennungsmodell ist nicht erreichbar oder hat einen Fehler gemeldet. Bitte den Kilometerstand von Hand eintragen.'),
 			antwort_unlesbar: __('Die Antwort des Erkennungsmodells war nicht lesbar. Bitte den Kilometerstand von Hand eintragen.'),
 			bild_unlesbar: __('Das Foto konnte nicht gelesen werden. Bitte den Kilometerstand von Hand eintragen.'),
+			free_nur_in_opencode: __('Dieses kostenlose Modell darf der Anbieter nur innerhalb von OpenCode nutzen. Bitte ein anderes Modell einstellen und den Kilometerstand von Hand eintragen.'),
+			zugang_abgelehnt: __('Die Erkennung wurde abgelehnt (API-Schlüssel oder Abo prüfen). Bitte den Kilometerstand von Hand eintragen.'),
+			limit_erreicht: __('Das Nutzungslimit oder Guthaben der Erkennung ist erschöpft. Bitte den Kilometerstand von Hand eintragen.'),
+			modell_ohne_bild: __('Das gewählte Modell kann keine Bilder lesen. Bitte ein anderes Modell einstellen und den Kilometerstand von Hand eintragen.'),
+			modell_freigabe_noetig: __('Dieses Modell trainiert mit den gesendeten Daten und ist nicht freigegeben. Bitte ein anderes Modell einstellen und den Kilometerstand von Hand eintragen.'),
+			modell_nicht_unterstuetzt: __('Das gewählte Modell wird von dieser Schnittstelle nicht unterstützt. Bitte ein anderes Modell einstellen und den Kilometerstand von Hand eintragen.'),
 		};
 		frappe.show_alert({ message: texte[data.fehler] || __('Die Erkennung ist fehlgeschlagen. Bitte den Kilometerstand von Hand eintragen.'), indicator: 'red' }, 20);
 		return;
