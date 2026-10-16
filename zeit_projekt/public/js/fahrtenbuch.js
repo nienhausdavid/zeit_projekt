@@ -412,6 +412,8 @@ function zeige_erkennung(auftrag, data) {
 			} else {
 				frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [data.reading]), indicator: 'green' });
 			}
+			// Erkannten Stand gleich speichern (nur Entwurf; gebuchte Fahrten bleiben unberuehrt).
+			if (frm.doc.docstatus === 0 && frm.is_dirty()) frm.save().catch(() => {});
 		});
 	} else if (!data.reading) {
 		frappe.show_alert({
