@@ -129,7 +129,25 @@ frappe.ui.form.on('Fahrt', {
 // nicht speicherbar. Ohne das sofortige Speichern ginge der Timer bei einem
 // Reload/Schliessen der Seite verloren, weil ein neues, ungespeichertes
 // Dokument nur im Browser existiert.
+// Einstellungen "Knoepfe im Fahrt-Formular": einmal je Seitenaufruf geladen (Techniker duerfen
+// die Einstellungen nicht lesen). Bis sie da sind, gelten alle Knoepfe als an.
+const knopf_einstellung = { knopf_timer: 1, knopf_foto: 1, knopf_timer_foto: 1, geladen: false };
+
+function lade_knopf_einstellung(frm) {
+	if (knopf_einstellung.geladen) return;
+	knopf_einstellung.geladen = true;
+	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
+		const d = r.message || {};
+		const neu = ['knopf_timer', 'knopf_foto', 'knopf_timer_foto'].some((k) => k in d && cint(d[k]) !== knopf_einstellung[k]);
+		['knopf_timer', 'knopf_foto', 'knopf_timer_foto'].forEach((k) => {
+			if (k in d) knopf_einstellung[k] = cint(d[k]);
+		});
+		if (neu && cur_frm === frm) update_timer_toolbar(frm);
+	});
+}
+
 function update_timer_toolbar(frm) {
+	lade_knopf_einstellung(frm);
 	stop_ticking(frm);
 	entferne_knopfleiste(frm);
 	zeige_foto_knoepfe(frm);
@@ -137,22 +155,27 @@ function update_timer_toolbar(frm) {
 
 	const jetzt = () => frappe.datetime.now_datetime();
 	const knoepfe = [];
+	const timer_knoepfe = !!knopf_einstellung.knopf_timer;
 	if (!frm.doc.start_time) {
 		// Nur einmalig: verschwindet, sobald der Timer laeuft bzw. das Startfoto da ist.
 		// Die Kamera wird zuerst geoeffnet (synchron im Klick, sonst blockt sie der
 		// Browser am Handy); der Timer startet und speichert gleichzeitig.
-		if (!frm.doc.start_odometer_photo) {
+		if (knopf_einstellung.knopf_timer_foto && !frm.doc.start_odometer_photo) {
 			knoepfe.push([__('Timer starten und Kilometerstand fotografieren'), 'btn-primary', () => {
 				capture_photo_for_field(frm, 'start_odometer_photo');
 				return frm.set_value('start_time', jetzt()).then(() => frm.save());
 			}]);
 		}
-		knoepfe.push([__('Timer starten'), 'btn-primary', () =>
-			frm.set_value('start_time', jetzt()).then(() => frm.save()),
-		]);
+		if (timer_knoepfe) {
+			knoepfe.push([__('Timer starten'), 'btn-primary', () =>
+				frm.set_value('start_time', jetzt()).then(() => frm.save()),
+			]);
+		}
 	} else if (!frm.doc.end_time) {
 		const pause = open_break(frm);
-		if (pause) {
+		if (!timer_knoepfe) {
+			// keine Knoepfe: der Timer (Anzeige oben) laeuft trotzdem mit
+		} else if (pause) {
 			knoepfe.push([__('Timer fortsetzen'), 'btn-success', () =>
 				frappe.model.set_value(pause.doctype, pause.name, 'to_time', jetzt()).then(() => frm.save()),
 			]);
@@ -161,9 +184,11 @@ function update_timer_toolbar(frm) {
 		}
 		// Eine laufende Pause endet serverseitig automatisch mit der Fahrt
 		// (zeit_projekt/pausen.py, pausen_pruefen).
-		knoepfe.push([__('Timer stoppen'), 'btn-danger', () =>
-			frm.set_value('end_time', jetzt()).then(() => frm.save()),
-		]);
+		if (timer_knoepfe) {
+			knoepfe.push([__('Timer stoppen'), 'btn-danger', () =>
+				frm.set_value('end_time', jetzt()).then(() => frm.save()),
+			]);
+		}
 		start_ticking(frm);
 	}
 	zeige_knopfleiste(frm, knoepfe);
@@ -206,7 +231,7 @@ function grosser_knopf(text, klasse, aktion) {
 // Foto vorhanden ist; "Ende" erscheint ab dem Start des Timers.
 function zeige_foto_knoepfe(frm) {
 	$(frm.layout.wrapper).find('.zp-foto-knopf').remove();
-	if (frm.doc.docstatus !== 0) return;
+	if (frm.doc.docstatus !== 0 || !knopf_einstellung.knopf_foto) return;
 	const start_unsicher = !!(frm.__zp_unsicher && frm.__zp_unsicher.start_odometer);
 	// "Foto Ende" erst, wenn der Startstand feststeht: richtig erkannt oder von Hand
 	// eingetragen bzw. korrigiert. Ein "nicht sicher" erkannter Wert zaehlt erst, wenn er

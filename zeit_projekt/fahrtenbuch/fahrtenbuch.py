@@ -70,6 +70,9 @@ def get_fahrt_defaults():
 		"auto_start_timer": cint(settings.auto_start_timer),
 		"auto_open_camera": cint(settings.auto_open_camera),
 		"capture_location": cint(settings.capture_location),
+		"knopf_timer": cint(settings.knopf_timer),
+		"knopf_foto": cint(settings.knopf_foto),
+		"knopf_timer_foto": cint(settings.knopf_timer_foto),
 	}
 
 
