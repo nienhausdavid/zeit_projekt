@@ -135,6 +135,12 @@ Beim Hochladen eines Fotos über einen der Foto-Knöpfe zeigt eine **Statuszeile
 Speichern und „Kilometerstand wird im Hintergrund erkannt …“. Sie verschwindet, sobald das Ergebnis
 da ist; bei einem Fehler bleibt eine rote Meldung kurz stehen.
 
+Die Statuszeile zeigt bei der Erkennung den **genauen Stand**: „wartet in der Warteschlange“, „Foto wird
+aufbereitet“, „Modell … liest das Foto (Anfrage 1 von höchstens 3)“, „Antwort 1: 185479 – wird abgeglichen“
+bzw. „nichts erkannt – nächste Anfrage“, dazu mitlaufende Sekunden. Technisch meldet der Hintergrund-Job
+dafür Realtime-Ereignisse `zeit_projekt_odometer_status` (Phasen `start`, `bild`, `frage`, `antwort`) vor dem
+Ergebnis-Ereignis `zeit_projekt_odometer`.
+
 Das Foto wird nach dem Upload **sofort mit der Fahrt gespeichert** – auch wenn die Erkennung
 nichts findet; der Stand ist dann von Hand einzutragen, das Foto bleibt erhalten.
 

@@ -116,7 +116,17 @@ def run_odometer_ocr(file_name, fieldname, request_id, user):
 	das offene Formular des Nutzers melden."""
 	from zeit_projekt.fahrtenbuch.ocr import read_odometer_detail, zeitlimit
 
-	ergebnis = read_odometer_detail(frappe.get_doc("File", file_name))
+	def fortschritt(phase, **angaben):
+		# Genauer Stand fuer die Statuszeile am Foto-Feld (Ergebnis kommt separat, s. u.)
+		frappe.publish_realtime(
+			"zeit_projekt_odometer_status",
+			{"request_id": request_id, "fieldname": fieldname, "phase": phase, **angaben},
+			user=user,
+			after_commit=False,
+		)
+
+	fortschritt("start")
+	ergebnis = read_odometer_detail(frappe.get_doc("File", file_name), fortschritt)
 	reading, sicher = ergebnis["wert"], ergebnis["sicher"]
 	frappe.publish_realtime(
 		"zeit_projekt_odometer",

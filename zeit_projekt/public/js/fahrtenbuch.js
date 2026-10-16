@@ -355,12 +355,47 @@ function stop_ticking(frm) {
 window.zeit_projekt_ocr = window.zeit_projekt_ocr || { offen: {}, listener: false };
 const offene_erkennungen = window.zeit_projekt_ocr.offen;
 
+// Genauer Stand der Erkennung (Phase vom Server) plus mitlaufende Sekunden, in der Statuszeile
+// am Foto-Feld. Die Sekunden zaehlen ab dem Hochladen, damit man sieht, dass es weitergeht.
+function erkennung_statustext(phase) {
+	const m = phase || {};
+	switch (m.phase) {
+		case 'warteschlange':
+			return __('Erkennung wartet in der Warteschlange');
+		case 'bild':
+			return __('Foto wird für die Erkennung aufbereitet');
+		case 'frage':
+			return __('Modell {0} liest das Foto (Anfrage {1} von höchstens {2})', [m.modell, m.nr, m.von]);
+		case 'antwort':
+			return m.wert
+				? __('Antwort {0}: {1} – wird mit weiteren Antworten abgeglichen', [m.nr, m.wert])
+				: __('Antwort {0}: nichts erkannt – nächste Anfrage', [m.nr]);
+		default:
+			return __('Erkennung gestartet');
+	}
+}
+
+function aktualisiere_erkennungsstatus(auftrag) {
+	const frm = cur_frm;
+	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
+	const sek = Math.round((Date.now() - auftrag.start) / 1000);
+	if (sek > 900) return clearInterval(auftrag.takt); // Sicherheitsnetz: nie endlos mitzaehlen
+	setze_status(frm, auftrag.photo_field, `${erkennung_statustext(auftrag.phase)} … ${sek} s`, null);
+}
+
 if (!window.zeit_projekt_ocr.listener) {
 	window.zeit_projekt_ocr.listener = true;
+	frappe.realtime.on('zeit_projekt_odometer_status', (data) => {
+		const auftrag = window.zeit_projekt_ocr.offen[data.request_id];
+		if (!auftrag) return;
+		auftrag.phase = data;
+		aktualisiere_erkennungsstatus(auftrag);
+	});
 	frappe.realtime.on('zeit_projekt_odometer', (data) => {
 		const auftrag = window.zeit_projekt_ocr.offen[data.request_id];
 		if (!auftrag) return;
 		delete window.zeit_projekt_ocr.offen[data.request_id];
+		clearInterval(auftrag.takt);
 		zeige_erkennung(auftrag, data);
 	});
 }
@@ -471,9 +506,11 @@ function fetch_odometer_reading(frm, photo_field, odometer_field) {
 		.then((r) => {
 			const res = r.message || {};
 			if (!res.queued) return; // Erkennung nicht eingerichtet
-			offene_erkennungen[res.request_id] = { photo_field, file_url };
+			const auftrag = { photo_field, file_url, start: Date.now(), phase: { phase: 'warteschlange' } };
+			offene_erkennungen[res.request_id] = auftrag;
 			frm.__zp_erkennung_laeuft = { ...frm.__zp_erkennung_laeuft, [photo_field]: true };
-			setze_status(frm, photo_field, __('Kilometerstand wird im Hintergrund erkannt …'), null);
+			setze_status(frm, photo_field, __('Erkennung wartet in der Warteschlange …'), null);
+			auftrag.takt = setInterval(() => aktualisiere_erkennungsstatus(auftrag), 1000);
 		});
 }
 
