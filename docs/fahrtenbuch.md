@@ -135,6 +135,9 @@ Beim Hochladen eines Fotos über einen der Foto-Knöpfe zeigt eine **Statuszeile
 Speichern und „Kilometerstand wird im Hintergrund erkannt …“. Sie verschwindet, sobald das Ergebnis
 da ist; bei einem Fehler bleibt eine rote Meldung kurz stehen.
 
+Das Foto wird nach dem Upload **sofort mit der Fahrt gespeichert** – auch wenn die Erkennung
+nichts findet; der Stand ist dann von Hand einzutragen, das Foto bleibt erhalten.
+
 Die Knöpfe im Fahrt-Formular lassen sich in *Zeit Projekt Einstellungen → Knöpfe im Fahrt-Formular*
 einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und der
 Kombi-Knopf unten. Ohne Timer-Knöpfe laufen Start und Ende von Hand über die Felder.

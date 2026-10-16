@@ -733,7 +733,11 @@ function upload_captured_image(frm, fieldname, data_url) {
 				setTimeout(() => {
 					if (!frm.__zp_erkennung_laeuft || !frm.__zp_erkennung_laeuft[fieldname]) entferne_status(frm, fieldname);
 				}, 4000);
-				frm.set_value(fieldname, result.message.file_url);
+				// Foto sofort mitspeichern (nur Entwurf): sonst steht es nur im offenen Formular und
+				// ist weg, wenn die Erkennung nichts findet und die Seite neu geladen wird.
+				frm.set_value(fieldname, result.message.file_url).then(() => {
+					if (frm.doc.docstatus === 0 && frm.is_dirty()) frm.save().catch(() => {});
+				});
 			} else {
 				fehler();
 			}
