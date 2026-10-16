@@ -89,11 +89,23 @@ frappe.ui.form.on('Fahrt', {
 	},
 
 	// Ändert der Techniker einen erkannten Wert, ist die "nicht sicher"-Markierung erledigt.
+	vehicle(frm) {
+		lade_letzten_stand(frm);
+	},
+
 	start_odometer(frm) {
 		setze_hinweis(frm, 'start_odometer');
 		// Von Hand eingetragen oder korrigiert: die "nicht sicher"-Markierung ist erledigt
 		if (frm.__zp_unsicher) frm.__zp_unsicher.start_odometer = false;
 		update_timer_toolbar(frm);
+		// Handeingabe pruefen (ein von der Erkennung gesetzter Wert wird dort selbst geprueft)
+		if (!frm.__zp_erkennung_setzt && frm.doc.docstatus === 0) {
+			pruefe_startstand(frm, cint(frm.doc.start_odometer)).then((warnung) => {
+				if (!warnung) return;
+				setze_hinweis(frm, 'start_odometer', warnung + letzter_stand_text(frm));
+				frappe.show_alert({ message: warnung, indicator: 'orange' }, 12);
+			});
+		}
 	},
 
 	end_odometer(frm) {
@@ -104,6 +116,9 @@ frappe.ui.form.on('Fahrt', {
 		frm.dashboard.clear_headline();
 		setze_foto_hinweise(frm);
 		update_timer_toolbar(frm);
+		fahrzeug_vorbelegen(frm);
+		lade_letzten_stand(frm);
+		window.zeit_projekt.foto_warteschlange.senden(foto_zuordnen);
 		mitarbeiter_pruefen(frm);
 		frm.toggle_display('section_break_karte', !!frm.doc.route_map);
 		standort_nachtragen(frm);
@@ -132,7 +147,7 @@ frappe.ui.form.on('Fahrt', {
 // Einstellungen "Knoepfe im Fahrt-Formular": einmal je Seitenaufruf geladen (Techniker duerfen
 // die Einstellungen nicht lesen). Bis sie da sind, gelten alle Knoepfe als an.
 const KNOPF_SCHALTER = ['knopf_timer', 'knopf_foto', 'knopf_timer_foto', 'knopf_ende_foto'];
-const knopf_einstellung = { knopf_timer: 1, knopf_foto: 1, knopf_timer_foto: 1, knopf_ende_foto: 1, geladen: false };
+const knopf_einstellung = { knopf_timer: 1, knopf_foto: 1, knopf_timer_foto: 1, knopf_ende_foto: 1, max_km_luecke: 500, geladen: false };
 
 function lade_knopf_einstellung(frm) {
 	if (knopf_einstellung.geladen) return;
@@ -140,6 +155,7 @@ function lade_knopf_einstellung(frm) {
 	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 		const d = r.message || {};
 		const neu = KNOPF_SCHALTER.some((k) => k in d && cint(d[k]) !== knopf_einstellung[k]);
+		if ('max_km_luecke' in d) knopf_einstellung.max_km_luecke = cint(d.max_km_luecke);
 		KNOPF_SCHALTER.forEach((k) => {
 			if (k in d) knopf_einstellung[k] = cint(d[k]);
 		});
@@ -415,6 +431,63 @@ if (!window.zeit_projekt_ocr.listener) {
 	});
 }
 
+// Plausibilitaet des Startstands gegen den letzten bekannten Stand des Fahrzeugs (Endstand der
+// juengsten Fahrt, sonst Fahrzeugdaten). Auffaellig: Stand unter dem letzten Stand oder mehr als
+// "Groesste erwartete Luecke" darueber (Einstellung, 0 = Luecke nicht pruefen) - meist ein Lesefehler
+// (TRIP statt ODO, fehlende Ziffer).
+function letzter_stand_text(frm) {
+	const l = frm.__zp_letzter;
+	if (!l) return '';
+	return ' ' + __('Letzter Stand dieses Fahrzeugs: {0} km{1}.', [l.stand, l.fahrt ? ` (${l.fahrt})` : '']);
+}
+
+function lade_letzten_stand(frm) {
+	if (frm.doc.docstatus !== 0 || !frm.doc.vehicle) {
+		frm.__zp_letzter = null;
+		setze_hinweis(frm, 'start_odometer');
+		return Promise.resolve(null);
+	}
+	return frappe
+		.call({
+			method: 'zeit_projekt.fahrtenbuch.fahrtenbuch.get_letzter_stand',
+			args: { vehicle: frm.doc.vehicle, fahrt: frm.is_new() ? null : frm.doc.name },
+		})
+		.then((r) => {
+			frm.__zp_letzter = r.message || null;
+			if (!(frm.__zp_unsicher && frm.__zp_unsicher.start_odometer)) setze_hinweis(frm, 'start_odometer');
+			return frm.__zp_letzter;
+		});
+}
+
+// Warntext, wenn der Startstand nicht zum letzten Stand des Fahrzeugs passt, sonst null.
+function pruefe_startstand(frm, wert) {
+	if (!wert || !frm.doc.vehicle) return Promise.resolve(null);
+	return lade_letzten_stand(frm).then((l) => {
+		if (!l) return null;
+		const luecke = cint(knopf_einstellung.max_km_luecke);
+		if (wert < l.stand) {
+			return __('Startstand {0} liegt unter dem letzten Stand dieses Fahrzeugs ({1} km).', [wert, l.stand]);
+		}
+		if (luecke > 0 && wert - l.stand > luecke) {
+			return __('Startstand {0} liegt {1} km über dem letzten Stand dieses Fahrzeugs ({2} km).', [
+				wert,
+				wert - l.stand,
+				l.stand,
+			]);
+		}
+		return null;
+	});
+}
+
+// Neue Fahrt: das zuletzt genutzte Fahrzeug des Benutzers vorschlagen (Standardfahrzeug).
+function fahrzeug_vorbelegen(frm) {
+	if (!frm.is_new() || frm.doc.vehicle || frm.__zp_fahrzeug_geholt) return;
+	frm.__zp_fahrzeug_geholt = true;
+	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_letztes_fahrzeug').then((r) => {
+		if (r.message && !frm.doc.vehicle) frm.set_value('vehicle', r.message);
+	});
+}
+
 // Beschreibung eines Kilometerstand-Feldes ändern und später auf den
 // ursprünglichen Text aus dem Doctype zurücksetzen (text weglassen).
 const ursprungstexte = {};
@@ -422,7 +495,8 @@ function setze_hinweis(frm, fieldname, text) {
 	const feld = frm.fields_dict[fieldname];
 	if (!feld) return;
 	if (!(fieldname in ursprungstexte)) ursprungstexte[fieldname] = feld.df.description;
-	frm.set_df_property(fieldname, 'description', text === undefined ? ursprungstexte[fieldname] : text);
+	const standard = ursprungstexte[fieldname] + (fieldname === 'start_odometer' ? letzter_stand_text(frm) : '');
+	frm.set_df_property(fieldname, 'description', text === undefined ? standard : text);
 }
 
 // Fotohilfe: was auf das Bild gehört, steht an den Foto-Feldern - die
@@ -479,7 +553,9 @@ function zeige_erkennung(auftrag, data) {
 			indicator: 'orange',
 		});
 	} else if (data.reading && !frm.doc[data.fieldname]) {
+		frm.__zp_erkennung_setzt = true; // das Feld-Ereignis soll die Handeingabe-Pruefung auslassen
 		frm.set_value(data.fieldname, data.reading).then(() => {
+			frm.__zp_erkennung_setzt = false;
 			if (data.unsicher) {
 				// Die Modellantworten waren nicht einhellig: Wert eintragen, aber
 				// sichtbar markieren, bis der Techniker ihn bestätigt oder ändert.
@@ -500,7 +576,18 @@ function zeige_erkennung(auftrag, data) {
 			}
 			// Erkannten Stand gleich speichern (nur Entwurf; gebuchte Fahrten bleiben unberuehrt).
 			if (frm.doc.docstatus === 0 && frm.is_dirty()) frm.save().catch(() => {});
-		});
+			// Passt der erkannte Startstand zum letzten Stand des Fahrzeugs? Sonst als fraglich
+			// markieren (wie "nicht sicher"): "Foto Ende" bleibt aus, bis er bestaetigt oder geaendert ist.
+			if (data.fieldname === 'start_odometer') {
+				pruefe_startstand(frm, data.reading).then((warnung) => {
+					if (!warnung) return;
+					setze_hinweis(frm, 'start_odometer', warnung + ' ' + __('Bitte mit dem Foto vergleichen.') + letzter_stand_text(frm));
+					frm.__zp_unsicher = { ...frm.__zp_unsicher, start_odometer: true };
+					update_timer_toolbar(frm);
+					frappe.show_alert({ message: warnung, indicator: 'orange' }, 15);
+				});
+			}
+		}, () => (frm.__zp_erkennung_setzt = false));
 	} else if (!data.reading) {
 		frappe.show_alert({
 			message: __('Konnte den Kilometerstand nicht erkennen, bitte manuell eintragen.'),
@@ -712,7 +799,7 @@ function setze_status(frm, fieldname, text, prozent, farbe) {
 	}
 	const balken = zeile.find('.progress-bar');
 	balken
-		.removeClass('bg-info bg-success bg-danger progress-bar-striped progress-bar-animated')
+		.removeClass('bg-info bg-success bg-danger bg-warning progress-bar-striped progress-bar-animated')
 		.addClass(`bg-${farbe || 'info'}`)
 		.css('width', prozent == null ? '100%' : `${prozent}%`);
 	if (prozent == null) balken.addClass('progress-bar-striped progress-bar-animated');
@@ -723,12 +810,86 @@ function entferne_status(frm, fieldname) {
 	$(frm.layout.wrapper).find(`.zp-status[data-feld="${fieldname}"]`).remove();
 }
 
+// Ein aus der Warteschlange gesendetes Foto der Fahrt zuordnen. Ist die Fahrt gerade offen,
+// laeuft alles wie beim normalen Upload (Speichern, Erkennung, Statuszeile). Sonst wird das Foto
+// serverseitig am Entwurf eingetragen; eine Fahrt, die offline noch gar nicht angelegt war,
+// bekommt es nur, wenn sie offen ist oder der juengste eigene Entwurf das Feld noch leer hat.
+function foto_zuordnen(eintrag, file_url) {
+	const frm = cur_frm;
+	const feld = eintrag.fieldname;
+	if (
+		frm &&
+		frm.doctype === eintrag.doctype &&
+		frm.doc.docstatus === 0 &&
+		!frm.doc[feld] &&
+		(eintrag.docname ? frm.doc.name === eintrag.docname : true)
+	) {
+		return frm.set_value(feld, file_url).then(() => frm.save());
+	}
+	const setze = (name) =>
+		frappe
+			.call('frappe.client.set_value', { doctype: eintrag.doctype, name, fieldname: feld, value: file_url })
+			.then(() =>
+				frappe.show_alert(
+					{
+						message: __('Wartendes Foto an {0} angehängt. Bitte den Kilometerstand beim Öffnen prüfen oder eintragen.', [name]),
+						indicator: 'green',
+					},
+					12
+				)
+			);
+	if (eintrag.docname) return setze(eintrag.docname);
+	return frappe.db
+		.get_list(eintrag.doctype, {
+			filters: { owner: frappe.session.user, docstatus: 0, [feld]: ['is', 'not set'] },
+			fields: ['name'],
+			order_by: 'creation desc',
+			limit: 1,
+		})
+		.then((liste) => {
+			if (liste && liste.length) return setze(liste[0].name);
+			frappe.show_alert(
+				{ message: __('Ein wartendes Foto wurde hochgeladen, konnte aber keiner Fahrt zugeordnet werden.'), indicator: 'orange' },
+				20
+			);
+		});
+}
+
 function upload_captured_image(frm, fieldname, data_url) {
 	const filename = `kilometerstand_${frappe.datetime
 		.now_datetime()
 		.replace(/[: -]/g, '_')}.jpg`;
 
-	const fehler = () => {
+	let foto_blob = null;
+	// Netzfehler (kein Empfang, Gateway nicht erreichbar): Foto im Browser aufheben und spaeter senden
+	const netzfehler = (e) => !!e && (e.netz || !navigator.onLine);
+	const in_warteschlange = () =>
+		window.zeit_projekt.foto_warteschlange
+			.ablegen({
+				doctype: frm.doctype,
+				docname: frm.is_new() ? null : frm.doc.name,
+				fieldname,
+				filename,
+				blob: foto_blob,
+				angelegt: Date.now(),
+			})
+			.then(() => window.zeit_projekt.foto_warteschlange.anzahl())
+			.then((n) => {
+				setze_status(
+					frm,
+					__('Kein Netz – das Foto ist gespeichert und wird automatisch gesendet, sobald wieder Verbindung besteht ({0} wartend).', [n]),
+					100,
+					'warning'
+				);
+				window.zeit_projekt.foto_warteschlange.starte_takt();
+			});
+	const fehler = (e) => {
+		if (netzfehler(e) && foto_blob) {
+			return in_warteschlange().catch(() => fehler_anzeigen());
+		}
+		fehler_anzeigen();
+	};
+	const fehler_anzeigen = () => {
 		setze_status(frm, fieldname, __('Foto konnte nicht hochgeladen werden.'), 100, 'danger');
 		setTimeout(() => entferne_status(frm, fieldname), 15000);
 	};
@@ -739,6 +900,7 @@ function upload_captured_image(frm, fieldname, data_url) {
 		.then(
 			(blob) =>
 				new Promise((resolve, reject) => {
+					foto_blob = blob;
 					const form_data = new FormData();
 					form_data.append('file', blob, filename);
 					form_data.append('is_private', 1);
@@ -766,14 +928,16 @@ function upload_captured_image(frm, fieldname, data_url) {
 					xhr.upload.onload = () => setze_status(frm, fieldname, __('Foto wird gespeichert …'), null);
 					xhr.onload = () => {
 						try {
+							// 0 und Gateway-Fehler: keine Verbindung zum Server -> spaeter erneut senden
+							if ([0, 502, 503, 504].includes(xhr.status)) return reject({ netz: true });
 							if (xhr.status < 200 || xhr.status >= 300) return reject(new Error(xhr.status));
 							resolve(JSON.parse(xhr.responseText));
 						} catch (e) {
 							reject(e);
 						}
 					};
-					xhr.onerror = () => reject(new Error('Netzwerkfehler'));
-					xhr.ontimeout = () => reject(new Error('Zeitüberschreitung'));
+					xhr.onerror = () => reject({ netz: true });
+					xhr.ontimeout = () => reject({ netz: true });
 					xhr.send(form_data);
 				})
 		)

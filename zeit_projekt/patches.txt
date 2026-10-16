@@ -5,3 +5,4 @@
 zeit_projekt.patches.einstellungen_zusammenfuehren
 zeit_projekt.patches.knoepfe_standard_an
 zeit_projekt.patches.knoepfe_ende_foto_an
+zeit_projekt.patches.fahrtenbuch_verbesserungen_standard

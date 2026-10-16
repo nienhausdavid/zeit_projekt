@@ -43,7 +43,9 @@
   "km_item",
   "timesheet",
   "km_sales_invoice",
-  "amended_from"
+  "amended_from",
+  "reminder_running_sent",
+  "reminder_end_sent"
  ],
  "fields": [
   {
@@ -66,7 +68,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "Optional: welches Fahrzeug wurde genutzt",
+   "description": "Neue Fahrten bekommen das zuletzt genutzte Fahrzeug. Pflicht beim Buchen (einstellbar); der Startstand wird gegen den letzten Stand des Fahrzeugs geprüft.",
    "fieldname": "vehicle",
    "fieldtype": "Link",
    "label": "Vehicle",
@@ -280,6 +282,24 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "reminder_running_sent",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "label": "reminder_running_sent"
+  },
+  {
+   "fieldname": "reminder_end_sent",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "label": "reminder_end_sent"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -74,7 +74,51 @@ def get_fahrt_defaults():
 		"knopf_foto": cint(settings.knopf_foto),
 		"knopf_timer_foto": cint(settings.knopf_timer_foto),
 		"knopf_ende_foto": cint(settings.knopf_ende_foto),
+		"max_km_luecke": cint(settings.max_km_luecke),
 	}
+
+
+def letzter_stand(vehicle, ausser=None):
+	"""Letzter bekannter Kilometerstand des Fahrzeugs: Endstand der juengsten Fahrt (nicht
+	storniert), sonst der Stand aus den Fahrzeugdaten. {"stand", "fahrt"} oder None."""
+	if not vehicle:
+		return None
+	fahrten = frappe.get_all(
+		"Fahrt",
+		filters={"vehicle": vehicle, "docstatus": ["<", 2], "end_odometer": [">", 0], "name": ["!=", ausser or ""]},
+		fields=["name", "end_odometer"],
+		order_by="date desc, end_time desc, creation desc",
+		limit=1,
+	)
+	if fahrten:
+		return {"stand": cint(fahrten[0].end_odometer), "fahrt": fahrten[0].name}
+	stand = cint(frappe.db.get_value("Vehicle", vehicle, "last_odometer"))
+	return {"stand": stand, "fahrt": None} if stand else None
+
+
+def letztes_fahrzeug(user=None):
+	"""Zuletzt von diesem Benutzer verwendetes Fahrzeug - das Standardfahrzeug neuer Fahrten."""
+	return frappe.db.get_value(
+		"Fahrt",
+		{"owner": user or frappe.session.user, "vehicle": ["is", "set"], "docstatus": ["<", 2]},
+		"vehicle",
+		order_by="creation desc",
+	)
+
+
+@frappe.whitelist()
+def get_letzter_stand(vehicle, fahrt=None):
+	"""Fuer die Plausibilitaetspruefung im Formular: letzter Endstand des Fahrzeugs."""
+	if not frappe.has_permission("Fahrt", "read"):
+		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+	return letzter_stand(vehicle, fahrt)
+
+
+@frappe.whitelist()
+def get_letztes_fahrzeug():
+	if not frappe.has_permission("Fahrt", "create"):
+		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+	return letztes_fahrzeug()
 
 
 @frappe.whitelist()

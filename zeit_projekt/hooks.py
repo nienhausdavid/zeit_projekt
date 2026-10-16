@@ -17,7 +17,7 @@ required_apps = ["frappe/erpnext"]
 doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js",
 	"Sales Order": "public/js/sales_order.js",
-	"Fahrt": "public/js/fahrtenbuch.js",
+	"Fahrt": ["public/js/foto_warteschlange.js", "public/js/fahrtenbuch.js"],
 	"Project": "public/js/project.js",
 	"Site Visit": "public/js/site_visit.js",
 }
@@ -99,6 +99,11 @@ add_to_apps_screen = [
 		"has_permission": "zeit_projekt.zeit_projekt.desk.check_app_permission",
 	},
 ]
+
+# Erinnerungen fuer vergessene Fahrten (siehe fahrtenbuch/erinnerungen.py)
+scheduler_events = {
+	"hourly": ["zeit_projekt.fahrtenbuch.erinnerungen.pruefe_fahrten"],
+}
 
 # ---------------------------------------------------------------------------
 # Installation / Deinstallation

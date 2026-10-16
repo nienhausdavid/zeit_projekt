@@ -145,3 +145,20 @@ def expect_error(testcase, exc=frappe.ValidationError):
 	finally:
 		frappe.db.rollback(save_point="zp_expect_error")
 		frappe.clear_messages()
+
+
+def ensure_vehicle(kennzeichen="ZP-TEST-1", stand=5000):
+	"""Testfahrzeug fuer die Fahrtenbuch-Tests."""
+	if not frappe.db.exists("Vehicle", kennzeichen):
+		frappe.get_doc(
+			{
+				"doctype": "Vehicle",
+				"license_plate": kennzeichen,
+				"make": "Test",
+				"model": "Test",
+				"last_odometer": stand,
+				"fuel_type": "Diesel",
+				"uom": "Nos",
+			}
+		).insert()
+	return kennzeichen
