@@ -389,6 +389,8 @@ function zeige_erkennung(auftrag, data) {
 	// Formular inzwischen verlassen, anderes Foto oder Wert schon von Hand
 	// eingetragen? (Der Name einer neuen Fahrt ändert sich beim Speichern,
 	// deshalb wird am Foto erkannt, ob es noch dieselbe Fahrt ist.)
+	if (frm && frm.__zp_erkennung_laeuft) frm.__zp_erkennung_laeuft[auftrag.photo_field] = false;
+	if (frm) entferne_status(frm, auftrag.photo_field);
 	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
 	// Gar keine Antwort (zu langsam, Modell nicht erreichbar ...): ausdruecklich melden, statt
 	// still "nicht erkannt" zu sagen - sonst wartet der Techniker auf etwas, das nicht kommt.
@@ -470,7 +472,8 @@ function fetch_odometer_reading(frm, photo_field, odometer_field) {
 			const res = r.message || {};
 			if (!res.queued) return; // Erkennung nicht eingerichtet
 			offene_erkennungen[res.request_id] = { photo_field, file_url };
-			frappe.show_alert({ message: __('Kilometerstand wird im Hintergrund erkannt …'), indicator: 'blue' });
+			frm.__zp_erkennung_laeuft = { ...frm.__zp_erkennung_laeuft, [photo_field]: true };
+			setze_status(frm, photo_field, __('Kilometerstand wird im Hintergrund erkannt …'), null);
 		});
 }
 
@@ -638,42 +641,108 @@ function hide_and_cleanup_mobile_capture_input(capture) {
 	window.addEventListener('focus', remove_if_cancelled, { once: true });
 }
 
+// Statuszeile direkt am Foto-Feld statt eines Fensters: blockiert nichts, das Formular bleibt
+// bedienbar, und derselbe Platz zeigt nacheinander Upload, Speichern und Erkennung an.
+// prozent = null -> Balken laeuft unbestimmt; farbe: 'info' | 'success' | 'danger'.
+function setze_status(frm, fieldname, text, prozent, farbe) {
+	const control = frm.fields_dict[fieldname];
+	if (!control) return;
+	let zeile = $(frm.layout.wrapper).find(`.zp-status[data-feld="${fieldname}"]`);
+	if (!zeile.length) {
+		zeile = $(
+			`<div class="zp-status" data-feld="${fieldname}" style="margin: 0 0 12px;">
+				<div class="progress" style="height: 8px; margin-bottom: 4px;">
+					<div class="progress-bar" role="progressbar"></div>
+				</div>
+				<div class="zp-status-text small"></div>
+			</div>`
+		).insertBefore($(control.wrapper));
+	}
+	const balken = zeile.find('.progress-bar');
+	balken
+		.removeClass('bg-info bg-success bg-danger progress-bar-striped progress-bar-animated')
+		.addClass(`bg-${farbe || 'info'}`)
+		.css('width', prozent == null ? '100%' : `${prozent}%`);
+	if (prozent == null) balken.addClass('progress-bar-striped progress-bar-animated');
+	zeile.find('.zp-status-text').text(text);
+}
+
+function entferne_status(frm, fieldname) {
+	$(frm.layout.wrapper).find(`.zp-status[data-feld="${fieldname}"]`).remove();
+}
+
 function upload_captured_image(frm, fieldname, data_url) {
 	const filename = `kilometerstand_${frappe.datetime
 		.now_datetime()
 		.replace(/[: -]/g, '_')}.jpg`;
 
+	const fehler = () => {
+		setze_status(frm, fieldname, __('Foto konnte nicht hochgeladen werden.'), 100, 'danger');
+		setTimeout(() => entferne_status(frm, fieldname), 15000);
+	};
+	setze_status(frm, fieldname, __('Foto wird vorbereitet …'), null);
+
 	fetch(data_url)
 		.then((res) => res.blob())
-		.then((blob) => {
-			const form_data = new FormData();
-			form_data.append('file', blob, filename);
-			form_data.append('is_private', 1);
-			form_data.append('folder', 'Home');
-			form_data.append('doctype', frm.doctype);
-			if (!frm.is_new()) {
-				form_data.append('docname', frm.doc.name);
-			}
-			form_data.append('fieldname', fieldname);
+		.then(
+			(blob) =>
+				new Promise((resolve, reject) => {
+					const form_data = new FormData();
+					form_data.append('file', blob, filename);
+					form_data.append('is_private', 1);
+					form_data.append('folder', 'Home');
+					form_data.append('doctype', frm.doctype);
+					if (!frm.is_new()) {
+						form_data.append('docname', frm.doc.name);
+					}
+					form_data.append('fieldname', fieldname);
 
-			return fetch('/api/method/upload_file', {
-				method: 'POST',
-				headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
-				body: form_data,
-			});
-		})
-		.then((response) => response.json())
+					const xhr = new XMLHttpRequest();
+					xhr.open('POST', '/api/method/upload_file');
+					xhr.setRequestHeader('X-Frappe-CSRF-Token', frappe.csrf_token);
+					xhr.upload.onprogress = (e) => {
+						if (!e.lengthComputable) return;
+						const prozent = Math.round((100 * e.loaded) / e.total);
+						const mb = (n) => (n / 1048576).toFixed(1);
+						setze_status(
+							frm,
+							fieldname,
+							__('Foto wird hochgeladen: {0} von {1} MB ({2} %)', [mb(e.loaded), mb(e.total), prozent]),
+							prozent
+						);
+					};
+					xhr.upload.onload = () => setze_status(frm, fieldname, __('Foto wird gespeichert …'), null);
+					xhr.onload = () => {
+						try {
+							if (xhr.status < 200 || xhr.status >= 300) return reject(new Error(xhr.status));
+							resolve(JSON.parse(xhr.responseText));
+						} catch (e) {
+							reject(e);
+						}
+					};
+					xhr.onerror = () => reject(new Error('Netzwerkfehler'));
+					xhr.ontimeout = () => reject(new Error('Zeitüberschreitung'));
+					xhr.send(form_data);
+				})
+		)
 		.then((result) => {
 			if (result && result.message && result.message.file_url) {
-				frm.set_value(fieldname, result.message.file_url);
+				// Die Erkennung (fetch_odometer_reading) uebernimmt die Statuszeile; ist sie nicht
+				// eingerichtet, verschwindet sie hier nach kurzer Bestaetigung.
+				setze_status(frm, fieldname, __('Foto hochgeladen.'), 100, 'success');
+				setTimeout(() => {
+					if (!frm.__zp_erkennung_laeuft || !frm.__zp_erkennung_laeuft[fieldname]) entferne_status(frm, fieldname);
+				}, 4000);
+				// Foto sofort mitspeichern (nur Entwurf): sonst steht es nur im offenen Formular und
+				// ist weg, wenn die Erkennung nichts findet und die Seite neu geladen wird.
+				frm.set_value(fieldname, result.message.file_url).then(() => {
+					if (frm.doc.docstatus === 0 && frm.is_dirty()) frm.save().catch(() => {});
+				});
+			} else {
+				fehler();
 			}
 		})
-		.catch(() => {
-			frappe.show_alert({
-				message: __('Foto konnte nicht hochgeladen werden.'),
-				indicator: 'red',
-			});
-		});
+		.catch(fehler);
 }
 
 // Eigener Mitarbeiter: Name und Freigabe der Selbstanlage liefert der Server (auch ohne
