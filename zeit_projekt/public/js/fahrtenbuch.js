@@ -897,6 +897,17 @@ function foto_zuordnen(eintrag, file_url) {
 		});
 }
 
+// Foto (Data-URL der Kamera) in eine Datei umwandeln - ohne fetch(), das offline haengen koennte.
+function data_url_zu_blob(data_url) {
+	const [kopf, daten] = data_url.split(',');
+	const typ = (kopf.match(/:(.*?)[;,]/) || [])[1] || 'image/jpeg';
+	if (!/;base64/.test(kopf)) return new Blob([decodeURIComponent(daten)], { type: typ });
+	const roh = atob(daten);
+	const bytes = new Uint8Array(roh.length);
+	for (let i = 0; i < roh.length; i++) bytes[i] = roh.charCodeAt(i);
+	return new Blob([bytes], { type: typ });
+}
+
 function upload_captured_image(frm, fieldname, data_url) {
 	const filename = `kilometerstand_${frappe.datetime
 		.now_datetime()
@@ -938,12 +949,15 @@ function upload_captured_image(frm, fieldname, data_url) {
 	};
 	setze_status(frm, fieldname, __('Foto wird vorbereitet …'), null);
 
-	fetch(data_url)
-		.then((res) => res.blob())
+	Promise.resolve()
+		.then(() => data_url_zu_blob(data_url))
 		.then(
 			(blob) =>
 				new Promise((resolve, reject) => {
 					foto_blob = blob;
+					// Offline (Flugmodus, kein Empfang): gar nicht erst senden - ein Upload ohne Netz
+					// kann lange haengen, statt sofort zu scheitern.
+					if (!navigator.onLine) return reject({ netz: true });
 					const form_data = new FormData();
 					form_data.append('file', blob, filename);
 					form_data.append('is_private', 1);
@@ -956,6 +970,7 @@ function upload_captured_image(frm, fieldname, data_url) {
 
 					const xhr = new XMLHttpRequest();
 					xhr.open('POST', '/api/method/upload_file');
+					xhr.timeout = 90000; // haengende Verbindung (schlechtes Netz) -> Warteschlange
 					xhr.setRequestHeader('X-Frappe-CSRF-Token', frappe.csrf_token);
 					xhr.upload.onprogress = (e) => {
 						if (!e.lengthComputable) return;
@@ -981,6 +996,10 @@ function upload_captured_image(frm, fieldname, data_url) {
 					};
 					xhr.onerror = () => reject({ netz: true });
 					xhr.ontimeout = () => reject({ netz: true });
+					const offline = () => xhr.abort();
+					window.addEventListener('offline', offline, { once: true });
+					xhr.onabort = () => reject({ netz: true });
+					xhr.onloadend = () => window.removeEventListener('offline', offline);
 					xhr.send(form_data);
 				})
 		)
