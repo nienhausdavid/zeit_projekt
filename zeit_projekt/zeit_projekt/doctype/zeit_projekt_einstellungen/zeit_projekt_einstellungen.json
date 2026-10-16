@@ -26,6 +26,10 @@
   "auto_start_timer",
   "auto_open_camera",
   "capture_location",
+  "section_break_knoepfe",
+  "knopf_timer",
+  "knopf_foto",
+  "knopf_timer_foto",
   "section_break_ocr",
   "api_type",
   "opencode_zugang",
@@ -181,6 +185,32 @@
    "label": "Standort bei Beginn und Ende erfassen",
    "default": "0",
    "description": "Speichert die Position des Geräts beim Beginn und Ende einer Fahrt und zeigt sie auf einer Karte (keine laufende Aufzeichnung). Der Browser fragt die Techniker einmalig um Erlaubnis; es braucht HTTPS. Aus = es wird nichts erfasst. Vor dem Einschalten Datenschutz und Information der Beschäftigten klären."
+  },
+  {
+   "fieldname": "section_break_knoepfe",
+   "fieldtype": "Section Break",
+   "label": "Knöpfe im Fahrt-Formular"
+  },
+  {
+   "default": "1",
+   "description": "Große Timer-Knöpfe oben im Formular (Timer starten, pausieren, fortsetzen, stoppen). Aus = Start und Ende nur von Hand in den Feldern.",
+   "fieldname": "knopf_timer",
+   "fieldtype": "Check",
+   "label": "Timer-Knöpfe anzeigen"
+  },
+  {
+   "default": "1",
+   "description": "Foto-Knöpfe bei Start- und Endstand („Foto Kilometerstand Start/Ende“, „Startstand stimmt“).",
+   "fieldname": "knopf_foto",
+   "fieldtype": "Check",
+   "label": "Foto-Knöpfe anzeigen"
+  },
+  {
+   "default": "1",
+   "description": "Knopf „Timer starten und Kilometerstand fotografieren“ oben im neuen Entwurf (nur einmalig, bis der Timer läuft oder ein Startfoto vorhanden ist).",
+   "fieldname": "knopf_timer_foto",
+   "fieldtype": "Check",
+   "label": "Knopf „Timer starten und Kilometerstand fotografieren“ anzeigen"
   },
   {
    "fieldname": "section_break_ocr",

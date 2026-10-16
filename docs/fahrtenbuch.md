@@ -130,6 +130,10 @@ Liest den Kilometerstand aus dem Tacho-Foto über eine beliebige
 **OpenAI-kompatible API** (Chat-Completions mit Bild) – z. B.
 [Ollama](https://ollama.com/), LM Studio oder OpenAI selbst.
 
+Die Knöpfe im Fahrt-Formular lassen sich in *Zeit Projekt Einstellungen → Knöpfe im Fahrt-Formular*
+einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und der
+Kombi-Knopf unten. Ohne Timer-Knöpfe laufen Start und Ende von Hand über die Felder.
+
 Oben im neuen Entwurf steht der Knopf **„Timer starten und Kilometerstand fotografieren“**: er öffnet die
 Kamera und startet gleichzeitig den Timer. Er erscheint nur einmalig – sobald der Timer läuft oder
 ein Startfoto vorhanden ist, verschwindet er.
