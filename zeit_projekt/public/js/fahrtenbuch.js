@@ -642,38 +642,70 @@ function upload_captured_image(frm, fieldname, data_url) {
 	const filename = `kilometerstand_${frappe.datetime
 		.now_datetime()
 		.replace(/[: -]/g, '_')}.jpg`;
+	const titel = __('Foto wird hochgeladen');
+
+	// Statusanzeige: Fortschrittsbalken mit Prozent (frappe.show_progress), damit man
+	// bei langsamem Netz am Handy sieht, dass etwas passiert - und ob es geklappt hat.
+	const fehler = () => {
+		frappe.hide_progress();
+		frappe.show_alert({ message: __('Foto konnte nicht hochgeladen werden.'), indicator: 'red' }, 10);
+	};
+	frappe.show_progress(titel, 0, 100, __('Foto wird vorbereitet …'));
 
 	fetch(data_url)
 		.then((res) => res.blob())
-		.then((blob) => {
-			const form_data = new FormData();
-			form_data.append('file', blob, filename);
-			form_data.append('is_private', 1);
-			form_data.append('folder', 'Home');
-			form_data.append('doctype', frm.doctype);
-			if (!frm.is_new()) {
-				form_data.append('docname', frm.doc.name);
-			}
-			form_data.append('fieldname', fieldname);
+		.then(
+			(blob) =>
+				new Promise((resolve, reject) => {
+					const form_data = new FormData();
+					form_data.append('file', blob, filename);
+					form_data.append('is_private', 1);
+					form_data.append('folder', 'Home');
+					form_data.append('doctype', frm.doctype);
+					if (!frm.is_new()) {
+						form_data.append('docname', frm.doc.name);
+					}
+					form_data.append('fieldname', fieldname);
 
-			return fetch('/api/method/upload_file', {
-				method: 'POST',
-				headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
-				body: form_data,
-			});
-		})
-		.then((response) => response.json())
+					const xhr = new XMLHttpRequest();
+					xhr.open('POST', '/api/method/upload_file');
+					xhr.setRequestHeader('X-Frappe-CSRF-Token', frappe.csrf_token);
+					xhr.upload.onprogress = (e) => {
+						if (!e.lengthComputable) return;
+						const prozent = Math.round((100 * e.loaded) / e.total);
+						const mb = (n) => (n / 1048576).toFixed(1);
+						frappe.show_progress(
+							titel,
+							prozent,
+							100,
+							__('{0} von {1} MB gesendet ({2} %)', [mb(e.loaded), mb(e.total), prozent])
+						);
+					};
+					xhr.upload.onload = () =>
+						frappe.show_progress(titel, 100, 100, __('Foto wird gespeichert …'));
+					xhr.onload = () => {
+						try {
+							if (xhr.status < 200 || xhr.status >= 300) return reject(new Error(xhr.status));
+							resolve(JSON.parse(xhr.responseText));
+						} catch (e) {
+							reject(e);
+						}
+					};
+					xhr.onerror = () => reject(new Error('Netzwerkfehler'));
+					xhr.ontimeout = () => reject(new Error('Zeitüberschreitung'));
+					xhr.send(form_data);
+				})
+		)
 		.then((result) => {
+			frappe.hide_progress();
 			if (result && result.message && result.message.file_url) {
+				frappe.show_alert({ message: __('Foto hochgeladen.'), indicator: 'green' }, 4);
 				frm.set_value(fieldname, result.message.file_url);
+			} else {
+				fehler();
 			}
 		})
-		.catch(() => {
-			frappe.show_alert({
-				message: __('Foto konnte nicht hochgeladen werden.'),
-				indicator: 'red',
-			});
-		});
+		.catch(fehler);
 }
 
 // Eigener Mitarbeiter: Name und Freigabe der Selbstanlage liefert der Server (auch ohne
