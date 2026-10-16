@@ -82,8 +82,21 @@ window.zeit_projekt = window.zeit_projekt || {};
 					Promise.resolve()
 				)
 			)
-			.catch(() => {
-				// Noch kein Netz oder Sitzung abgelaufen: liegen lassen, der naechste Takt versucht es erneut
+			.catch((fehler) => {
+				// Noch kein Netz oder Sitzung abgelaufen: liegen lassen, der naechste Takt versucht es erneut.
+				// Mit Netz ist es ein echtes Problem - dann nicht stumm bleiben.
+				console.error('Wartende Fotos konnten nicht gesendet werden', fehler);
+				if (navigator.onLine) {
+					frappe.show_alert(
+						{
+							message: __('Wartende Fotos konnten noch nicht gesendet werden ({0}). Sie bleiben gespeichert, der nächste Versuch folgt.', [
+								(fehler && fehler.message) || '?',
+							]),
+							indicator: 'orange',
+						},
+						10
+					);
+				}
 			})
 			.finally(() => {
 				laeuft = false;
@@ -104,5 +117,5 @@ window.zeit_projekt = window.zeit_projekt || {};
 
 	window.addEventListener('online', () => senden());
 
-	window.zeit_projekt.foto_warteschlange = { ablegen, anzahl, senden, starte_takt };
+	window.zeit_projekt.foto_warteschlange = { ablegen, alle, anzahl, senden, starte_takt };
 })();

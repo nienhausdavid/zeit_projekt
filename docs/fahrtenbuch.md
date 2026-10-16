@@ -162,7 +162,10 @@ Knopf **„Endstand fotografieren und Fahrt beenden“**: öffnet die Kamera und
   (IndexedDB) gespeichert, die Statuszeile zeigt „Kein Netz – … wird automatisch gesendet“. Gesendet wird,
   sobald das Netz zurück ist (Browser-Ereignis „online“, sonst alle 30 s und beim Öffnen einer Fahrt). Das
   Foto wird der Fahrt zugeordnet (offene Fahrt, sonst die gemerkte Fahrt, sonst der jüngste eigene
-  Entwurf mit leerem Fotofeld); danach den Stand prüfen bzw. eintragen. Die Fahrt selbst (Timer) lässt
+  Entwurf mit leerem Fotofeld); danach den Stand prüfen bzw. eintragen. Solange ein Foto wartet, zeigt
+  das Formular – auch nach einem Neuladen – eine gelbe Statuszeile mit Vorschaubild; Sendefehler mit
+  Netz erscheinen als Meldung. Eine Seite, die ganz ohne Netz neu geladen wird, lässt sich nicht öffnen
+  (es gibt keinen Offline-Modus der App); das Foto bleibt trotzdem im Browser gespeichert. Die Fahrt selbst (Timer) lässt
   sich ohne Netz nicht speichern. Die Warteschlange wird nur im Fahrt-Formular abgearbeitet.
 - **Erinnerungen:** Ein stündlicher Job (`fahrtenbuch/erinnerungen.py`) schreibt eine Benachrichtigung
   (Glocke im Desk) an den Benutzer des Mitarbeiters, sonst an den Ersteller: *Timer läuft länger als*

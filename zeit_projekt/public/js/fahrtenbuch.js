@@ -118,6 +118,7 @@ frappe.ui.form.on('Fahrt', {
 		update_timer_toolbar(frm);
 		fahrzeug_vorbelegen(frm);
 		lade_letzten_stand(frm);
+		zeige_wartende_fotos(frm);
 		window.zeit_projekt.foto_warteschlange.senden(foto_zuordnen);
 		mitarbeiter_pruefen(frm);
 		frm.toggle_display('section_break_karte', !!frm.doc.route_map);
@@ -607,7 +608,10 @@ function fetch_odometer_reading(frm, photo_field, odometer_field) {
 		})
 		.then((r) => {
 			const res = r.message || {};
-			if (!res.queued) return; // Erkennung nicht eingerichtet
+			if (!res.queued) {
+				entferne_status(frm, photo_field); // Erkennung nicht eingerichtet
+				return;
+			}
 			const auftrag = { photo_field, file_url, start: Date.now(), phase: { phase: 'warteschlange' } };
 			offene_erkennungen[res.request_id] = auftrag;
 			frm.__zp_erkennung_laeuft = { ...frm.__zp_erkennung_laeuft, [photo_field]: true };
@@ -783,7 +787,7 @@ function hide_and_cleanup_mobile_capture_input(capture) {
 // Statuszeile direkt am Foto-Feld statt eines Fensters: blockiert nichts, das Formular bleibt
 // bedienbar, und derselbe Platz zeigt nacheinander Upload, Speichern und Erkennung an.
 // prozent = null -> Balken laeuft unbestimmt; farbe: 'info' | 'success' | 'danger'.
-function setze_status(frm, fieldname, text, prozent, farbe) {
+function setze_status(frm, fieldname, text, prozent, farbe, vorschau) {
 	const control = frm.fields_dict[fieldname];
 	if (!control) return;
 	let zeile = $(frm.layout.wrapper).find(`.zp-status[data-feld="${fieldname}"]`);
@@ -804,10 +808,48 @@ function setze_status(frm, fieldname, text, prozent, farbe) {
 		.css('width', prozent == null ? '100%' : `${prozent}%`);
 	if (prozent == null) balken.addClass('progress-bar-striped progress-bar-animated');
 	zeile.find('.zp-status-text').text(text);
+	// Vorschau des wartenden Fotos (Blob), damit man sieht, dass es noch da ist
+	zeile.find('.zp-vorschau').remove();
+	if (vorschau) {
+		$('<img class="zp-vorschau" alt="">')
+			.attr('src', URL.createObjectURL(vorschau))
+			.css({ maxHeight: '90px', maxWidth: '100%', borderRadius: '6px', marginTop: '6px', display: 'block' })
+			.appendTo(zeile);
+	}
 }
 
 function entferne_status(frm, fieldname) {
 	$(frm.layout.wrapper).find(`.zp-status[data-feld="${fieldname}"]`).remove();
+}
+
+// Beim Oeffnen einer Fahrt zeigen, welche Fotos noch auf Verbindung warten (sonst sieht es nach dem
+// Neuladen so aus, als waere das Foto weg - es liegt aber sicher im Browser).
+function zeige_wartende_fotos(frm) {
+	if (frm.doc.docstatus !== 0) return;
+	window.zeit_projekt.foto_warteschlange
+		.alle()
+		.then((liste) =>
+			liste
+				.filter(
+					(e) =>
+						e.doctype === frm.doctype &&
+						!frm.doc[e.fieldname] &&
+						(e.docname ? e.docname === frm.doc.name : true)
+				)
+				.forEach((e) =>
+					setze_status(
+						frm,
+						e.fieldname,
+						__('Foto von {0} wartet auf Verbindung und wird automatisch gesendet.', [
+							new Date(e.angelegt).toLocaleTimeString(),
+						]),
+						100,
+						'warning',
+						e.blob
+					)
+				)
+		)
+		.catch(() => {});
 }
 
 // Ein aus der Warteschlange gesendetes Foto der Fahrt zuordnen. Ist die Fahrt gerade offen,
@@ -877,9 +919,10 @@ function upload_captured_image(frm, fieldname, data_url) {
 			.then((n) => {
 				setze_status(
 					frm,
-					__('Kein Netz – das Foto ist gespeichert und wird automatisch gesendet, sobald wieder Verbindung besteht ({0} wartend).', [n]),
+					__('Kein Netz – das Foto ist gespeichert und wird automatisch gesendet, sobald wieder Verbindung besteht – auch nach einem Neuladen der Seite ({0} wartend).', [n]),
 					100,
-					'warning'
+					'warning',
+					foto_blob
 				);
 				window.zeit_projekt.foto_warteschlange.starte_takt();
 			});
