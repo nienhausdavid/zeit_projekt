@@ -130,9 +130,10 @@ Liest den Kilometerstand aus dem Tacho-Foto über eine beliebige
 **OpenAI-kompatible API** (Chat-Completions mit Bild) – z. B.
 [Ollama](https://ollama.com/), LM Studio oder OpenAI selbst.
 
-Beim Hochladen eines Fotos über einen der Foto-Knöpfe zeigt ein Fortschrittsbalken den Stand
-(Prozent und MB, danach „wird gespeichert“); am Ende erscheint „Foto hochgeladen“ bzw. bei einem
-Fehler eine rote Meldung. Danach folgt die Meldung zur Kilometerstand-Erkennung.
+Beim Hochladen eines Fotos über einen der Foto-Knöpfe zeigt eine **Statuszeile direkt am Foto-Feld**
+(kleiner Balken, kein Fenster, die Seite bleibt bedienbar) nacheinander: Hochladen (Prozent und MB),
+Speichern und „Kilometerstand wird im Hintergrund erkannt …“. Sie verschwindet, sobald das Ergebnis
+da ist; bei einem Fehler bleibt eine rote Meldung kurz stehen.
 
 Die Knöpfe im Fahrt-Formular lassen sich in *Zeit Projekt Einstellungen → Knöpfe im Fahrt-Formular*
 einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und der
