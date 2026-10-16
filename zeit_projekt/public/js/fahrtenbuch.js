@@ -188,7 +188,7 @@ function zeige_knopfleiste(frm, knoepfe) {
 function grosser_knopf(text, klasse, aktion) {
 	return $(`<button type="button" class="btn ${klasse} btn-lg"></button>`)
 		.text(text)
-		.css({ width: '100%', minHeight: '64px', fontSize: '1.4rem', fontWeight: '600' })
+		.css({ width: '100%', minHeight: '64px', fontSize: '1.4rem', fontWeight: '600', whiteSpace: 'normal', lineHeight: '1.25', padding: '10px 14px' })
 		.on('click', function () {
 			const el = $(this);
 			el.prop('disabled', true); // kein Doppelklick: sonst zweimal gespeichert
