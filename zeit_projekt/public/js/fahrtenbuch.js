@@ -138,6 +138,15 @@ function update_timer_toolbar(frm) {
 	const jetzt = () => frappe.datetime.now_datetime();
 	const knoepfe = [];
 	if (!frm.doc.start_time) {
+		// Nur einmalig: verschwindet, sobald der Timer laeuft bzw. das Startfoto da ist.
+		// Die Kamera wird zuerst geoeffnet (synchron im Klick, sonst blockt sie der
+		// Browser am Handy); der Timer startet und speichert gleichzeitig.
+		if (!frm.doc.start_odometer_photo) {
+			knoepfe.push([__('Timer starten und Kilometerstand fotografieren'), 'btn-primary', () => {
+				capture_photo_for_field(frm, 'start_odometer_photo');
+				return frm.set_value('start_time', jetzt()).then(() => frm.save());
+			}]);
+		}
 		knoepfe.push([__('Timer starten'), 'btn-primary', () =>
 			frm.set_value('start_time', jetzt()).then(() => frm.save()),
 		]);
@@ -179,7 +188,7 @@ function zeige_knopfleiste(frm, knoepfe) {
 function grosser_knopf(text, klasse, aktion) {
 	return $(`<button type="button" class="btn ${klasse} btn-lg"></button>`)
 		.text(text)
-		.css({ width: '100%', minHeight: '64px', fontSize: '1.4rem', fontWeight: '600' })
+		.css({ width: '100%', minHeight: '64px', fontSize: '1.4rem', fontWeight: '600', whiteSpace: 'normal', lineHeight: '1.25', padding: '10px 14px' })
 		.on('click', function () {
 			const el = $(this);
 			el.prop('disabled', true); // kein Doppelklick: sonst zweimal gespeichert
@@ -412,6 +421,8 @@ function zeige_erkennung(auftrag, data) {
 			} else {
 				frappe.show_alert({ message: __('Kilometerstand erkannt: {0}', [data.reading]), indicator: 'green' });
 			}
+			// Erkannten Stand gleich speichern (nur Entwurf; gebuchte Fahrten bleiben unberuehrt).
+			if (frm.doc.docstatus === 0 && frm.is_dirty()) frm.save().catch(() => {});
 		});
 	} else if (!data.reading) {
 		frappe.show_alert({

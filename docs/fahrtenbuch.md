@@ -130,6 +130,13 @@ Liest den Kilometerstand aus dem Tacho-Foto über eine beliebige
 **OpenAI-kompatible API** (Chat-Completions mit Bild) – z. B.
 [Ollama](https://ollama.com/), LM Studio oder OpenAI selbst.
 
+Oben im neuen Entwurf steht der Knopf **„Timer starten und Kilometerstand fotografieren“**: er öffnet die
+Kamera und startet gleichzeitig den Timer. Er erscheint nur einmalig – sobald der Timer läuft oder
+ein Startfoto vorhanden ist, verschwindet er.
+
+Ein erkannter Stand wird in den Entwurf eingetragen und **sofort gespeichert**
+(gebuchte Fahrten bleiben unberührt; bei einem unsicheren Wert bleibt der Hinweis stehen).
+
 Einrichtung in *Zeit Projekt Einstellungen*:
 
 - **Schnittstelle**: `OpenAI-kompatibel` (Standard; geht mit Ollama, LM Studio,
