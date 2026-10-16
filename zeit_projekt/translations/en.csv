@@ -329,3 +329,5 @@
 "Modell {0} liest das Foto (Anfrage {1} von höchstens {2})","Model {0} is reading the photo (request {1} of at most {2})"
 "Antwort {0}: {1} – wird mit weiteren Antworten abgeglichen","Answer {0}: {1} – being compared with further answers"
 "Antwort {0}: nichts erkannt – nächste Anfrage","Answer {0}: nothing recognised – next request"
+"Endstand fotografieren und Fahrt beenden","Photograph end reading and finish trip"
+"Knopf „Endstand fotografieren und Fahrt beenden“ anzeigen","Show button ""Photograph end reading and finish trip"""

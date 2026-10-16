@@ -79,12 +79,12 @@ frappe.ui.form.on('Fahrt', {
 	},
 
 	start_odometer_photo(frm) {
-		zeige_foto_knoepfe(frm); // Knopf weg, sobald das Foto da ist
+		update_timer_toolbar(frm); // Knopf weg, sobald das Foto da ist
 		fetch_odometer_reading(frm, 'start_odometer_photo', 'start_odometer');
 	},
 
 	end_odometer_photo(frm) {
-		zeige_foto_knoepfe(frm);
+		update_timer_toolbar(frm);
 		fetch_odometer_reading(frm, 'end_odometer_photo', 'end_odometer');
 	},
 
@@ -93,7 +93,7 @@ frappe.ui.form.on('Fahrt', {
 		setze_hinweis(frm, 'start_odometer');
 		// Von Hand eingetragen oder korrigiert: die "nicht sicher"-Markierung ist erledigt
 		if (frm.__zp_unsicher) frm.__zp_unsicher.start_odometer = false;
-		zeige_foto_knoepfe(frm);
+		update_timer_toolbar(frm);
 	},
 
 	end_odometer(frm) {
@@ -131,15 +131,16 @@ frappe.ui.form.on('Fahrt', {
 // Dokument nur im Browser existiert.
 // Einstellungen "Knoepfe im Fahrt-Formular": einmal je Seitenaufruf geladen (Techniker duerfen
 // die Einstellungen nicht lesen). Bis sie da sind, gelten alle Knoepfe als an.
-const knopf_einstellung = { knopf_timer: 1, knopf_foto: 1, knopf_timer_foto: 1, geladen: false };
+const KNOPF_SCHALTER = ['knopf_timer', 'knopf_foto', 'knopf_timer_foto', 'knopf_ende_foto'];
+const knopf_einstellung = { knopf_timer: 1, knopf_foto: 1, knopf_timer_foto: 1, knopf_ende_foto: 1, geladen: false };
 
 function lade_knopf_einstellung(frm) {
 	if (knopf_einstellung.geladen) return;
 	knopf_einstellung.geladen = true;
 	frappe.call('zeit_projekt.fahrtenbuch.fahrtenbuch.get_fahrt_defaults').then((r) => {
 		const d = r.message || {};
-		const neu = ['knopf_timer', 'knopf_foto', 'knopf_timer_foto'].some((k) => k in d && cint(d[k]) !== knopf_einstellung[k]);
-		['knopf_timer', 'knopf_foto', 'knopf_timer_foto'].forEach((k) => {
+		const neu = KNOPF_SCHALTER.some((k) => k in d && cint(d[k]) !== knopf_einstellung[k]);
+		KNOPF_SCHALTER.forEach((k) => {
 			if (k in d) knopf_einstellung[k] = cint(d[k]);
 		});
 		if (neu && cur_frm === frm) update_timer_toolbar(frm);
@@ -184,6 +185,20 @@ function update_timer_toolbar(frm) {
 		}
 		// Eine laufende Pause endet serverseitig automatisch mit der Fahrt
 		// (zeit_projekt/pausen.py, pausen_pruefen).
+		// Einmalig: Kamera zuerst (synchron im Klick), gleichzeitig Fahrt beenden und speichern.
+		// Wie "Foto Ende" erst, wenn der Startstand feststeht.
+		const start_unsicher = !!(frm.__zp_unsicher && frm.__zp_unsicher.start_odometer);
+		if (
+			knopf_einstellung.knopf_ende_foto &&
+			cint(frm.doc.start_odometer) > 0 &&
+			!start_unsicher &&
+			!frm.doc.end_odometer_photo
+		) {
+			knoepfe.push([__('Endstand fotografieren und Fahrt beenden'), 'btn-danger', () => {
+				capture_photo_for_field(frm, 'end_odometer_photo');
+				return frm.set_value('end_time', jetzt()).then(() => frm.save());
+			}]);
+		}
 		if (timer_knoepfe) {
 			knoepfe.push([__('Timer stoppen'), 'btn-danger', () =>
 				frm.set_value('end_time', jetzt()).then(() => frm.save()),
@@ -244,7 +259,7 @@ function zeige_foto_knoepfe(frm) {
 		['start_odometer', __('Startstand stimmt'), start_unsicher, () => {
 			frm.__zp_unsicher.start_odometer = false;
 			setze_hinweis(frm, 'start_odometer');
-			zeige_foto_knoepfe(frm);
+			update_timer_toolbar(frm);
 		}],
 		['end_odometer_photo', __('Foto Kilometerstand Ende'), start_steht && !frm.doc.end_odometer_photo, () =>
 			capture_photo_for_field(frm, 'end_odometer_photo'),
@@ -471,7 +486,7 @@ function zeige_erkennung(auftrag, data) {
 				setze_hinweis(frm, data.fieldname, __('Automatisch erkannt, aber nicht sicher - bitte mit dem Foto vergleichen.'));
 				if (data.fieldname === 'start_odometer') {
 					frm.__zp_unsicher = { ...frm.__zp_unsicher, start_odometer: true };
-					zeige_foto_knoepfe(frm); // "Foto Ende" bleibt aus, bis der Startstand bestaetigt ist
+					update_timer_toolbar(frm); // "Foto Ende" bleibt aus, bis der Startstand bestaetigt ist
 				}
 				frappe.show_alert(
 					{

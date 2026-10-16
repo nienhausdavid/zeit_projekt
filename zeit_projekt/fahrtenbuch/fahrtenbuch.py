@@ -73,6 +73,7 @@ def get_fahrt_defaults():
 		"knopf_timer": cint(settings.knopf_timer),
 		"knopf_foto": cint(settings.knopf_foto),
 		"knopf_timer_foto": cint(settings.knopf_timer_foto),
+		"knopf_ende_foto": cint(settings.knopf_ende_foto),
 	}
 
 

@@ -144,9 +144,13 @@ Ergebnis-Ereignis `zeit_projekt_odometer`.
 Das Foto wird nach dem Upload **sofort mit der Fahrt gespeichert** – auch wenn die Erkennung
 nichts findet; der Stand ist dann von Hand einzutragen, das Foto bleibt erhalten.
 
+Bei laufendem Timer erscheint – sobald der Startstand feststeht und noch kein Endfoto vorhanden ist – der
+Knopf **„Endstand fotografieren und Fahrt beenden“**: öffnet die Kamera und beendet gleichzeitig die Fahrt
+(Ende-Zeit setzen, speichern). Auch er erscheint nur einmalig.
+
 Die Knöpfe im Fahrt-Formular lassen sich in *Zeit Projekt Einstellungen → Knöpfe im Fahrt-Formular*
-einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und der
-Kombi-Knopf unten. Ohne Timer-Knöpfe laufen Start und Ende von Hand über die Felder.
+einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und die beiden
+Kombi-Knöpfe (Start bzw. Ende). Ohne Timer-Knöpfe laufen Start und Ende von Hand über die Felder.
 
 Oben im neuen Entwurf steht der Knopf **„Timer starten und Kilometerstand fotografieren“**: er öffnet die
 Kamera und startet gleichzeitig den Timer. Er erscheint nur einmalig – sobald der Timer läuft oder
