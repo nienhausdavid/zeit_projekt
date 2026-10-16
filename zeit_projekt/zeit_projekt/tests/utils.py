@@ -22,8 +22,9 @@ def ensure_fixtures():
 	frappe.set_user("Administrator")
 	company = frappe.db.get_single_value("Global Defaults", "default_company")
 	abbr = frappe.db.get_value("Company", company, "abbr")
-	if not frappe.db.get_single_value("Stock Settings", "default_warehouse"):
-		frappe.db.set_single_value("Stock Settings", "default_warehouse", f"Stores - {abbr}")
+	# Das Standardlager liegt seit ERPNext 16.51 an der Firma (frueher in den Lager-Einstellungen)
+	if not frappe.db.get_value("Company", company, "default_warehouse"):
+		frappe.db.set_value("Company", company, "default_warehouse", f"Stores - {abbr}")
 	frappe.db.set_single_value("Selling Settings", "allow_multiple_items", 0)
 
 	for uom in ("Hour", "Nos"):
