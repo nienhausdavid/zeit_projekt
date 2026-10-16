@@ -138,6 +138,15 @@ function update_timer_toolbar(frm) {
 	const jetzt = () => frappe.datetime.now_datetime();
 	const knoepfe = [];
 	if (!frm.doc.start_time) {
+		// Nur einmalig: verschwindet, sobald der Timer laeuft bzw. das Startfoto da ist.
+		// Die Kamera wird zuerst geoeffnet (synchron im Klick, sonst blockt sie der
+		// Browser am Handy); der Timer startet und speichert gleichzeitig.
+		if (!frm.doc.start_odometer_photo) {
+			knoepfe.push([__('Timer starten und Kilometerstand fotografieren'), 'btn-primary', () => {
+				capture_photo_for_field(frm, 'start_odometer_photo');
+				return frm.set_value('start_time', jetzt()).then(() => frm.save());
+			}]);
+		}
 		knoepfe.push([__('Timer starten'), 'btn-primary', () =>
 			frm.set_value('start_time', jetzt()).then(() => frm.save()),
 		]);
