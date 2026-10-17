@@ -3,6 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, flt, get_datetime, time_diff_in_hours
 
+from zeit_projekt.fahrtenbuch.fahrtenbuch import letztes_fahrzeug
 from zeit_projekt.zeit_projekt.billing import check_employee_required
 from zeit_projekt.zeit_projekt.pausen import arbeitsabschnitte, pausen_pruefen
 
@@ -10,6 +11,10 @@ from zeit_projekt.zeit_projekt.pausen import arbeitsabschnitte, pausen_pruefen
 class Fahrt(Document):
 	def validate(self):
 		check_employee_required(self)
+		if self.is_new() and not self.vehicle:
+			# Standardfahrzeug: das zuletzt vom Benutzer verwendete (auch wenn die Fahrt
+			# nicht ueber das Formular entsteht, z. B. aus dem Projekt)
+			self.vehicle = letztes_fahrzeug()
 		"""Ende/Kilometerstand sind erst beim Buchen Pflicht (siehe
 		before_submit) - beim Speichern als Entwurf, z. B. durch den Timer,
 		sind sie oft noch leer. Hier nur rechnen, wenn die Werte vorliegen.
@@ -34,6 +39,8 @@ class Fahrt(Document):
 
 	def before_submit(self):
 		"""Was zum Speichern fehlen darf, aber nicht zum Buchen."""
+		if not self.vehicle and cint(frappe.db.get_single_value("Zeit Projekt Einstellungen", "vehicle_required")):
+			frappe.throw(_("Bitte vor dem Buchen ein Fahrzeug wählen."))
 		if not self.customer:
 			self.customer = self._customer_from_links()
 		if not self.end_time:

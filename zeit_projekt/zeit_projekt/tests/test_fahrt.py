@@ -8,6 +8,7 @@ from zeit_projekt.zeit_projekt.tests.utils import (
 	KUNDE_A,
 	TECH,
 	ensure_fixtures,
+	ensure_vehicle,
 	expect_error,
 	make_sales_order,
 	sales_order_rows,
@@ -20,17 +21,19 @@ class TestFahrt(IntegrationTestCase):
 		super().setUpClass()
 		cls.ctx = ensure_fixtures()
 		cls.so = make_sales_order(cls.ctx.company)
+		cls.vehicle = ensure_vehicle()
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 0)
 
-	def fahrt(self, start="2031-03-10 08:00:00", end="2031-03-10 09:30:00", km=(1000, 1042), bill_km=1, so=True, employee=True):
+	def fahrt(self, start="2031-03-10 08:00:00", end="2031-03-10 09:30:00", km=(1000, 1042), bill_km=1, so=True, employee=True, vehicle=True):
 		return frappe.get_doc(
 			{
 				"doctype": "Fahrt",
 				"employee": self.ctx.employee if employee else None,
 				"date": start[:10],
+				"vehicle": self.vehicle if vehicle else None,
 				"sales_order": self.so.name if so else None,
 				"start_time": start,
 				"end_time": end,
@@ -228,3 +231,100 @@ class TestFahrt(IntegrationTestCase):
 			zweite.submit()
 		# eigene Meldung (frappe.throw) statt ERPNexts roher OverlapError
 		self.assertIs(type(ctx.exception), frappe.ValidationError)
+
+	# --- Fahrzeug, Plausibilitaet, Erinnerungen -----------------------------------------------
+
+	def _einstellung(self, name, wert):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", name, wert)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+
+	def test_standardfahrzeug_aus_letzter_fahrt(self):
+		self.fahrt("2031-04-01 08:00:00", "2031-04-01 09:00:00")  # Fahrzeug gesetzt
+		neu = self.fahrt("2031-04-02 08:00:00", "2031-04-02 09:00:00", vehicle=False)
+		self.assertEqual(neu.vehicle, self.vehicle)
+
+	def test_fahrzeug_pflicht_beim_buchen(self):
+		self.fahrt("2031-04-03 08:00:00", "2031-04-03 09:00:00")
+		f = self.fahrt("2031-04-04 08:00:00", "2031-04-04 09:00:00", vehicle=False)
+		frappe.db.set_value("Fahrt", f.name, "vehicle", None)
+		f.reload()
+		self._einstellung("vehicle_required", 1)
+		try:
+			with expect_error(self):
+				f.submit()
+			f.reload()
+			self._einstellung("vehicle_required", 0)
+			f.submit()  # ohne die Einstellung ist das Fahrzeug freiwillig
+		finally:
+			self._einstellung("vehicle_required", 1)
+
+	def test_letzter_stand_des_fahrzeugs(self):
+		from zeit_projekt.fahrtenbuch.fahrtenbuch import letzter_stand
+
+		kennzeichen = ensure_vehicle("ZP-TEST-2", 7000)
+		self.assertEqual(letzter_stand(kennzeichen), {"stand": 7000, "fahrt": None})  # aus den Fahrzeugdaten
+		self.assertIsNone(letzter_stand(None))
+		alt = frappe.get_doc(
+			{"doctype": "Fahrt", "date": "2031-05-01", "vehicle": kennzeichen, "start_time": "2031-05-01 08:00:00",
+			 "end_time": "2031-05-01 09:00:00", "start_odometer": 7000, "end_odometer": 7050}
+		).insert()
+		neu = frappe.get_doc(
+			{"doctype": "Fahrt", "date": "2031-05-02", "vehicle": kennzeichen, "start_time": "2031-05-02 08:00:00",
+			 "end_time": "2031-05-02 09:00:00", "start_odometer": 7050, "end_odometer": 7120}
+		).insert()
+		self.assertEqual(letzter_stand(kennzeichen), {"stand": 7120, "fahrt": neu.name})
+		self.assertEqual(letzter_stand(kennzeichen, ausser=neu.name), {"stand": 7050, "fahrt": alt.name})
+
+	def setUp(self):
+		from frappe.utils import add_to_date, now_datetime
+
+		self._start = add_to_date(now_datetime(), seconds=-1)
+
+	def _entwurf(self, start, end=None, end_km=0):
+		return frappe.get_doc(
+			{"doctype": "Fahrt", "date": start[:10], "start_time": start, "end_time": end, "start_odometer": 1000,
+			 "end_odometer": end_km}
+		).insert()
+
+	def _meldungen(self, fahrt):
+		# Namen werden nach einem Rollback wiederverwendet, Meldungen frueherer Laeufe koennen
+		# uebrig sein: nur die seit Testbeginn zaehlen
+		return frappe.get_all("Notification Log", filters={"document_type": "Fahrt", "document_name": fahrt.name, "creation": [">=", self._start]}, pluck="subject")
+
+	def test_erinnerung_laufender_timer(self):
+		from frappe.utils import add_to_date, now_datetime
+
+		from zeit_projekt.fahrtenbuch.erinnerungen import pruefe_fahrten
+
+		lang = self._entwurf(str(add_to_date(now_datetime(), hours=-12)))
+		kurz = self._entwurf(str(add_to_date(now_datetime(), hours=-1)))
+		pruefe_fahrten(nur=[lang.name, kurz.name])
+		self.assertEqual(len(self._meldungen(lang)), 1)
+		self.assertEqual(self._meldungen(kurz), [])
+		pruefe_fahrten(nur=[lang.name, kurz.name])  # kein zweites Mal
+		self.assertEqual(len(self._meldungen(lang)), 1)
+
+	def test_erinnerung_endstand_fehlt(self):
+		from frappe.utils import add_to_date, now_datetime
+
+		from zeit_projekt.fahrtenbuch.erinnerungen import pruefe_fahrten
+
+		start = add_to_date(now_datetime(), hours=-6)
+		offen = self._entwurf(str(start), str(add_to_date(now_datetime(), hours=-3)))
+		fertig = self._entwurf(str(start), str(add_to_date(now_datetime(), hours=-3)), end_km=1050)
+		pruefe_fahrten(nur=[offen.name, fertig.name])
+		self.assertEqual(len(self._meldungen(offen)), 1)
+		self.assertEqual(self._meldungen(fertig), [])
+
+	def test_erinnerungen_abschaltbar(self):
+		from frappe.utils import add_to_date, now_datetime
+
+		from zeit_projekt.fahrtenbuch.erinnerungen import pruefe_fahrten
+
+		lang = self._entwurf(str(add_to_date(now_datetime(), hours=-12)))
+		self._einstellung("reminders_enabled", 0)
+		try:
+			pruefe_fahrten(nur=[lang.name])
+			self.assertEqual(self._meldungen(lang), [])
+		finally:
+			self._einstellung("reminders_enabled", 1)

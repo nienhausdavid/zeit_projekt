@@ -22,8 +22,9 @@ def ensure_fixtures():
 	frappe.set_user("Administrator")
 	company = frappe.db.get_single_value("Global Defaults", "default_company")
 	abbr = frappe.db.get_value("Company", company, "abbr")
-	if not frappe.db.get_single_value("Stock Settings", "default_warehouse"):
-		frappe.db.set_single_value("Stock Settings", "default_warehouse", f"Stores - {abbr}")
+	# Das Standardlager liegt seit ERPNext 16.51 an der Firma (frueher in den Lager-Einstellungen)
+	if not frappe.db.get_value("Company", company, "default_warehouse"):
+		frappe.db.set_value("Company", company, "default_warehouse", f"Stores - {abbr}")
 	frappe.db.set_single_value("Selling Settings", "allow_multiple_items", 0)
 
 	for uom in ("Hour", "Nos"):
@@ -145,3 +146,20 @@ def expect_error(testcase, exc=frappe.ValidationError):
 	finally:
 		frappe.db.rollback(save_point="zp_expect_error")
 		frappe.clear_messages()
+
+
+def ensure_vehicle(kennzeichen="ZP-TEST-1", stand=5000):
+	"""Testfahrzeug fuer die Fahrtenbuch-Tests."""
+	if not frappe.db.exists("Vehicle", kennzeichen):
+		frappe.get_doc(
+			{
+				"doctype": "Vehicle",
+				"license_plate": kennzeichen,
+				"make": "Test",
+				"model": "Test",
+				"last_odometer": stand,
+				"fuel_type": "Diesel",
+				"uom": "Nos",
+			}
+		).insert()
+	return kennzeichen

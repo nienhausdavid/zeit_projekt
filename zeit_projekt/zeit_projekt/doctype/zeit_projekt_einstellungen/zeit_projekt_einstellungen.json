@@ -31,6 +31,12 @@
   "knopf_foto",
   "knopf_timer_foto",
   "knopf_ende_foto",
+  "section_break_pruefungen",
+  "vehicle_required",
+  "max_km_luecke",
+  "reminders_enabled",
+  "reminder_running_hours",
+  "reminder_end_hours",
   "section_break_ocr",
   "api_type",
   "opencode_zugang",
@@ -219,6 +225,48 @@
    "fieldname": "knopf_ende_foto",
    "fieldtype": "Check",
    "label": "Knopf „Endstand fotografieren und Fahrt beenden“ anzeigen"
+  },
+  {
+   "fieldname": "section_break_pruefungen",
+   "fieldtype": "Section Break",
+   "label": "Fahrtenbuch: Prüfungen und Erinnerungen"
+  },
+  {
+   "default": "1",
+   "description": "Eine Fahrt lässt sich nur mit Fahrzeug buchen. Im Entwurf (Timer) bleibt es freiwillig; neue Fahrten bekommen automatisch das zuletzt genutzte Fahrzeug des Benutzers.",
+   "fieldname": "vehicle_required",
+   "fieldtype": "Check",
+   "label": "Fahrzeug ist Pflicht beim Buchen"
+  },
+  {
+   "default": "500",
+   "description": "Ein neuer Startstand, der mehr als so viele Kilometer über dem letzten Endstand des Fahrzeugs liegt (oder darunter), wird als fraglich markiert und muss bestätigt werden. 0 = nur Rückgang prüfen.",
+   "fieldname": "max_km_luecke",
+   "fieldtype": "Int",
+   "label": "Größte erwartete Lücke zum letzten Stand (km)"
+  },
+  {
+   "default": "1",
+   "description": "Benachrichtigung (Glocke im Desk) für vergessene Fahrten: Timer läuft zu lange oder Endstand fehlt nach dem Ende. Je Fahrt und Art nur einmal.",
+   "fieldname": "reminders_enabled",
+   "fieldtype": "Check",
+   "label": "Erinnerungen senden"
+  },
+  {
+   "default": "10",
+   "depends_on": "reminders_enabled",
+   "description": "Erinnerung, wenn der Timer einer Fahrt so viele Stunden läuft.",
+   "fieldname": "reminder_running_hours",
+   "fieldtype": "Int",
+   "label": "Timer läuft länger als (Stunden)"
+  },
+  {
+   "default": "2",
+   "depends_on": "reminders_enabled",
+   "description": "Erinnerung, wenn eine Fahrt beendet wurde, der Endstand aber so viele Stunden später noch fehlt.",
+   "fieldname": "reminder_end_hours",
+   "fieldtype": "Int",
+   "label": "Endstand fehlt nach (Stunden)"
   },
   {
    "fieldname": "section_break_ocr",

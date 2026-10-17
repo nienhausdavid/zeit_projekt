@@ -148,6 +148,33 @@ Bei laufendem Timer erscheint – sobald der Startstand feststeht und noch kein 
 Knopf **„Endstand fotografieren und Fahrt beenden“**: öffnet die Kamera und beendet gleichzeitig die Fahrt
 (Ende-Zeit setzen, speichern). Auch er erscheint nur einmalig.
 
+### Fahrzeug, Plausibilitätsprüfung, Offline-Fotos und Erinnerungen
+
+- **Standardfahrzeug:** Eine neue Fahrt bekommt automatisch das zuletzt vom Benutzer verwendete Fahrzeug
+  (auch wenn sie aus dem Projekt entsteht). *Fahrzeug ist Pflicht beim Buchen* (Einstellung, Standard an):
+  im Entwurf bleibt es freiwillig, damit der Timer immer speicherbar ist.
+- **Plausibilitätsprüfung:** Am Startstand steht „Letzter Stand dieses Fahrzeugs: … km“ (Endstand der
+  jüngsten Fahrt, sonst Fahrzeugdaten). Ein **erkannter** Startstand unter diesem Stand oder mehr als
+  *Größte erwartete Lücke* (Einstellung, Standard 500 km, 0 = nur Rückgang prüfen) darüber wird wie „nicht
+  sicher“ behandelt: orange Warnung, „Foto Ende“ bleibt aus, bis „Startstand stimmt“ gedrückt oder der
+  Wert geändert wurde. Von Hand eingetragene Werte lösen nur die Warnung aus.
+- **Offline-Fotos:** Schlägt der Upload wegen fehlender Verbindung fehl, wird das Foto im Browser
+  (IndexedDB) gespeichert, die Statuszeile zeigt „Kein Netz – … wird automatisch gesendet“. Gesendet wird,
+  sobald das Netz zurück ist (Browser-Ereignis „online“, sonst alle 30 s und beim Öffnen einer Fahrt). Das
+  Foto wird der Fahrt zugeordnet (offene Fahrt, sonst die gemerkte Fahrt, sonst der jüngste eigene
+  Entwurf mit leerem Fotofeld); danach den Stand prüfen bzw. eintragen. Solange ein Foto wartet, zeigt
+  das Formular – auch nach einem Neuladen – eine gelbe Statuszeile mit Vorschaubild; Sendefehler mit
+  Netz erscheinen als Meldung. Eine Seite, die ganz ohne Netz neu geladen wird, lässt sich nicht öffnen
+  (es gibt keinen Offline-Modus der App); das Foto bleibt trotzdem im Browser gespeichert. Die Fahrt selbst (Timer) lässt
+  sich ohne Netz nicht speichern. Die Warteschlange wird nur im Fahrt-Formular abgearbeitet.
+- **Erinnerungen:** Ein stündlicher Job (`fahrtenbuch/erinnerungen.py`) schreibt eine Benachrichtigung
+  (Glocke im Desk) an den Benutzer des Mitarbeiters, sonst an den Ersteller: *Timer läuft länger als*
+  (Standard 10 Stunden) und *Endstand fehlt nach* (Standard 2 Stunden nach dem Ende). Je Fahrt und Art
+  nur einmal (versteckte Häkchen `reminder_running_sent`/`reminder_end_sent`); abschaltbar mit
+  *Erinnerungen senden*. Die Schalter stehen in *Zeit Projekt Einstellungen → Fahrtenbuch: Prüfungen und
+  Erinnerungen*; ein Patch (`fahrtenbuch_verbesserungen_standard`) setzt die Standardwerte bei
+  bestehenden Installationen.
+
 Die Knöpfe im Fahrt-Formular lassen sich in *Zeit Projekt Einstellungen → Knöpfe im Fahrt-Formular*
 einzeln ein- und ausschalten (Standard: alle an): **Timer-Knöpfe**, **Foto-Knöpfe** und die beiden
 Kombi-Knöpfe (Start bzw. Ende). Ohne Timer-Knöpfe laufen Start und Ende von Hand über die Felder.
