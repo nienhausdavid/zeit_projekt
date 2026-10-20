@@ -72,7 +72,8 @@ class TestApp(IntegrationTestCase):
 		layout = json.loads(frappe.db.get_value("Desktop Layout", TECH, "layout"))
 		self.assertTrue(all(isinstance(x, dict) for x in layout))
 		self.assertEqual(
-			[x["name"] for x in layout], ["Fremd", "Zeit & Projekt", "Fahrtenbuch", "Site Visits", "Einstellungen"]
+			[x["name"] for x in layout],
+			["Fremd", "Zeit & Projekt", "Fahrtenbuch", "Site Visits", "Abrechnung", "Einstellungen"],
 		)
 		# Der Rest des Layouts bleibt unveraendert, Wiederholung aendert nichts
 		self.assertEqual(layout[0], fremd)
@@ -134,7 +135,7 @@ class TestApp(IntegrationTestCase):
 
 		self.assertEqual(frappe.db.get_value("Desktop Icon", "Zeit & Projekt", "icon_type"), "App")
 		kinder = frappe.get_all("Desktop Icon", filters={"parent_icon": "Zeit & Projekt"}, pluck="link_to")
-		self.assertEqual(sorted(kinder), ["Fahrtenbuch", "Site Visits", "Zeit & Projekt Einstellungen"])
+		self.assertEqual(sorted(kinder), ["Abrechnung", "Fahrtenbuch", "Site Visits", "Zeit & Projekt Einstellungen"])
 		# Frappe >= 16.51 liest "Sidebar"; "Workspace Sidebar" ist dort wirkungslos.
 		doctype = "Sidebar" if frappe.db.table_exists("Sidebar") else "Workspace Sidebar"
 		for sidebar in kinder:
@@ -142,6 +143,10 @@ class TestApp(IntegrationTestCase):
 		if doctype == "Sidebar":
 			self.assertEqual(frappe.db.get_value("Sidebar", "Fahrtenbuch", "module"), "Fahrtenbuch")
 			self.assertEqual(frappe.db.get_value("Sidebar", "Site Visits", "module"), "Site Visit")
+			for bericht in ("Abrechnungsansicht", "Auftrags- und Projektansicht"):
+				self.assertTrue(
+					frappe.db.exists("Sidebar Item", {"parent": "Abrechnung", "link_to": bericht, "link_type": "Report"}), bericht
+				)
 		kacheln = [a for a in get_apps() if a["name"] == "zeit_projekt"]
 		self.assertEqual(len(kacheln), 1)
 		self.assertTrue(kacheln[0]["route"].startswith("/desk/"))
