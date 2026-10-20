@@ -611,6 +611,18 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		self.assertIsNone(ocr._zahl_aus("<think>Der Nutzer will den Gesamtstand, 185460 vielleicht"))  # abgeschnitten
 		self.assertIsNone(ocr._zahl_aus("<think>x</think>NONE"))
 
+	def test_nachkommastellen_gehoeren_nicht_zum_stand(self):
+		for text, erwartet in (
+			("12345.6", 12345),
+			("12345,6", 12345),
+			("123 456,7 km", 123456),
+			("123.456", 123456),  # Tausenderpunkt
+			("1.234,5", 1234),
+			("185460", 185460),
+			("Stand: 123 456 km", 123456),
+		):
+			self.assertEqual(ocr._zahl_aus(text), erwartet, text)
+
 	def test_fehlerursachen_der_anfrage(self):
 		faelle = (
 			((401, "unauthorized"), "zugang_abgelehnt"),
