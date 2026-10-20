@@ -11,6 +11,7 @@ from zeit_projekt.zeit_projekt.tests.utils import (
 	TECH,
 	ensure_fixtures,
 	expect_error,
+	make_project,
 	make_sales_order,
 	sales_order_rows,
 )
@@ -25,7 +26,7 @@ class TestSiteVisit(IntegrationTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 
-	def site_visit(self, tag, sales_order=None, items=None, customer=KUNDE_A, employee=True):
+	def site_visit(self, tag, sales_order=None, items=None, customer=KUNDE_A, employee=True, project=None):
 		return frappe.get_doc(
 			{
 				"doctype": "Site Visit",
@@ -36,6 +37,7 @@ class TestSiteVisit(IntegrationTestCase):
 				"from_time": f"2031-04-{tag:02d} 10:00:00",
 				"to_time": f"2031-04-{tag:02d} 12:00:00",
 				"sales_order": sales_order,
+				"project": project,
 				"description": "Montage",
 				"extra_items": items or [],
 			}
@@ -243,3 +245,50 @@ class TestSiteVisit(IntegrationTestCase):
 		sv.append("breaks", {"from_time": "2031-04-10 09:00:00", "to_time": "2031-04-10 10:30:00"})
 		with expect_error(self):
 			sv.save()
+
+	def test_einsatz_auf_projekt_ohne_auftrag(self):
+		from zeit_projekt.zeit_projekt.sales_invoice import get_billable_time_logs
+
+		projekt = make_project()
+		frappe.set_user(TECH)
+		sv = self.site_visit(11, project=projekt.name, customer=None)
+		self.assertEqual((sv.customer, sv.customer_name, sv.sales_order), (KUNDE_A, KUNDE_A, None))
+
+		sv.submit()
+		ts = frappe.get_doc("Timesheet", sv.timesheet)
+		self.assertEqual((ts.docstatus, ts.customer, ts.parent_project), (1, KUNDE_A, projekt.name))
+		self.assertEqual((ts.time_logs[0].project, ts.time_logs[0].custom_sales_order), (projekt.name, None))
+
+		# ERPNext fuehrt die Stunden am Projekt - dort steht, was abzurechnen ist
+		self.assertEqual(flt(frappe.db.get_value("Project", projekt.name, "total_billable_amount")), 180)  # 2 Std. x 90
+
+		# ... und der Zeitimport findet sie ueber das Projekt
+		frappe.set_user("Administrator")
+		r = get_billable_time_logs(KUNDE_A, project=projekt.name, from_time="2031-04-01 00:00:00", to_time="2031-04-30 23:59:59")
+		self.assertEqual([(z.time_sheet, z.project) for z in r["rows"]], [(sv.timesheet, projekt.name)])
+
+	def test_projekt_eines_anderen_kunden_oder_storniert_abgelehnt(self):
+		with expect_error(self):
+			self.site_visit(12, project=make_project(KUNDE_B).name)
+		sv = self.site_visit(13, project=make_project().name)
+		frappe.db.set_value("Project", sv.project, "status", "Cancelled")
+		with expect_error(self):
+			sv.submit()
+
+	def test_zusatzartikel_nur_mit_auftrag(self):
+		projekt = make_project()
+		with expect_error(self):
+			self.site_visit(14, project=projekt.name, items=[{"item_code": "ZP-ADAPTER", "qty": 1}])
+
+	def test_auftrag_und_projekt_zusammen(self):
+		"""Auftrag eines Projekts: der Einsatz traegt beides, die Zeitbuchung
+		Auftrag und Projekt - Filter nach beidem findet sie."""
+		projekt = make_project()
+		so = make_sales_order(self.ctx.company, submit=False)
+		so.project = projekt.name
+		so.submit()
+		sv = self.site_visit(15, so.name)
+		self.assertEqual(sv.project, projekt.name)
+		sv.submit()
+		detail = frappe.get_all("Timesheet Detail", filters={"parent": sv.timesheet}, fields=["project", "custom_sales_order"])
+		self.assertEqual([(d.project, d.custom_sales_order) for d in detail], [(projekt.name, so.name)])

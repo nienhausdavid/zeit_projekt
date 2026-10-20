@@ -162,6 +162,23 @@ def check_sales_order(sales_order, customer):
 	return so
 
 
+def check_project(project, customer=None):
+	"""Projekt muss existieren, darf nicht storniert sein und - falls es einen
+	Kunden hat - zum Kunden des Belegs gehoeren. Rueckgabe: Kunde des Projekts."""
+	p = frappe.db.get_value("Project", project, ["customer", "status"], as_dict=True)
+	if not p:
+		frappe.throw(_("Projekt {0} existiert nicht.").format(frappe.bold(project)))
+	if p.status == "Cancelled":
+		frappe.throw(_("Projekt {0} ist storniert.").format(frappe.bold(project)))
+	if customer and p.customer and p.customer != customer:
+		frappe.throw(
+			_("Projekt {0} gehört zum Kunden {1}, nicht zu {2}.").format(
+				frappe.bold(project), frappe.bold(p.customer), frappe.bold(customer)
+			)
+		)
+	return p.customer
+
+
 def price_rows(header_doc, rows, throw=True):
 	"""Ermittelt Preis, Lager, Einheit und Liefertermin fuer neue Positionen
 	ueber ERPNexts eigene Logik (Preisliste, Preisregeln, Waehrung) auf einem

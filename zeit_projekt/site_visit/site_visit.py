@@ -7,6 +7,7 @@ from zeit_projekt.zeit_projekt.billing import (
 	add_rows_to_sales_order,
 	as_administrator,
 	cancel_timesheet,
+	check_project,
 	check_sales_order,
 	create_timesheet,
 	ensure_timesheet_not_invoiced,
@@ -22,9 +23,10 @@ def before_submit(doc, method=None):
 	opened it" entsteht (gleiche Begruendung wie
 	zeit_projekt.zeit_projekt.sales_order.before_submit).
 
-	customer/activity_type/sales_order/to_time sind absichtlich nicht reqd im
-	Feld - ein Entwurf mit nur laufendem Timer waere sonst nicht speicherbar.
-	Deshalb hier explizit vor dem Buchen geprueft."""
+	customer/activity_type/to_time sind absichtlich nicht reqd im Feld - ein
+	Entwurf mit nur laufendem Timer waere sonst nicht speicherbar. Deshalb
+	hier explizit vor dem Buchen geprueft. Auftrag oder Projekt ist dagegen
+	schon beim Speichern Pflicht (SiteVisit.set_from_links)."""
 	if doc.timesheet:
 		return
 
@@ -32,8 +34,8 @@ def before_submit(doc, method=None):
 		frappe.throw(_("Bitte vor dem Buchen einen Kunden auswählen."))
 	if not doc.activity_type:
 		frappe.throw(_("Bitte vor dem Buchen eine Aktivitätsart auswählen."))
-	if not doc.sales_order:
-		frappe.throw(_("Bitte vor dem Buchen einen Auftrag auswählen."))
+	if not doc.sales_order and not doc.project:
+		frappe.throw(_("Bitte vor dem Buchen einen Auftrag oder ein Projekt auswählen."))
 	if not doc.to_time:
 		frappe.throw(_("Bitte vor dem Buchen eine Endzeit eintragen."))
 
@@ -43,7 +45,10 @@ def before_submit(doc, method=None):
 	if not abschnitte:
 		frappe.throw(_("Nach Abzug der Pausen bleibt keine Arbeitszeit übrig."))
 
-	check_sales_order(doc.sales_order, doc.customer)
+	if doc.sales_order:
+		check_sales_order(doc.sales_order, doc.customer)
+	if doc.project:
+		check_project(doc.project, doc.customer)
 
 	doc.timesheet = create_timesheet(
 		doc,

@@ -19,7 +19,7 @@ class SiteVisit(Document):
 			# duplizierten (neuen) Einsatz muessen sie dagegen neu hinein.
 			for row in self.extra_items:
 				row.added_to_order = 0
-		self.set_from_sales_order()
+		self.set_from_links()
 		self.set_link_names()
 		self.validate_extra_item_groups()
 		self.set_extra_item_rates()
@@ -40,21 +40,43 @@ class SiteVisit(Document):
 		eine Zeitblatt-Zeile (siehe zeit_projekt/pausen.py)."""
 		return arbeitsabschnitte(self, "from_time", "to_time")
 
-	def set_from_sales_order(self):
-		"""Der Auftrag ist Pflicht und bestimmt den Kunden: fehlt der Kunde,
-		kommt er aus dem Auftrag; ein Auftrag eines anderen Kunden wird schon
-		beim Speichern abgelehnt (nicht erst beim Buchen)."""
-		from zeit_projekt.zeit_projekt.billing import check_sales_order
+	def set_from_links(self):
+		"""Jeder Einsatz gehoert zu einem Auftrag ODER einem Projekt (oder
+		beidem). Der Auftrag bestimmt Kunde und - falls leer - Projekt, sonst
+		das Projekt den Kunden. Auftrag/Projekt eines anderen Kunden werden
+		schon beim Speichern abgelehnt (nicht erst beim Buchen).
 
-		if not self.sales_order:
-			return
-		so = frappe.db.get_value("Sales Order", self.sales_order, ["customer", "project"], as_dict=True)
-		if not so:
-			frappe.throw(_("Auftrag {0} existiert nicht.").format(self.sales_order))
-		self.customer = self.customer or so.customer
-		self.project = self.project or so.project
-		if self.is_new() or self.has_value_changed("sales_order") or self.has_value_changed("customer"):
-			check_sales_order(self.sales_order, self.customer)
+		Ohne Auftrag laeuft die Abrechnung ueber das Projekt: die Zeit steht im
+		Zeitblatt und kommt mit dem Zeitimport in die Rechnung. Zusatzartikel
+		gibt es nur mit Auftrag - sie werden dort eingetragen."""
+		from zeit_projekt.zeit_projekt.billing import check_project, check_sales_order
+
+		if not self.sales_order and not self.project:
+			frappe.throw(
+				_("Bitte einen Auftrag oder ein Projekt wählen – darüber wird der Einsatz abgerechnet."),
+				frappe.MandatoryError,
+			)
+
+		if self.sales_order:
+			so = frappe.db.get_value("Sales Order", self.sales_order, ["customer", "project"], as_dict=True)
+			if not so:
+				frappe.throw(_("Auftrag {0} existiert nicht.").format(self.sales_order))
+			self.customer = self.customer or so.customer
+			self.project = self.project or so.project
+			if self.is_new() or self.has_value_changed("sales_order") or self.has_value_changed("customer"):
+				check_sales_order(self.sales_order, self.customer)
+
+		if self.project:
+			projekt_kunde = check_project(self.project, self.customer)
+			self.customer = self.customer or projekt_kunde
+
+		if not self.sales_order and any(row.item_code and not row.added_to_order for row in self.extra_items):
+			frappe.throw(
+				_(
+					"Zusatzartikel werden über den Auftrag abgerechnet. Bitte einen Auftrag wählen "
+					"oder über „Neuer Auftrag“ anlegen."
+				)
+			)
 
 	def set_link_names(self):
 		"""Ersatz fuer fetch_from: das holt im Browser mit den Rechten des

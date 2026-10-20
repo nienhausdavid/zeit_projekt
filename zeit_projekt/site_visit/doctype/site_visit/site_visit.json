@@ -64,19 +64,20 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "Optional: Einsatz einem Projekt zuordnen",
+   "description": "Ohne Auftrag: Die Zeit wird auf dieses Projekt gebucht und später über das Projekt abgerechnet.",
    "fieldname": "project",
    "fieldtype": "Link",
    "label": "Project",
-   "options": "Project"
+   "options": "Project",
+   "mandatory_depends_on": "eval:!doc.sales_order"
   },
   {
-   "description": "Gibt es noch keinen, über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer.",
+   "description": "Gibt es noch keinen, über „Neuer Auftrag“ direkt anlegen – mit Kommissionsnummer. Ohne Auftrag nur mit Projekt.",
    "fieldname": "sales_order",
    "fieldtype": "Link",
    "label": "Sales Order",
    "options": "Sales Order",
-   "reqd": 1
+   "mandatory_depends_on": "eval:!doc.project"
   },
   {
    "depends_on": "eval:!doc.sales_order && doc.docstatus === 0",
@@ -235,7 +236,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-14 22:00:00.000000",
+ "modified": "2026-10-20 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Site Visit",
  "name": "Site Visit",

@@ -112,10 +112,12 @@ function update_timer_toolbar(frm) {
 
 	if (!frm.doc.from_time) {
 		frm.page.add_button(__('Timer starten'), () => {
-			// Ohne Auftrag liesse sich der Einsatz nicht speichern - der Timer
-			// ginge beim Neuladen verloren.
-			if (!frm.doc.sales_order) {
-				frappe.msgprint(__('Bitte zuerst einen Auftrag auswählen oder über „Neuer Auftrag“ anlegen.'));
+			// Ohne Auftrag oder Projekt liesse sich der Einsatz nicht speichern -
+			// der Timer ginge beim Neuladen verloren.
+			if (!frm.doc.sales_order && !frm.doc.project) {
+				frappe.msgprint(
+					__('Bitte zuerst einen Auftrag oder ein Projekt auswählen oder über „Neuer Auftrag“ einen Auftrag anlegen.')
+				);
 				return;
 			}
 			frm.set_value('from_time', frappe.datetime.now_datetime()).then(() => frm.save());
@@ -313,7 +315,9 @@ function fill_from_project(frm) {
 		});
 	}
 	// Genau ein offener Auftrag zum gewaehlten Projekt? Dann gleich
-	// uebernehmen. Bei mehreren waehlt der Techniker im Dialog.
+	// uebernehmen. Bei mehreren waehlt der Techniker im Dialog - dort auch
+	// "ohne Auftrag": die Zeit wird dann auf das Projekt gebucht und ueber das
+	// Projekt abgerechnet (ein einzelner Auftrag laesst sich im Feld leeren).
 	if (!frm.doc.sales_order) {
 		frappe
 			.call({
@@ -329,6 +333,7 @@ function fill_from_project(frm) {
 }
 
 function choose_sales_order(frm, orders) {
+	const OHNE_AUFTRAG = '__ohne_auftrag__';
 	const label = (so) =>
 		[so.name, so.po_no, frappe.datetime.str_to_user(so.transaction_date)].filter(Boolean).join(' – ');
 	const dialog = new frappe.ui.Dialog({
@@ -338,7 +343,9 @@ function choose_sales_order(frm, orders) {
 				fieldname: 'sales_order',
 				fieldtype: 'Select',
 				label: __('Offene Aufträge zu {0}', [frm.doc.project]),
-				options: orders.map((so) => ({ value: so.name, label: label(so) })),
+				options: orders
+					.map((so) => ({ value: so.name, label: label(so) }))
+					.concat([{ value: OHNE_AUFTRAG, label: __('Kein Auftrag – direkt auf das Projekt buchen') }]),
 				default: orders[0].name,
 				reqd: 1,
 			},
@@ -346,7 +353,7 @@ function choose_sales_order(frm, orders) {
 		primary_action_label: __('Übernehmen'),
 		primary_action(values) {
 			dialog.hide();
-			frm.set_value('sales_order', values.sales_order);
+			if (values.sales_order !== OHNE_AUFTRAG) frm.set_value('sales_order', values.sales_order);
 		},
 	});
 	dialog.show();
