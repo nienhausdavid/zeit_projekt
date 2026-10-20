@@ -275,6 +275,15 @@ class TestSiteVisit(IntegrationTestCase):
 		with expect_error(self):
 			sv.submit()
 
+	def test_entwurf_auf_spaeter_storniertem_projekt_bleibt_bearbeitbar(self):
+		sv = self.site_visit(16, project=make_project().name)
+		frappe.db.set_value("Project", sv.project, "status", "Cancelled")
+		sv.reload()
+		sv.description = "geaendert"
+		sv.save()  # Zuordnung unveraendert: keine erneute Projektpruefung
+		with expect_error(self):
+			sv.submit()  # vor dem Buchen wird weiterhin geprueft
+
 	def test_zusatzartikel_nur_mit_auftrag(self):
 		projekt = make_project()
 		with expect_error(self):

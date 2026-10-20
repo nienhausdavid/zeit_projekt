@@ -67,7 +67,13 @@ class SiteVisit(Document):
 				check_sales_order(self.sales_order, self.customer)
 
 		if self.project:
-			projekt_kunde = check_project(self.project, self.customer)
+			# Geprueft wird nur bei neuem Einsatz oder geaenderter Zuordnung: ein
+			# alter Einsatz auf einem inzwischen stornierten Projekt bleibt
+			# bearbeitbar (vor dem Buchen prueft before_submit noch einmal).
+			if self.is_new() or self.has_value_changed("project") or self.has_value_changed("customer"):
+				projekt_kunde = check_project(self.project, self.customer)
+			else:
+				projekt_kunde = frappe.db.get_value("Project", self.project, "customer")
 			self.customer = self.customer or projekt_kunde
 
 		if not self.sales_order and any(row.item_code and not row.added_to_order for row in self.extra_items):
