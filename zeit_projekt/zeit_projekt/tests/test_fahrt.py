@@ -159,6 +159,13 @@ class TestFahrt(IntegrationTestCase):
 		self.assertAlmostEqual(flt(log.hours), 50 / 60, places=3)
 		self.assertEqual(flt(log.billing_hours), 1.0)
 
+	def test_taktung_rundet_nicht_unter_die_tatsaechliche_zeit(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 1)
+		f = self.fahrt("2031-03-11 10:00:00", "2031-03-11 10:15:12")  # 15 min 12 s
+		f.submit()
+		log = frappe.get_doc("Timesheet", f.timesheet).time_logs[0]
+		self.assertAlmostEqual(flt(log.billing_hours), 16 / 60, places=3)
+
 	def test_pflichtfelder_vor_dem_buchen(self):
 		ohne_km = self.fahrt("2031-03-12 08:00:00", "2031-03-12 09:00:00", km=(0, 0), bill_km=0)
 		ohne_km.reload()
@@ -224,6 +231,44 @@ class TestFahrt(IntegrationTestCase):
 				}
 			).insert()
 
+	def test_auftrag_und_projekt_werden_serverseitig_geprueft(self):
+		from zeit_projekt.zeit_projekt.tests.utils import make_project
+
+		fremd = make_sales_order(self.ctx.company, customer="ZP Kunde B")
+		for feld, wert in (("sales_order", fremd.name), ("project", make_project("ZP Kunde B").name)):
+			f = frappe.get_doc(
+				{
+					"doctype": "Fahrt",
+					"customer": KUNDE_A,
+					"date": "2031-03-12",
+					"vehicle": self.vehicle,
+					"start_time": "2031-03-12 08:00:00",
+					feld: wert,
+				}
+			)
+			with expect_error(self):
+				f.insert()
+		with expect_error(self):
+			frappe.get_doc(
+				{
+					"doctype": "Fahrt",
+					"customer": KUNDE_A,
+					"date": "2031-03-12",
+					"vehicle": self.vehicle,
+					"start_time": "2031-03-12 08:00:00",
+					"project": make_project(KUNDE_A, status="Cancelled").name,
+				}
+			).insert()
+
+	def test_abgeschlossener_auftrag_blockiert_das_buchen(self):
+		so = make_sales_order(self.ctx.company)
+		f = self.fahrt("2031-03-13 08:00:00", "2031-03-13 09:00:00", bill_km=0)
+		f.db_set("sales_order", so.name)
+		f.reload()
+		frappe.db.set_value("Sales Order", so.name, "status", "Closed")
+		with expect_error(self):
+			f.submit()
+
 	def test_zeitueberschneidung_klare_meldung(self):
 		self.fahrt("2031-03-16 08:00:00", "2031-03-16 09:00:00").submit()
 		zweite = self.fahrt("2031-03-16 08:30:00", "2031-03-16 09:30:00")
@@ -242,6 +287,15 @@ class TestFahrt(IntegrationTestCase):
 		self.fahrt("2031-04-01 08:00:00", "2031-04-01 09:00:00")  # Fahrzeug gesetzt
 		neu = self.fahrt("2031-04-02 08:00:00", "2031-04-02 09:00:00", vehicle=False)
 		self.assertEqual(neu.vehicle, self.vehicle)
+
+	def test_im_formular_geleertes_fahrzeug_bleibt_leer(self):
+		self.fahrt()  # damit es ein zuletzt genutztes Fahrzeug gibt
+		try:
+			frappe.form_dict["cmd"] = "frappe.desk.form.save.savedocs"
+			f = self.fahrt("2031-03-14 08:00:00", "2031-03-14 09:00:00", vehicle=False)
+		finally:
+			frappe.form_dict.pop("cmd", None)
+		self.assertFalse(f.vehicle)
 
 	def test_fahrzeug_pflicht_beim_buchen(self):
 		self.fahrt("2031-04-03 08:00:00", "2031-04-03 09:00:00")

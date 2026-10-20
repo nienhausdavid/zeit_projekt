@@ -176,7 +176,7 @@ Die Zahlen einer Projektzeile umfassen alles, was auf das Projekt gebucht
 ist – auch die Zeiten, die zugleich auf einen Auftrag darunter laufen. Eine
 Summenzeile gibt es deshalb nicht. Filter: Kunde, Projekt (zeigt es samt
 seinen Aufträgen) und *Abgeschlossene ausblenden* (Standard an: fertige und
-stornierte Projekte, geschlossene und abgeschlossene Aufträge). Sichtbar für
+stornierte Projekte, geschlossene und abgeschlossene Aufträge). Hat ein ausgeblendetes Projekt noch offene Aufträge, bleibt es als Kopfzeile stehen. Sichtbar für
 *Projects User* und *Projects Manager*; gelesen wird mit deren Rechten auf
 Projekt und Auftrag.
 

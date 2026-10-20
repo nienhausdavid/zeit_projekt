@@ -134,6 +134,9 @@ def _zahl_aus(text: str) -> int | None:
 		return None
 	if text.strip().upper().startswith("NONE"):
 		return None  # "NONE (Tageszaehler 185.5)": die Ziffern dahinter gehoeren nicht dazu
+	# Nachkommastelle (1-2 Ziffern nach Punkt/Komma, z. B. "12345.6") gehoert nicht zum Stand - sonst
+	# wuerde daraus 123456. Genau drei Ziffern danach sind ein Tausenderpunkt ("123.456").
+	text = re.sub(r"(?<=\d)[.,]\d{1,2}(?!\d)", "", text)
 	digits = re.sub(r"\D", "", text)
 	if not digits or len(digits) > MAX_STELLEN:
 		return None

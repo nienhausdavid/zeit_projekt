@@ -181,9 +181,9 @@ def _check_self_edit():
 			_("Das Ändern der eigenen Mitarbeiterdaten ist nicht freigeschaltet. Bitte die Verwaltung informieren."),
 			frappe.PermissionError,
 		)
-	name = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+	name = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"}, "name")
 	if not name:
-		frappe.throw(_("Für Ihren Benutzer gibt es noch keinen Mitarbeiter."))
+		frappe.throw(_("Für Ihren Benutzer gibt es noch keinen aktiven Mitarbeiter."))
 	return name
 
 
@@ -193,10 +193,12 @@ def get_employee_status():
 	Angaben zum eigenen Benutzer, auch ohne Leserecht auf Employee."""
 	_check_desk_user()
 	name = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"}, "name")
+	# Auch ein inaktiver Eintrag zaehlt: create_own_employee lehnt dann ab, also nicht anbieten
+	vorhanden = name or frappe.db.exists("Employee", {"user_id": frappe.session.user})
 	einstellungen = frappe.get_cached_doc("Zeit Projekt Einstellungen")
 	return {
 		"employee": name,
-		"self_service": bool(einstellungen.employee_self_service) and not name,
+		"self_service": bool(einstellungen.employee_self_service) and not vorhanden,
 		"self_edit": bool(einstellungen.employee_self_edit) and bool(name),
 	}
 

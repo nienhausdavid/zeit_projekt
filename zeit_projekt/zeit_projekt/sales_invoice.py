@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils import getdate
 
+from zeit_projekt.zeit_projekt.billing import pauschale_auftraege
+
 
 @frappe.whitelist()
 def get_billable_time_logs(customer, project=None, from_time=None, to_time=None, sales_order=None):
@@ -126,9 +128,12 @@ def _open_kilometers(customer, project, from_time, to_time, sales_order=None):
 	fahrten = frappe.get_list(
 		"Fahrt",
 		filters=filters,
-		fields=["name", "date", "distance_km", "km_item", "start_location", "end_location", "project"],
+		fields=["name", "date", "distance_km", "km_item", "start_location", "end_location", "project", "sales_order"],
 		order_by="date asc",
 	)
+	# Pauschal abgerechnete Auftraege: die Kilometer stecken im Pauschalpreis
+	pauschal = pauschale_auftraege(f.sales_order for f in fahrten)
+	fahrten = [f for f in fahrten if f.sales_order not in pauschal]
 	for fahrt in fahrten:
 		fahrt.description = positionstext(fahrt, _("Kilometer"))
 	return fahrten

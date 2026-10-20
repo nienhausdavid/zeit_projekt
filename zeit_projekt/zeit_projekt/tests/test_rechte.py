@@ -134,6 +134,20 @@ class TestTechnikerRechte(IntegrationTestCase):
 		with self.assertRaises(TypeError):
 			technician.create_own_employee("X", geschlecht, "1991-05-17", user_id="Administrator")
 
+	def test_inaktiver_mitarbeiter_wird_nicht_zur_selbstanlage_angeboten(self):
+		mail = self._neuer_benutzer("zp-selbst-inaktiv@example.com")
+		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
+		self._selbstanlage(True)
+		self._selbstanpassung(True)
+		frappe.set_user(mail)
+		name = technician.create_own_employee("Weg", geschlecht, "1991-05-17")
+		frappe.set_user("Administrator")
+		frappe.db.set_value("Employee", name, "status", "Inactive")
+		frappe.set_user(mail)
+		self.assertEqual(technician.get_employee_status(), {"employee": None, "self_service": False, "self_edit": False})
+		with self.assertRaises(frappe.ValidationError):
+			technician.update_own_employee("Neu", geschlecht, "1992-06-18")
+
 	def test_benutzerberechtigung_nur_fuer_techniker_nicht_fuer_system_manager(self):
 		geschlecht = frappe.db.get_value("Gender", {}) or "Male"
 		self._selbstanlage(True)

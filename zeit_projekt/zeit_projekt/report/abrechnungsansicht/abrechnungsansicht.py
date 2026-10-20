@@ -12,6 +12,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate
 
+from zeit_projekt.zeit_projekt.billing import pauschale_auftraege
 from zeit_projekt.zeit_projekt.sales_invoice import _row_customers
 
 
@@ -117,9 +118,14 @@ def _kilometer_sammeln(gruppen, filters):
 	elif filters.get("to_date"):
 		bedingungen["date"] = ["<=", getdate(filters.to_date)]
 
-	for fahrt in frappe.get_list(
+	fahrten = frappe.get_list(
 		"Fahrt", filters=bedingungen, fields=["customer", "project", "sales_order", "distance_km", "date"], limit=0
-	):
+	)
+	# Pauschal abgerechnete Auftraege: die Kilometer stecken im Pauschalpreis
+	pauschal = pauschale_auftraege(f.sales_order for f in fahrten)
+	for fahrt in fahrten:
+		if fahrt.sales_order in pauschal:
+			continue
 		gruppe = _gruppe(gruppen, fahrt.customer, fahrt.sales_order, fahrt.project)
 		gruppe.km += flt(fahrt.distance_km)
 		_aeltester(gruppe, fahrt.date)

@@ -172,6 +172,16 @@ class TestAnsichten(IntegrationTestCase):
 		self.assertNotIn(projekt.name, namen({}))
 		self.assertIn(projekt.name, namen({"abgeschlossene_ausblenden": 0}))
 
+	def test_abgeschlossenes_projekt_mit_offenem_auftrag_bleibt_kopfzeile(self):
+		projekt = make_project(status="Completed")
+		so = make_sales_order(self.ctx.company, submit=False)
+		so.db_set("project", projekt.name)
+		zeilen = auftraege_und_projekte({"customer": KUNDE_A})[1]
+		namen = [z.beleg for z in zeilen]
+		self.assertIn(projekt.name, namen)
+		self.assertEqual(namen[namen.index(projekt.name) + 1], so.name)
+		self.assertEqual(zeilen[namen.index(so.name)].indent, 1)
+
 	def tearDown(self):
 		frappe.set_user("Administrator")
 
