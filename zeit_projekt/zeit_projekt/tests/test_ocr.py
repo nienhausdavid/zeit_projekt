@@ -229,6 +229,20 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 		# das Ergebnis kommt als letztes Ereignis
 		self.assertEqual(publish.call_args.args[0], "zeit_projekt_odometer")
 
+	def test_abgestuerzter_job_meldet_fehler_statt_zu_schweigen(self):
+		with (
+			patch("zeit_projekt.fahrtenbuch.ocr.read_odometer_detail", side_effect=RuntimeError("kaputt")),
+			patch("frappe.publish_realtime") as publish,
+		):
+			run_odometer_ocr(self.file.name, "start_odometer", "req", "Administrator")
+		event, daten = publish.call_args.args[:2]
+		self.assertEqual(event, "zeit_projekt_odometer")
+		self.assertEqual((daten["fehler"], daten["reading"]), ("intern", None))
+
+	def test_antwort_nennt_die_jobzeit_fuer_das_formular(self):
+		self._api()
+		self.assertEqual(get_odometer_reading(self.file.file_url, "start_odometer")["timeout"], ocr.job_timeout())
+
 	def _melde(self, antworten):
 		"""Fuehrt den Hintergrund-Job gegen den Fake-Server aus und liefert die Meldung ans Formular."""
 		self._api(antworten)

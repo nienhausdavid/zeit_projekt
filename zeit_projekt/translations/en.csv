@@ -385,3 +385,4 @@
 "Zeit berechnet %","Time Billed %"
 "Auftrag % berechnet","Order % Billed"
 "Abgeschlossene ausblenden","Hide Completed"
+"Die Erkennung hat nicht geantwortet (der Auftrag ist wohl abgebrochen worden). Bitte den Kilometerstand von Hand eintragen.","The recognition did not respond (the job was probably aborted). Please enter the odometer reading by hand."

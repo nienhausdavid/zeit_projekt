@@ -409,9 +409,15 @@ function erkennung_statustext(phase) {
 
 function aktualisiere_erkennungsstatus(auftrag) {
 	const frm = cur_frm;
-	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
 	const sek = Math.round((Date.now() - auftrag.start) / 1000);
-	if (sek > 900) return clearInterval(auftrag.takt); // Sicherheitsnetz: nie endlos mitzaehlen
+	// Sicherheitsnetz: kam bis zum Ende des Jobs (plus Reserve) kein Ergebnis, ist der Job abgestuerzt
+	// oder abgebrochen worden - aufgeben statt endlos "Erkennung laeuft" zu zeigen.
+	if (sek > auftrag.frist) {
+		clearInterval(auftrag.takt);
+		delete offene_erkennungen[auftrag.request_id];
+		return zeige_erkennung(auftrag, { fehler: 'keine_antwort', fieldname: auftrag.odometer_field });
+	}
+	if (!frm || frm.doctype !== 'Fahrt' || frm.doc[auftrag.photo_field] !== auftrag.file_url) return;
 	setze_status(frm, auftrag.photo_field, `${erkennung_statustext(auftrag.phase)} … ${sek} s`, null);
 }
 
@@ -526,6 +532,7 @@ function zeige_erkennung(auftrag, data) {
 				[data.limit]
 			),
 			nicht_erreichbar: __('Das Erkennungsmodell ist nicht erreichbar oder hat einen Fehler gemeldet. Bitte den Kilometerstand von Hand eintragen.'),
+			keine_antwort: __('Die Erkennung hat nicht geantwortet (der Auftrag ist wohl abgebrochen worden). Bitte den Kilometerstand von Hand eintragen.'),
 			antwort_unlesbar: __('Die Antwort des Erkennungsmodells war nicht lesbar. Bitte den Kilometerstand von Hand eintragen.'),
 			bild_unlesbar: __('Das Foto konnte nicht gelesen werden. Bitte den Kilometerstand von Hand eintragen.'),
 			free_nur_in_opencode: __('Dieses kostenlose Modell darf der Anbieter nur innerhalb von OpenCode nutzen. Bitte ein anderes Modell einstellen und den Kilometerstand von Hand eintragen.'),
@@ -612,7 +619,15 @@ function fetch_odometer_reading(frm, photo_field, odometer_field) {
 				entferne_status(frm, photo_field); // Erkennung nicht eingerichtet
 				return;
 			}
-			const auftrag = { photo_field, file_url, start: Date.now(), phase: { phase: 'warteschlange' } };
+			const auftrag = {
+				request_id: res.request_id,
+				photo_field,
+				odometer_field,
+				file_url,
+				start: Date.now(),
+				frist: (res.timeout || 900) + 30,
+				phase: { phase: 'warteschlange' },
+			};
 			offene_erkennungen[res.request_id] = auftrag;
 			frm.__zp_erkennung_laeuft = { ...frm.__zp_erkennung_laeuft, [photo_field]: true };
 			setze_status(frm, photo_field, __('Erkennung wartet in der Warteschlange …'), null);

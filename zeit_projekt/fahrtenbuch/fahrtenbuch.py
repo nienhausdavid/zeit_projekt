@@ -152,7 +152,8 @@ def get_odometer_reading(file_url, fieldname):
 				request_id=request_id,
 				user=frappe.session.user,
 			)
-			return {"queued": True, "request_id": request_id}
+			# timeout: bis dahin muss das Ergebnis da sein - danach gibt das Formular auf
+			return {"queued": True, "request_id": request_id, "timeout": job_timeout()}
 	frappe.throw(_("Keine Berechtigung für diese Datei."), frappe.PermissionError)
 
 
@@ -171,7 +172,13 @@ def run_odometer_ocr(file_name, fieldname, request_id, user):
 		)
 
 	fortschritt("start")
-	ergebnis = read_odometer_detail(frappe.get_doc("File", file_name), fortschritt)
+	try:
+		ergebnis = read_odometer_detail(frappe.get_doc("File", file_name), fortschritt)
+	except Exception:
+		# Unerwarteter Fehler (defekte Datei, Absturz ...): ohne Meldung wuerde die Statuszeile im
+		# Formular endlos "Erkennung laeuft" zeigen.
+		frappe.log_error("Kilometerstand-Erkennung abgebrochen")
+		ergebnis = {"wert": None, "sicher": False, "fehler": "intern"}
 	reading, sicher = ergebnis["wert"], ergebnis["sicher"]
 	frappe.publish_realtime(
 		"zeit_projekt_odometer",
