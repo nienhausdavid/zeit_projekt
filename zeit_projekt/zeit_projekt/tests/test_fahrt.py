@@ -281,6 +281,15 @@ class TestFahrt(IntegrationTestCase):
 		neu = self.fahrt("2031-04-02 08:00:00", "2031-04-02 09:00:00", vehicle=False)
 		self.assertEqual(neu.vehicle, self.vehicle)
 
+	def test_im_formular_geleertes_fahrzeug_bleibt_leer(self):
+		self.fahrt()  # damit es ein zuletzt genutztes Fahrzeug gibt
+		try:
+			frappe.form_dict["cmd"] = "frappe.desk.form.save.savedocs"
+			f = self.fahrt("2031-03-14 08:00:00", "2031-03-14 09:00:00", vehicle=False)
+		finally:
+			frappe.form_dict.pop("cmd", None)
+		self.assertFalse(f.vehicle)
+
 	def test_fahrzeug_pflicht_beim_buchen(self):
 		self.fahrt("2031-04-03 08:00:00", "2031-04-03 09:00:00")
 		f = self.fahrt("2031-04-04 08:00:00", "2031-04-04 09:00:00", vehicle=False)

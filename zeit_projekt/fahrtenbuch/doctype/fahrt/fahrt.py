@@ -11,13 +11,17 @@ from zeit_projekt.zeit_projekt.billing import (
 )
 from zeit_projekt.zeit_projekt.pausen import arbeitsabschnitte, pausen_pruefen
 
+# Aufruf, mit dem das Desk-Formular speichert
+FORMULAR_SPEICHERN = "frappe.desk.form.save.savedocs"
+
 
 class Fahrt(Document):
 	def validate(self):
 		check_employee_required(self)
-		if self.is_new() and not self.vehicle:
-			# Standardfahrzeug: das zuletzt vom Benutzer verwendete (auch wenn die Fahrt
-			# nicht ueber das Formular entsteht, z. B. aus dem Projekt)
+		if self.is_new() and not self.vehicle and frappe.form_dict.get("cmd") != FORMULAR_SPEICHERN:
+			# Standardfahrzeug: das zuletzt vom Benutzer verwendete, wenn die Fahrt nicht ueber das
+			# Formular entsteht (z. B. aus dem Projekt). Das Formular schlaegt es selbst vor; hat der
+			# Benutzer das Feld dort geleert, bleibt es leer.
 			self.vehicle = letztes_fahrzeug()
 		"""Ende/Kilometerstand sind erst beim Buchen Pflicht (siehe
 		before_submit) - beim Speichern als Entwurf, z. B. durch den Timer,
