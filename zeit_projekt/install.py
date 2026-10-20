@@ -39,6 +39,32 @@ CUSTOM_FIELDS = {
 			"description": "Das Projekt wird angelegt und verknüpft, sobald der Auftrag bestätigt (gebucht) wird",
 			"module": MODULE,
 		},
+		{
+			"fieldname": "custom_abrechnungsart",
+			"label": "Abrechnung",
+			"fieldtype": "Select",
+			"options": "Nach Aufwand\nPauschale",
+			"default": "Nach Aufwand",
+			"insert_after": "custom_projekt_erstellen",
+			"allow_on_submit": 1,
+			"description": (
+				"Nach Aufwand: Zeit und Kilometer werden über den Zeitimport abgerechnet. "
+				"Pauschale: Zeit und Kilometer werden erfasst (und gegen die geplanten Stunden gerechnet), "
+				"aber nicht einzeln abgerechnet - der Preis steht in den Positionen des Auftrags. "
+				"Gilt für ab dann gebuchte Zeit."
+			),
+			"module": MODULE,
+		},
+		{
+			"fieldname": "custom_geplante_stunden",
+			"label": "Geplante Stunden",
+			"fieldtype": "Float",
+			"non_negative": 1,
+			"insert_after": "custom_abrechnungsart",
+			"allow_on_submit": 1,
+			"description": "Optional: eingeplante Zeit. Die auf den Auftrag gebuchte Zeit wird dagegen gerechnet (Anzeige mit Prozent und Farbe).",
+			"module": MODULE,
+		},
 	],
 	"Sales Order Item": [
 		{

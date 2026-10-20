@@ -7,6 +7,8 @@ from frappe import _
 from frappe.utils import cint, flt
 
 GESCHLOSSENE_STATUS = ("Closed", "Completed")
+ABRECHNUNG_AUFWAND = "Nach Aufwand"
+ABRECHNUNG_PAUSCHALE = "Pauschale"
 # Kopfdaten, die nicht in den temporaeren Preisberechnungs-Auftrag gehoeren
 NICHT_KOPIEREN = ("name", "docstatus", "idx", "amended_from", "owner", "creation", "modified", "modified_by")
 
@@ -38,6 +40,20 @@ def check_employee_required(doc):
 			),
 			frappe.MandatoryError,
 		)
+
+
+def pauschale_auftraege(namen):
+	"""Welche der Auftraege (Namen) werden pauschal abgerechnet? Leer = nach Aufwand (alte Auftraege)."""
+	namen = [n for n in set(namen) if n]
+	if not namen:
+		return set()
+	return set(
+		frappe.get_all(
+			"Sales Order",
+			filters={"name": ["in", namen], "custom_abrechnungsart": ABRECHNUNG_PAUSCHALE},
+			pluck="name",
+		)
+	)
 
 
 def abrechenbare_zeilenstunden(zeilen, billing_hours, mit_abschnitten):
@@ -81,6 +97,9 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 		or erpnext.get_default_company()
 	)
 	zeilen = segments or [(from_time, to_time)]
+	# Pauschale: die Zeit wird erfasst (Zeitbudget, Auswertung), aber nicht einzeln abgerechnet -
+	# nicht abrechenbare Zeilen holt weder der Zeitimport noch die Abrechnungsansicht.
+	abrechenbar = 0 if pauschale_auftraege([sales_order]) else 1
 	ts = frappe.get_doc(
 		{
 			"doctype": "Timesheet",
@@ -96,7 +115,7 @@ def create_timesheet(source, activity_type, from_time, to_time, *, customer, pro
 					"to_time": bis,
 					"project": project or None,
 					"description": description or source.name,
-					"is_billable": 1,
+					"is_billable": abrechenbar,
 					"billing_hours": stunden,
 					"custom_sales_order": sales_order or None,
 				}

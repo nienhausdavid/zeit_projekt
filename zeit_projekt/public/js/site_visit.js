@@ -264,6 +264,21 @@ function show_create_sales_order_dialog(frm) {
 					default: frm.doc.activity_type,
 					description: __('Ihr Dienstleistungsartikel wird die erste Position des Auftrags (Preis 0 – die Zeit wird über das Zeitblatt abgerechnet).'),
 				},
+				{
+					fieldname: 'abrechnungsart',
+					fieldtype: 'Select',
+					label: __('Abrechnung'),
+					options: [__('Nach Aufwand'), __('Pauschale')].join('\n'),
+					default: __('Nach Aufwand'),
+					description: __('Nach Aufwand: Zeit und Kilometer werden einzeln abgerechnet. Pauschale: sie werden nur erfasst, den Preis trägt der Vertrieb im Auftrag ein.'),
+				},
+				{
+					fieldname: 'geplante_stunden',
+					fieldtype: 'Float',
+					label: __('Geplante Stunden'),
+					non_negative: 1,
+					description: __('Optional: eingeplante Zeit. Die gebuchte Zeit wird dagegen gerechnet.'),
+				},
 			],
 			primary_action_label: __('Auftrag anlegen'),
 			primary_action(values) {
@@ -273,6 +288,9 @@ function show_create_sales_order_dialog(frm) {
 						customer: values.customer,
 						activity_type: values.activity_type,
 						po_no: values.po_no,
+						// Der Server kennt nur die deutschen Werte; __() liefert in anderen Sprachen die Uebersetzung
+						abrechnungsart: values.abrechnungsart === __('Pauschale') ? 'Pauschale' : 'Nach Aufwand',
+						geplante_stunden: values.geplante_stunden || 0,
 						project: frm.doc.project || null,
 						company: frm.doc.company || null,
 						date: frm.doc.date || null,

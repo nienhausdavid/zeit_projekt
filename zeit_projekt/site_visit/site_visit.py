@@ -1,9 +1,11 @@
 import erpnext
 import frappe
 from frappe import _
-from frappe.utils import cint, get_datetime, getdate, nowdate
+from frappe.utils import cint, flt, get_datetime, getdate, nowdate
 
 from zeit_projekt.zeit_projekt.billing import (
+	ABRECHNUNG_AUFWAND,
+	ABRECHNUNG_PAUSCHALE,
 	add_rows_to_sales_order,
 	as_administrator,
 	cancel_timesheet,
@@ -111,7 +113,17 @@ def get_sales_order_form():
 
 
 @frappe.whitelist()
-def create_sales_order(customer, activity_type, po_no=None, project=None, company=None, date=None, site_visit=None):
+def create_sales_order(
+	customer,
+	activity_type,
+	po_no=None,
+	project=None,
+	company=None,
+	date=None,
+	site_visit=None,
+	abrechnungsart=None,
+	geplante_stunden=None,
+):
 	"""Fuer den "Neuer Auftrag"-Dialog: legt einen Auftrag (Entwurf) an - auch
 	aus einem noch nicht gespeicherten Kundeneinsatz, denn der Auftrag ist dort
 	Pflicht. Buchen bleibt Sache des Vertriebs.
@@ -122,8 +134,16 @@ def create_sales_order(customer, activity_type, po_no=None, project=None, compan
 	Preis 0 im Auftrag, nur als Hinweis. Zusatzartikel kommen beim Buchen des
 	Einsatzes dazu (billing.add_rows_to_sales_order).
 
-	Die Kommissionsnummer landet in po_no."""
+	Die Kommissionsnummer landet in po_no. abrechnungsart: "Nach Aufwand" (Standard) oder "Pauschale"
+	(Zeit und Kilometer werden nicht einzeln abgerechnet - den Pauschalpreis traegt der Vertrieb in
+	der Position ein); geplante_stunden: optional, das Zeitbudget des Auftrags."""
 	_check_create_access()
+	abrechnungsart = abrechnungsart or ABRECHNUNG_AUFWAND
+	if abrechnungsart not in (ABRECHNUNG_AUFWAND, ABRECHNUNG_PAUSCHALE):
+		frappe.throw(_("Ungültige Abrechnungsart: {0}").format(frappe.bold(abrechnungsart)))
+	geplante_stunden = flt(geplante_stunden)
+	if geplante_stunden < 0:
+		frappe.throw(_("Die geplanten Stunden dürfen nicht negativ sein."))
 	if not frappe.db.exists("Customer", {"name": customer, "disabled": 0}):
 		frappe.throw(_("Kunde {0} existiert nicht oder ist gesperrt.").format(frappe.bold(customer)))
 	if project:
@@ -158,6 +178,8 @@ def create_sales_order(customer, activity_type, po_no=None, project=None, compan
 				"company": company or erpnext.get_default_company(),
 				"project": project or None,
 				"po_no": (po_no or "").strip() or None,
+				"custom_abrechnungsart": abrechnungsart,
+				"custom_geplante_stunden": geplante_stunden or None,
 				# Als Text (ISO), nicht als date: ERPNext reicht transaction_date beim
 				# Zahlungsplan an get_payment_term_details weiter, und das prueft
 				# seit Frappe 16.51 in Web-Requests str | None. Mit einem date
@@ -169,7 +191,15 @@ def create_sales_order(customer, activity_type, po_no=None, project=None, compan
 		)
 		zeile = price_rows(
 			so,
-			[{"item_code": service_item, "qty": 1, "description": _("Einsatzzeit - Abrechnung nach Zeiterfassung")}],
+			[
+				{
+					"item_code": service_item,
+					"qty": 1,
+					"description": _("Pauschale - Preis bitte hier eintragen")
+					if abrechnungsart == ABRECHNUNG_PAUSCHALE
+					else _("Einsatzzeit - Abrechnung nach Zeiterfassung"),
+				}
+			],
 			throw=False,
 		)[0]
 		zeile.update({"rate": 0, "price_list_rate": 0, "discount_percentage": 0, "margin_rate_or_amount": 0})
