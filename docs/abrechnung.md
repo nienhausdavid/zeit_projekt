@@ -87,6 +87,35 @@ darunter.
 – wirkt nur, wenn die Rechnungsposition ein Feld `delivery_date` hat (siehe
 [Technik – bekannte Grenzen](technik.md#bekannte-grenzen)).
 
+## Abrechnung nach Aufwand oder Pauschale, geplante Stunden
+
+Im Auftrag stehen zwei Felder (auch nach dem Bestätigen änderbar), im Dialog
+**„Neuer Auftrag“** (Kundeneinsatz) lassen sie sich gleich wählen:
+
+- **Abrechnung:** *Nach Aufwand* (Standard; auch alle bisherigen Aufträge) oder
+  *Pauschale*. Bei Pauschale werden Zeit und Fahrt-Kilometer weiter erfasst,
+  aber **nicht einzeln abgerechnet**: das Zeitblatt wird mit nicht abrechenbaren
+  Zeilen angelegt, der Zeitimport der Rechnung und die Abrechnungsansicht
+  führen sie nicht auf, und die Kilometer stecken im Pauschalpreis. Den Preis
+  trägt der Vertrieb in der (zunächst mit 0 angelegten) Auftragsposition ein.
+  Die Einstellung gilt für **ab dann gebuchte** Zeit; schon gebuchte Zeiten
+  bleiben, wie sie waren.
+- **Geplante Stunden:** optional, die eingeplante Zeit.
+
+### Zeitbudget (Anzeige mit Farbe und Prozent)
+
+Mit geplanten Stunden zeigt der Auftrag, der Kundeneinsatz und die Fahrt (sobald
+ein Auftrag gewählt ist) einen Balken: *„3,5 von 4 Std. verbraucht (87,5 %) –
+noch 0,5 Std.“*. Gezählt wird die tatsächliche Dauer aller auf den Auftrag
+gebuchten Zeitblätter – abrechenbar oder nicht, auch bei Pauschale. Farbe:
+**grün** bis 80 %, **orange** ab 80 % (100 % eingeschlossen), **rot** über
+100 %. Auch Techniker sehen das Budget des gewählten Auftrags, ohne den Auftrag
+selbst lesen zu dürfen.
+
+In der Auftrags- und Projektansicht stehen dazu die Spalten *Abrechnung*,
+*Geplant (h)*, *Verbraucht (h)* und *Verbraucht %* (farbig); Projektzeilen
+bleiben dort leer. Die Berechnung steckt in `zeitbudget.py`.
+
 ## Zusatzartikel im Auftrag
 
 Beim Buchen eines Kundeneinsatzes werden noch nicht übernommene

@@ -17,6 +17,8 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from zeit_projekt.zeit_projekt.zeitbudget import budget, verbrauchte_stunden
+
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
@@ -41,7 +43,18 @@ def execute(filters=None):
 	auftraege = frappe.get_list(
 		"Sales Order",
 		filters=auftrag_bedingungen,
-		fields=["name", "customer", "po_no", "transaction_date", "status", "project", "net_total", "per_billed"],
+		fields=[
+			"name",
+			"customer",
+			"po_no",
+			"transaction_date",
+			"status",
+			"project",
+			"net_total",
+			"per_billed",
+			"custom_abrechnungsart",
+			"custom_geplante_stunden",
+		],
 		limit=0,
 	)
 
@@ -68,6 +81,8 @@ def execute(filters=None):
 	zeit_projekt = _zeit_summen("project", projektnamen)
 	zeit_auftrag = _zeit_summen("custom_sales_order", {a.name for a in auftraege})
 	rechnungen = _rechnungsbetraege({a.name for a in auftraege})
+	# Zeitbudget: alle gebuchten Stunden des Auftrags (auch nicht abrechenbare, z. B. bei Pauschale)
+	verbraucht = verbrauchte_stunden(a.name for a in auftraege)
 	kundennamen = _kundennamen({x.customer for x in (*projekte, *auftraege) if x.customer})
 
 	oberste = [("Project", p) for p in projekte] + [("Sales Order", a) for a in ohne_projekt]
@@ -78,9 +93,9 @@ def execute(filters=None):
 		if typ == "Project":
 			daten.append(_projekt_zeile(beleg, kundennamen, zeit_projekt.get(beleg.name)))
 			for auftrag in sorted(kinder[beleg.name], key=lambda a: (a.transaction_date, a.name)):
-				daten.append(_auftrag_zeile(auftrag, kundennamen, zeit_auftrag, rechnungen, indent=1))
+				daten.append(_auftrag_zeile(auftrag, kundennamen, zeit_auftrag, rechnungen, verbraucht, indent=1))
 		else:
-			daten.append(_auftrag_zeile(beleg, kundennamen, zeit_auftrag, rechnungen, indent=0))
+			daten.append(_auftrag_zeile(beleg, kundennamen, zeit_auftrag, rechnungen, verbraucht, indent=0))
 	return _spalten(), daten
 
 
@@ -159,13 +174,19 @@ def _projekt_zeile(projekt, kundennamen, summe):
 			auftragswert=None,
 			abgerechnet=flt(projekt.total_billed_amount),
 			auftrag_prozent=None,
+			abrechnung=None,
+			geplant=None,
+			verbraucht=None,
+			budget_prozent=None,
+			budget_farbe=None,
 			indent=0,
 		),
 		summe,
 	)
 
 
-def _auftrag_zeile(auftrag, kundennamen, zeit, rechnungen, indent):
+def _auftrag_zeile(auftrag, kundennamen, zeit, rechnungen, verbraucht, indent):
+	plan = budget(auftrag.custom_geplante_stunden, verbraucht.get(auftrag.name))
 	return _zeit_felder(
 		frappe._dict(
 			beleg=auftrag.name,
@@ -179,6 +200,11 @@ def _auftrag_zeile(auftrag, kundennamen, zeit, rechnungen, indent):
 			auftragswert=flt(auftrag.net_total),
 			abgerechnet=flt(rechnungen.get(auftrag.name)),
 			auftrag_prozent=flt(auftrag.per_billed),
+			abrechnung=_(auftrag.custom_abrechnungsart or "Nach Aufwand"),
+			geplant=plan["geplant"] if plan else None,
+			verbraucht=plan["verbraucht"] if plan else None,
+			budget_prozent=plan["prozent"] if plan else None,
+			budget_farbe=plan["farbe"] if plan else None,
 			indent=indent,
 		),
 		zeit.get(auftrag.name),
@@ -208,4 +234,8 @@ def _spalten():
 		{"fieldname": "abgerechnet", "label": _("Abgerechnet"), "fieldtype": "Currency", "width": 120},
 		{"fieldname": "zeit_prozent", "label": _("Zeit berechnet %"), "fieldtype": "Percent", "width": 110},
 		{"fieldname": "auftrag_prozent", "label": _("Auftrag % berechnet"), "fieldtype": "Percent", "width": 120},
+		{"fieldname": "abrechnung", "label": _("Abrechnung"), "fieldtype": "Data", "width": 110},
+		{"fieldname": "geplant", "label": _("Geplant (h)"), "fieldtype": "Float", "precision": 2, "width": 100},
+		{"fieldname": "verbraucht", "label": _("Verbraucht (h)"), "fieldtype": "Float", "precision": 2, "width": 110},
+		{"fieldname": "budget_prozent", "label": _("Verbraucht %"), "fieldtype": "Percent", "precision": 1, "width": 110},
 	]

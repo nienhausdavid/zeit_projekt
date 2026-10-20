@@ -16,10 +16,10 @@ required_apps = ["frappe/erpnext"]
 # ---------------------------------------------------------------------------
 doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js",
-	"Sales Order": "public/js/sales_order.js",
-	"Fahrt": ["public/js/foto_warteschlange.js", "public/js/fahrtenbuch.js"],
+	"Sales Order": ["public/js/zeitbudget.js", "public/js/sales_order.js"],
+	"Fahrt": ["public/js/foto_warteschlange.js", "public/js/zeitbudget.js", "public/js/fahrtenbuch.js"],
 	"Project": "public/js/project.js",
-	"Site Visit": "public/js/site_visit.js",
+	"Site Visit": ["public/js/zeitbudget.js", "public/js/site_visit.js"],
 }
 
 # ---------------------------------------------------------------------------
