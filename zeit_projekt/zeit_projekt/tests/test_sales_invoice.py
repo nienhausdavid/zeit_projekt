@@ -2,7 +2,14 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from zeit_projekt.zeit_projekt.sales_invoice import get_billable_time_logs
-from zeit_projekt.zeit_projekt.tests.utils import KUNDE_A, KUNDE_B, MONTAGE, ensure_fixtures, make_sales_order
+from zeit_projekt.zeit_projekt.tests.utils import (
+	KUNDE_A,
+	KUNDE_B,
+	MONTAGE,
+	ensure_fixtures,
+	make_project,
+	make_sales_order,
+)
 
 
 class TestZeitimport(IntegrationTestCase):
@@ -108,3 +115,59 @@ class TestZeitimport(IntegrationTestCase):
 		self.assertEqual(
 			{frappe.db.get_value("Timesheet Detail", z, "custom_sales_order") for z in zeilen}, {so.name}
 		)
+
+	def test_projekt_abrechnen(self):
+		"""Zeiten ohne Auftrag nur auf ein Projekt gebucht: der Zeitimport holt
+		alle offenen des Projekts, die Rechnung traegt das Projekt - und der
+		Projektstand (abrechenbar/abgerechnet) stimmt danach."""
+		from frappe.utils import flt
+
+		projekt = make_project()
+		for tag in (6, 7):
+			sv = frappe.get_doc(
+				{
+					"doctype": "Site Visit",
+					"project": projekt.name,
+					"employee": self.ctx.employee,
+					"activity_type": MONTAGE,
+					"date": f"2032-03-{tag:02d}",
+					"from_time": f"2032-03-{tag:02d} 10:00:00",
+					"to_time": f"2032-03-{tag:02d} 11:30:00",
+				}
+			).insert()
+			sv.submit()
+
+		# ohne Datumsgrenzen, wie der Knopf "Projekt abrechnen"
+		r = get_billable_time_logs(KUNDE_A, project=projekt.name)
+		self.assertEqual(len(r["rows"]), 2)
+		self.assertEqual({z.project for z in r["rows"]}, {projekt.name})
+		self.assertEqual(flt(frappe.db.get_value("Project", projekt.name, "total_billable_amount")), 270)
+
+		si = frappe.get_doc(
+			{
+				"doctype": "Sales Invoice",
+				"customer": KUNDE_A,
+				"company": self.ctx.company,
+				"project": projekt.name,
+				"items": [
+					{
+						"item_code": "ZP-MONTAGE",
+						"qty": flt(z.billing_hours),
+						"project": z.project,
+						# der Import schreibt Datum/Uhrzeit hinein - so sind gleiche Artikel unterscheidbar
+						"description": f"{z.from_time}-{z.to_time}",
+					}
+					for z in r["rows"]
+				],
+				"timesheets": [
+					{"time_sheet": z.time_sheet, "timesheet_detail": z.name, "billing_hours": z.billing_hours}
+					for z in r["rows"]
+				],
+			}
+		)
+		si.set_missing_values()
+		si.insert()
+		si.submit()
+
+		self.assertEqual(flt(frappe.db.get_value("Project", projekt.name, "total_billed_amount")), flt(si.net_total))
+		self.assertEqual(get_billable_time_logs(KUNDE_A, project=projekt.name)["rows"], [])

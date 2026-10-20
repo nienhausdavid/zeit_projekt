@@ -5,9 +5,9 @@ sauber abrechnen.
 
 | Bereich | Was es tut |
 |---|---|
-| **Kundeneinsatz** (Site Visit) | Einsatz vor Ort mit Timer und Pausen, Fotos, Kundenunterschrift und Zusatzmaterial dokumentieren; Auftrag ist Pflicht und lässt sich direkt mit Kommissionsnummer anlegen; beim Buchen entsteht automatisch ein Zeitblatt. |
+| **Kundeneinsatz** (Site Visit) | Einsatz vor Ort mit Timer und Pausen, Fotos, Kundenunterschrift und Zusatzmaterial dokumentieren; Auftrag oder Projekt ist Pflicht, ein Auftrag lässt sich direkt mit Kommissionsnummer anlegen; beim Buchen entsteht automatisch ein Zeitblatt. |
 | **Fahrtenbuch** | Fahrten mit Timer und Kilometerstand (optional per Fotoerkennung) erfassen; beim Buchen entsteht ein Zeitblatt für die Fahrzeit. |
-| **Zeitimport in der Ausgangsrechnung** | Holt offene Zeiten und Fahrt-Kilometer des Rechnungskunden als Einzelpositionen in die Rechnung. |
+| **Zeitimport in der Ausgangsrechnung** | Holt offene Zeiten und Fahrt-Kilometer des Rechnungskunden als Einzelpositionen in die Rechnung; im Projekt legt „Projekt abrechnen" die Rechnung samt Import an. |
 | **Projekt aus Auftrag** | Haken im Auftrag legt beim Bestätigen automatisch ein Projekt an und verknüpft es. |
 
 ## Abrechnung auf einen Blick

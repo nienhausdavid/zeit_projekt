@@ -41,6 +41,26 @@ Fahrt als abgerechnet; eine zweite Rechnung mit derselben Fahrt wird
 abgelehnt, ebenso eine Fahrt eines anderen Kunden. Stornieren der Rechnung
 hebt die Markierung wieder auf.
 
+### Projekt abrechnen
+
+Zeiten lassen sich auch **nur auf ein Projekt** buchen, ohne Auftrag: im
+[Kundeneinsatz](site_visit.md#auftrag) (Auftrag oder Projekt), in der Fahrt
+(Projekt) oder von Hand im Zeitblatt (Projekt in der Zeile). ERPNext führt
+die Stunden am Projekt (*Abrechenbarer Betrag*).
+
+Im Projekt legt **Erstellen → Projekt abrechnen** eine neue Ausgangsrechnung
+für den Kunden des Projekts an (er muss im Projekt stehen) und holt gleich
+alle noch nicht abgerechneten Zeiten und Fahrt-Kilometer des Projekts herein
+– derselbe Import wie „Zeiten aus Zeiterfassung importieren", nur ohne
+Datumsgrenzen. Die Rechnung bleibt ein Entwurf zum Prüfen. Der Rechnungskopf
+trägt das Projekt, jede Zeitposition zusätzlich ihr eigenes (bei Rechnungen
+über mehrere Projekte): so stimmt der Projektstand *Abgerechneter Betrag*
+nach dem Buchen. Wird nur ein Teil importiert oder später weitergebucht,
+holt der nächste Import nur das Neue.
+
+Zeiten mit **Auftrag und Projekt** erscheinen bei beiden Wegen; abgerechnet
+wird jede Zeitbuchung nur einmal (ERPNext markiert sie in der Rechnung).
+
 ### Aktivitätsarten und Artikel (Zeit Projekt Einstellungen)
 
 Die Tabelle *Aktivitätsarten und Artikel* zeigt alle aktiven Aktivitätsarten

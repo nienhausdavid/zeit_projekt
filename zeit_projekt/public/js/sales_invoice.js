@@ -59,8 +59,9 @@
 					customer: frm.doc.customer,
 					project: v.project || undefined,
 					sales_order: v.sales_order || undefined,
-					from_time: v.from_date + ' 00:00:00',
-					to_time: v.to_date + ' 23:59:59',
+					// ohne Datumsgrenzen (z. B. "Projekt abrechnen"): alles Offene
+					from_time: v.from_date ? v.from_date + ' 00:00:00' : undefined,
+					to_time: v.to_date ? v.to_date + ' 23:59:59' : undefined,
 				},
 			});
 			const antwort = r.message || {};
@@ -141,6 +142,10 @@
 				const row = frm.add_child('items', {});
 				await frappe.model.set_value(row.doctype, row.name, 'item_code', artikel);
 				await frappe.model.set_value(row.doctype, row.name, 'qty', flt(t.billing_hours) || 1);
+				// Projekt der Zeitbuchung: ERPNext fuehrt "abgerechnet" am Projekt
+				// ueber den Rechnungskopf ODER die Position - auch ohne Projekt im
+				// Kopf (Rechnung ueber mehrere Projekte) soll es stimmen.
+				if (t.project) await frappe.model.set_value(row.doctype, row.name, 'project', t.project);
 
 				// Satz der Aktivitätsart (nur Fallback)
 				let akt_satz = 0;
@@ -211,6 +216,7 @@
 				await frappe.model.set_value(row.doctype, row.name, 'qty', flt(f.distance_km));
 				await frappe.model.set_value(row.doctype, row.name, 'description', f.description);
 				await frappe.model.set_value(row.doctype, row.name, 'custom_fahrt', f.name);
+				if (f.project) await frappe.model.set_value(row.doctype, row.name, 'project', f.project);
 				if (!flt(locals[row.doctype][row.name].rate)) {
 					ohne_preis.push(f.name + ' (' + f.km_item + ')');
 				}
@@ -274,6 +280,10 @@
 			frappe.msgprint({ title: __('Fehler beim Import'), indicator: 'red', message: (e && e.message) || String(e) });
 		}
 	}
+
+	// Fuer "Projekt abrechnen" im Projekt-Formular (project.js)
+	window.zeit_projekt = window.zeit_projekt || {};
+	window.zeit_projekt.zeiten_importieren = zeiten_importieren;
 
 	frappe.ui.form.on('Sales Invoice', {
 		refresh(frm) {
