@@ -401,3 +401,4 @@
 "Geplant (h)","Planned (h)"
 "Verbraucht (h)","Used (h)"
 "Verbraucht %","Used %"
+"Zeile {0}: Artikel {1} ist ein Dienstleistungsartikel und kann nicht als Zusatzartikel gebucht werden.","Row {0}: Item {1} is a service item and cannot be booked as an additional item."

@@ -136,6 +136,21 @@ def excluded_item_groups():
 	return gruppen
 
 
+def gesperrte_artikel():
+	"""Dienstleistungsartikel, die als Zusatzartikel nicht waehlbar sind: die Artikel der
+	Aktivitaetsarten (Zeit wird ueber das Zeitblatt abgerechnet, nicht als Position) und der
+	Kilometer-Artikel (kommt aus der Fahrt). Wie excluded_item_groups ohne Rechtepruefung gelesen."""
+	artikel = set(
+		frappe.get_all(
+			"Activity Type", filters={"custom_dienstleistungsartikel": ["is", "set"]}, pluck="custom_dienstleistungsartikel"
+		)
+	)
+	km_artikel = frappe.db.get_single_value("Zeit Projekt Einstellungen", "km_item")
+	if km_artikel:
+		artikel.add(km_artikel)
+	return artikel
+
+
 @frappe.whitelist()
 def get_einstellungen():
 	"""Einstellungen fuer das Formular-Skript. Faellt auf die Standardwerte

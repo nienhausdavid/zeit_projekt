@@ -276,6 +276,36 @@ class TestTechnikerRechte(IntegrationTestCase):
 		self.assertEqual(sorted(a.name for a in auftraege), sorted(namen))
 		self.assertTrue(all(a.po_no and a.transaction_date for a in auftraege))
 
+	def test_dienstleistungsartikel_sind_keine_zusatzartikel(self):
+		vorher = frappe.db.get_single_value("Zeit Projekt Einstellungen", "km_item")
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "km_item", "ZP-KM")
+		try:
+			frappe.set_user(TECH)
+			gefunden = [a[0] for a in self.search(technician.item_query, "Item", "ZP-")]
+			self.assertIn("ZP-ADAPTER", gefunden)
+			for gesperrt in ("ZP-MONTAGE", "ZP-FAHRZEIT", "ZP-KM"):  # Artikel der Aktivitaetsarten, Kilometer
+				self.assertNotIn(gesperrt, gefunden)
+
+			frappe.set_user("Administrator")
+			so = make_sales_order(self.ctx.company)
+			for code in ("ZP-MONTAGE", "ZP-KM"):
+				sv = frappe.get_doc(
+					{
+						"doctype": "Site Visit",
+						"sales_order": so.name,
+						"employee": self.ctx.employee,
+						"activity_type": "ZP Montage",
+						"date": "2031-07-02",
+						"from_time": "2031-07-02 10:00:00",
+						"extra_items": [{"item_code": code, "qty": 1}],
+					}
+				)
+				with self.assertRaises(frappe.ValidationError):
+					sv.insert()
+		finally:
+			frappe.set_user("Administrator")
+			frappe.db.set_single_value("Zeit Projekt Einstellungen", "km_item", vorher)
+
 	def test_ausgeschlossene_artikelgruppen(self):
 		wurzel = frappe.db.get_value("Item Group", {"parent_item_group": ["in", ["", None]]}, "name")
 		oben = frappe.get_doc(
