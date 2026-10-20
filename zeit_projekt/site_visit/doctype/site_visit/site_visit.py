@@ -93,17 +93,25 @@ class SiteVisit(Document):
 				row.uom = row.uom or stock_uom
 
 	def validate_extra_item_groups(self):
-		"""Die Artikelsuche blendet ausgeschlossene Gruppen aus - hier dasselbe
-		fuer Eingaben ueber API/Import. Bereits uebernommene Zeilen bleiben."""
+		"""Die Artikelsuche blendet ausgeschlossene Gruppen und Dienstleistungsartikel aus - hier
+		dasselbe fuer Eingaben ueber API/Import. Bereits uebernommene Zeilen bleiben."""
 		from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
 			excluded_item_groups,
+			gesperrte_artikel,
 		)
 
 		ausgeschlossen = excluded_item_groups()
-		if not ausgeschlossen:
-			return
+		gesperrt = gesperrte_artikel()
 		for row in self.extra_items:
 			if not row.item_code or row.added_to_order:
+				continue
+			if row.item_code in gesperrt:
+				frappe.throw(
+					_("Zeile {0}: Artikel {1} ist ein Dienstleistungsartikel und kann nicht als Zusatzartikel gebucht werden.").format(
+						row.idx, frappe.bold(row.item_code)
+					)
+				)
+			if not ausgeschlossen:
 				continue
 			gruppe = frappe.db.get_value("Item", row.item_code, "item_group")
 			if gruppe in ausgeschlossen:

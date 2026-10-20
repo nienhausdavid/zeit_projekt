@@ -66,6 +66,13 @@ In *Zeit Projekt Einstellungen → Ausgeschlossene Artikelgruppen* lassen sich
 Gruppen (inkl. Untergruppen, meist die Dienstleistungen) als Zusatzartikel
 sperren: Die Artikelsuche zeigt sie nicht, und Speichern lehnt sie ab.
 
+**Dienstleistungsartikel** sind immer gesperrt, ohne Einstellung: die Artikel
+der Aktivitätsarten (Feld *Dienstleistungsartikel*) und der Kilometer-Artikel
+aus den Einstellungen. Ihre Leistung wird über das Zeitblatt bzw. die Fahrt
+abgerechnet, nicht als Zusatzposition. Ein Dienstleistungsartikel, der keiner
+Aktivitätsart zugeordnet ist, bleibt wählbar – dann in die Ausgeschlossenen
+Artikelgruppen aufnehmen oder einer Aktivitätsart zuordnen.
+
 ## Stornieren und Berichtigen
 
 Stornieren (Projects Manager/System Manager) storniert das Zeitblatt und

@@ -89,6 +89,7 @@ def sales_order_query(doctype, txt, searchfield, start, page_len, filters, **kwa
 def item_query(doctype, txt, searchfield, start, page_len, filters, **kwargs):
 	from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
 		excluded_item_groups,
+		gesperrte_artikel,
 	)
 
 	_check_access()
@@ -96,6 +97,9 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, **kwargs):
 	ausgeschlossen = excluded_item_groups()
 	if ausgeschlossen:
 		conditions["item_group"] = ["not in", list(ausgeschlossen)]
+	gesperrt = gesperrte_artikel()
+	if gesperrt:
+		conditions["name"] = ["not in", list(gesperrt)]
 	return _search(
 		"Item",
 		txt,
