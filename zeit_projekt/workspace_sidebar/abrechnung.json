@@ -1,0 +1,65 @@
+{
+ "app": "zeit_projekt",
+ "creation": "2026-10-20 18:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "banknote",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "file-chart-column",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Abrechnungsansicht",
+   "link_to": "Abrechnungsansicht",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "folder-tree",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Auftrags- und Projektansicht",
+   "link_to": "Auftrags- und Projektansicht",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "file-text",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Ausgangsrechnung",
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "calendar-clock",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Zeiterfassung",
+   "link_to": "Timesheet",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-20 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Zeit Projekt",
+ "name": "Abrechnung",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Abrechnung"
+}

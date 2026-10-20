@@ -23,8 +23,11 @@ def ensure_fixtures():
 	company = frappe.db.get_single_value("Global Defaults", "default_company")
 	abbr = frappe.db.get_value("Company", company, "abbr")
 	# Das Standardlager liegt seit ERPNext 16.51 an der Firma (frueher in den Lager-Einstellungen)
-	if not frappe.db.get_value("Company", company, "default_warehouse"):
-		frappe.db.set_value("Company", company, "default_warehouse", f"Stores - {abbr}")
+	if frappe.get_meta("Company").has_field("default_warehouse"):
+		if not frappe.db.get_value("Company", company, "default_warehouse"):
+			frappe.db.set_value("Company", company, "default_warehouse", f"Stores - {abbr}")
+	elif not frappe.db.get_single_value("Stock Settings", "default_warehouse"):
+		frappe.db.set_single_value("Stock Settings", "default_warehouse", f"Stores - {abbr}")
 	frappe.db.set_single_value("Selling Settings", "allow_multiple_items", 0)
 
 	for uom in ("Hour", "Nos"):
@@ -123,6 +126,17 @@ def make_sales_order(company, customer=KUNDE_A, submit=True):
 	if submit:
 		so.submit()
 	return so
+
+
+def make_project(customer=KUNDE_A, status="Open"):
+	return frappe.get_doc(
+		{
+			"doctype": "Project",
+			"project_name": f"ZP Projekt {frappe.generate_hash(length=6)}",
+			"customer": customer,
+			"status": status,
+		}
+	).insert()
 
 
 def sales_order_rows(name):

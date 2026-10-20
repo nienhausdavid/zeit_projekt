@@ -35,21 +35,22 @@ def get_billable_time_logs(customer, project=None, from_time=None, to_time=None,
 
 
 def _set_sales_orders(rows):
-	"""Auftrag je Zeitbuchung. sales_order nur bei gebuchtem Auftrag - die
+	"""Auftrag und Projekt je Zeitbuchung. sales_order nur bei gebuchtem Auftrag - die
 	Rechnung uebernimmt ihn in ihre Position (Feld sales_order), und ERPNext
 	vergleicht dabei Kunde, Firma, Projekt und Waehrung mit dem Auftrag. Das
 	Projekt des Auftrags (so_project) prueft das Formular gegen das der
 	Rechnung."""
 	if not rows:
 		return
-	auftrag_of = dict(
-		frappe.get_all(
+	details = {
+		d.name: d
+		for d in frappe.get_all(
 			"Timesheet Detail",
 			filters={"name": ["in", [r.name for r in rows]]},
-			fields=["name", "custom_sales_order"],
-			as_list=True,
+			fields=["name", "custom_sales_order", "project"],
 		)
-	)
+	}
+	auftrag_of = {name: d.custom_sales_order for name, d in details.items()}
 	auftraege = {a for a in auftrag_of.values() if a}
 	info = (
 		{
@@ -63,6 +64,9 @@ def _set_sales_orders(rows):
 	)
 	for row in rows:
 		row.custom_sales_order = auftrag_of.get(row.name)
+		# Projekt der Zeitbuchung: kommt in die Rechnungsposition, damit der
+		# Projektstand (abgerechnet) auch ohne Projekt im Rechnungskopf stimmt
+		row.project = details[row.name].project if row.name in details else None
 		so = info.get(row.custom_sales_order)
 		row.sales_order = so.name if so and so.docstatus == 1 else None
 		row.so_project = so.project if so else None

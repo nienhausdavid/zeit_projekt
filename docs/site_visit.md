@@ -6,13 +6,22 @@ direkt auf dem eigenen Gerät und zusätzlich benötigtes Material.
 
 ## Auftrag
 
-Jeder Einsatz gehört zu einem **Auftrag** – Pflicht schon beim Speichern.
-Kunde und (falls leer) Projekt kommen aus dem Auftrag; ein Auftrag eines
-anderen Kunden oder ein abgeschlossener/stornierter wird abgelehnt.
+Jeder Einsatz gehört zu einem **Auftrag oder einem Projekt** (oder beidem) –
+Pflicht schon beim Speichern. Kunde und (falls leer) Projekt kommen aus dem
+Auftrag, sonst der Kunde aus dem Projekt; ein Auftrag oder Projekt eines
+anderen Kunden, ein abgeschlossener oder stornierter Auftrag und ein
+storniertes Projekt werden abgelehnt.
 
+- **Nur Projekt (ohne Auftrag):** Die Zeit wird auf das Projekt gebucht und
+  später über das Projekt abgerechnet – siehe
+  [Abrechnung – Projekt abrechnen](abrechnung.md#projekt-abrechnen).
+  **Zusatzartikel gehen dann nicht:** sie werden über den Auftrag
+  abgerechnet; wer Material braucht, wählt einen Auftrag oder legt über
+  „Neuer Auftrag" einen an.
 - **Projekt gewählt:** Gibt es genau einen offenen Auftrag dazu, wird er
-  übernommen; bei mehreren erscheint ein Auswahldialog (Auftrag,
-  Kommissionsnummer, Datum).
+  übernommen (im Feld leerbar, wenn nur auf das Projekt gebucht werden soll);
+  bei mehreren erscheint ein Auswahldialog (Auftrag, Kommissionsnummer,
+  Datum) mit der Wahl „Kein Auftrag – direkt auf das Projekt buchen".
 - **Noch kein Auftrag:** Knopf **„Neuer Auftrag"** direkt unter dem Feld
   *Auftrag* (und oben im Formular) – auch im noch nicht gespeicherten Einsatz. Im Dialog Kunde, **Kommissionsnummer** und
   Aktivitätsart. Die Kommissionsnummer steht im Auftragsfeld `po_no` (je nach
@@ -26,7 +35,8 @@ anderen Kunden oder ein abgeschlossener/stornierter wird abgelehnt.
 ## Buchen
 
 Vor dem Buchen geprüft: Aktivitätsart und Endzeit gesetzt, alle Pausen
-beendet, der Auftrag ist offen und gehört zum Kunden.
+beendet, ein vorhandener Auftrag ist offen und gehört zum Kunden, ein
+vorhandenes Projekt ist nicht storniert und gehört zum Kunden.
 
 Beim Buchen entsteht automatisch ein **Zeitblatt** (Aktivitätsart des
 Einsatzes, Kunde, Projekt, Auftrag, Stundensatz der Aktivitätsart), gebucht
@@ -65,7 +75,8 @@ Einsatz übernimmt die Artikel beim erneuten Buchen genau einmal.
 
 „Timer starten"/„Timer stoppen" speichern sofort (wie im Fahrtenbuch);
 Aktivitätsart und Endzeit werden deshalb erst beim Buchen geprüft. Starten
-geht erst mit Auftrag, sonst ließe sich der Einsatz nicht speichern.
+geht erst mit Auftrag oder Projekt, sonst ließe sich der Einsatz nicht
+speichern.
 
 **„Timer pausieren"** fragt einen Grund ab (*Pause*, *Notfall bei anderem
 Kunden*, *Sonstiges*) und eine optionale Notiz und legt eine Zeile unter

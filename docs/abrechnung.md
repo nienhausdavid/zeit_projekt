@@ -41,6 +41,26 @@ Fahrt als abgerechnet; eine zweite Rechnung mit derselben Fahrt wird
 abgelehnt, ebenso eine Fahrt eines anderen Kunden. Stornieren der Rechnung
 hebt die Markierung wieder auf.
 
+### Projekt abrechnen
+
+Zeiten lassen sich auch **nur auf ein Projekt** buchen, ohne Auftrag: im
+[Kundeneinsatz](site_visit.md#auftrag) (Auftrag oder Projekt), in der Fahrt
+(Projekt) oder von Hand im Zeitblatt (Projekt in der Zeile). ERPNext führt
+die Stunden am Projekt (*Abrechenbarer Betrag*).
+
+Im Projekt legt **Erstellen → Projekt abrechnen** eine neue Ausgangsrechnung
+für den Kunden des Projekts an (er muss im Projekt stehen) und holt gleich
+alle noch nicht abgerechneten Zeiten und Fahrt-Kilometer des Projekts herein
+– derselbe Import wie „Zeiten aus Zeiterfassung importieren", nur ohne
+Datumsgrenzen. Die Rechnung bleibt ein Entwurf zum Prüfen. Der Rechnungskopf
+trägt das Projekt, jede Zeitposition zusätzlich ihr eigenes (bei Rechnungen
+über mehrere Projekte): so stimmt der Projektstand *Abgerechneter Betrag*
+nach dem Buchen. Wird nur ein Teil importiert oder später weitergebucht,
+holt der nächste Import nur das Neue.
+
+Zeiten mit **Auftrag und Projekt** erscheinen bei beiden Wegen; abgerechnet
+wird jede Zeitbuchung nur einmal (ERPNext markiert sie in der Rechnung).
+
 ### Aktivitätsarten und Artikel (Zeit Projekt Einstellungen)
 
 Die Tabelle *Aktivitätsarten und Artikel* zeigt alle aktiven Aktivitätsarten
@@ -110,6 +130,55 @@ weiter ERPNext allein.
 Den Lieferstatus ändert das nicht: Ein Auftrag nur mit Dienstleistungen
 bleibt in ERPNext „Zu liefern", solange nicht *Lieferschein überspringen*
 gesetzt ist (in ERPNext nur bei Auftragsart *Maintenance* sichtbar).
+
+## Ansichten: was ist abzurechnen, wo steht welcher Auftrag?
+
+Zwei Berichte in der Seitenleiste **Abrechnung** (Desk-Symbol „Zeit & Projekt“
+→ *Abrechnung*).
+
+### Abrechnungsansicht
+
+Zeigt, **was noch abzurechnen ist**: gebuchte, abrechenbare Zeitbuchungen
+und Fahrt-Kilometer, die in keiner gebuchten Rechnung stehen – dieselben, die
+der Zeitimport der Ausgangsrechnung holt. Eine Zeile je Kunde, Auftrag und
+Projekt, mit Kommission, Zeitbuchungen, offenen Stunden, **offenem Betrag**
+(Abrechnungsbetrag der Zeitblätter), offenen Kilometern und dem ältesten
+offenen Eintrag; unten die Summe.
+
+- **davon im Rechnungsentwurf:** Zeiten, die schon in einer *noch nicht
+  gebuchten* Rechnung stehen, gelten in ERPNext weiter als offen – hier sind
+  sie gekennzeichnet, damit nichts doppelt abgerechnet wird.
+- **Kunde fehlt:** Zeiten ohne Kunde (weder am Projekt noch im Zeitblatt)
+  kann der Import nicht übernehmen – sie stehen hier mit diesem Hinweis.
+- Filter: Kunde, Projekt, Auftrag, Zeitraum (nach Beginn der Zeitbuchung).
+- Zum Abrechnen: im Projekt *Erstellen → Projekt abrechnen*, sonst in einer
+  neuen Ausgangsrechnung *Zeiten aus Zeiterfassung importieren*.
+- Sichtbar für *Accounts User* und *Projects User* (Berichtsrecht auf
+  Zeitblätter).
+
+### Auftrags- und Projektansicht
+
+**Aufträge und Projekte in einer Liste**, als Baum: Ein Projekt steht mit
+seinen Aufträgen darunter (eingerückt, über die Pfeile auf- und zuklappbar),
+Aufträge ohne Projekt stehen auf der obersten Ebene daneben. Je Zeile Kunde,
+Projektname bzw. Kommission, Status, Datum und:
+
+| Spalte | Bedeutung |
+|---|---|
+| Auftragswert | Nettosumme des Auftrags (nur Aufträge) |
+| Stunden gebucht / offen | abrechenbare Zeitbuchungen auf das Projekt bzw. den Auftrag, davon noch nicht abgerechnet |
+| Zeit offen (Betrag) | Abrechnungsbetrag der offenen Zeiten |
+| Abgerechnet | Projekt: abgerechneter Betrag laut ERPNext; Auftrag: Summe der Rechnungspositionen dieses Auftrags (auch aus dem Zeitimport) |
+| Zeit berechnet % | Anteil der gebuchten Stunden, die in gebuchten Rechnungen stehen |
+| Auftrag % berechnet | „% berechnet" des Auftrags laut ERPNext (siehe [Abrechnungsstand](#abrechnungsstand-des-auftrags)) |
+
+Die Zahlen einer Projektzeile umfassen alles, was auf das Projekt gebucht
+ist – auch die Zeiten, die zugleich auf einen Auftrag darunter laufen. Eine
+Summenzeile gibt es deshalb nicht. Filter: Kunde, Projekt (zeigt es samt
+seinen Aufträgen) und *Abgeschlossene ausblenden* (Standard an: fertige und
+stornierte Projekte, geschlossene und abgeschlossene Aufträge). Sichtbar für
+*Projects User* und *Projects Manager*; gelesen wird mit deren Rechten auf
+Projekt und Auftrag.
 
 ## Projekt aus Auftrag
 
