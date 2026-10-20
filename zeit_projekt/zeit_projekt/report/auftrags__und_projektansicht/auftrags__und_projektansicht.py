@@ -45,6 +45,17 @@ def execute(filters=None):
 		limit=0,
 	)
 
+	# Ist ein Projekt abgeschlossen (ausgeblendet), seine Auftraege aber noch offen, bleibt es als
+	# Kopfzeile stehen - sonst loest sich der Bezug zum Projekt auf.
+	fehlend = {a.project for a in auftraege if a.project} - {p.name for p in projekte}
+	if fehlend:
+		projekte += frappe.get_list(
+			"Project",
+			filters={"name": ["in", list(fehlend)]},
+			fields=["name", "project_name", "customer", "status", "expected_start_date", "total_billed_amount"],
+			limit=0,
+		)
+
 	projektnamen = {p.name for p in projekte}
 	kinder = defaultdict(list)
 	ohne_projekt = []
