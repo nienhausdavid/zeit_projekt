@@ -2,7 +2,7 @@ import math
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, format_date
+from frappe.utils import cint, flt, format_date, get_datetime
 
 from zeit_projekt.zeit_projekt.billing import cancel_timesheet, create_timesheet
 from zeit_projekt.zeit_projekt.pausen import arbeitsabschnitte
@@ -22,7 +22,7 @@ def before_submit(doc, method=None):
 		description=positionstext(doc, _("Fahrzeit")),
 		# Mit Pausen je Arbeitsabschnitt eine Zeile; die Taktung gilt fuer die Summe der
 		# Abschnitte (siehe billing.abrechenbare_zeilenstunden).
-		billing_hours=abrechenbare_stunden(doc.duration_hours),
+		billing_hours=abrechenbare_stunden(fahrzeit_stunden(doc)),
 		segments=arbeitsabschnitte(doc) if doc.breaks else None,
 		sales_order=doc.sales_order,
 	)
@@ -34,6 +34,14 @@ def on_cancel(doc, method=None):
 			_("Die Kilometer dieser Fahrt wurden bereits in {0} abgerechnet.").format(doc.km_sales_invoice)
 		)
 	cancel_timesheet(doc.timesheet)
+
+
+def fahrzeit_stunden(doc):
+	"""Fahrzeit (ohne Pausen) aus den Zeitstempeln, nicht aus duration_hours: das ist auf zwei
+	Stellen gerundet, und aus 15 min 12 s wuerde so bei Takt 1 Minute eine Abrechnung unter der
+	tatsaechlichen Zeit."""
+	abschnitte = arbeitsabschnitte(doc) if doc.breaks else [(get_datetime(doc.start_time), get_datetime(doc.end_time))]
+	return sum((bis - ab).total_seconds() for ab, bis in abschnitte) / 3600
 
 
 def abrechenbare_stunden(stunden):

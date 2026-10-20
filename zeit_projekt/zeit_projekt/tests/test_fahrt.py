@@ -159,6 +159,13 @@ class TestFahrt(IntegrationTestCase):
 		self.assertAlmostEqual(flt(log.hours), 50 / 60, places=3)
 		self.assertEqual(flt(log.billing_hours), 1.0)
 
+	def test_taktung_rundet_nicht_unter_die_tatsaechliche_zeit(self):
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "rounding_minutes", 1)
+		f = self.fahrt("2031-03-11 10:00:00", "2031-03-11 10:15:12")  # 15 min 12 s
+		f.submit()
+		log = frappe.get_doc("Timesheet", f.timesheet).time_logs[0]
+		self.assertAlmostEqual(flt(log.billing_hours), 16 / 60, places=3)
+
 	def test_pflichtfelder_vor_dem_buchen(self):
 		ohne_km = self.fahrt("2031-03-12 08:00:00", "2031-03-12 09:00:00", km=(0, 0), bill_km=0)
 		ohne_km.reload()
