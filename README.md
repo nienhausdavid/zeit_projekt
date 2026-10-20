@@ -8,6 +8,7 @@ sauber abrechnen.
 | **Kundeneinsatz** (Site Visit) | Einsatz vor Ort mit Timer und Pausen, Fotos, Kundenunterschrift und Zusatzmaterial dokumentieren; Auftrag oder Projekt ist Pflicht, ein Auftrag lässt sich direkt mit Kommissionsnummer anlegen; beim Buchen entsteht automatisch ein Zeitblatt. |
 | **Fahrtenbuch** | Fahrten mit Timer und Kilometerstand (optional per Fotoerkennung) erfassen; beim Buchen entsteht ein Zeitblatt für die Fahrzeit. |
 | **Zeitimport in der Ausgangsrechnung** | Holt offene Zeiten und Fahrt-Kilometer des Rechnungskunden als Einzelpositionen in die Rechnung; im Projekt legt „Projekt abrechnen" die Rechnung samt Import an. |
+| **Ansichten** | *Abrechnungsansicht*: was ist noch abzurechnen (je Kunde, Auftrag, Projekt). *Auftrags- und Projektansicht*: Aufträge und Projekte kombiniert als Baum, mit gebuchten, offenen und abgerechneten Beträgen. |
 | **Projekt aus Auftrag** | Haken im Auftrag legt beim Bestätigen automatisch ein Projekt an und verknüpft es. |
 
 ## Abrechnung auf einen Blick
@@ -67,7 +68,7 @@ Installation bricht sonst ab.
    erhalten.
 
 Auf dem Desk erscheint ein App-Symbol **„Zeit & Projekt"** mit den
-Bereichen *Fahrtenbuch* und *Site Visits*.
+Bereichen *Fahrtenbuch*, *Site Visits*, *Abrechnung* und *Einstellungen*.
 
 ## Deinstallation
 
