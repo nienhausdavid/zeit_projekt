@@ -26,10 +26,12 @@ zeit_projekt/
     │       ├── sales_order.js           # Hinweise + Sprung zum Projekt nach dem Buchen
     │       ├── fahrtenbuch.js           # Fahrt: Vorbelegung, Timer, Kilometerstand-Erkennung, Standort
     │       ├── project.js               # "Fahrt mit Timer starten"
-    │       └── site_visit.js            # Kundeneinsatz: Timer/Pausen, Link-Suchen, "Neuer Auftrag"
+    │       ├── site_visit.js            # Kundeneinsatz: Timer/Pausen, Link-Suchen, "Neuer Auftrag"
+    │       └── zeitbudget.js            # Balken "Geplante Zeit" in Auftrag, Kundeneinsatz, Fahrt
     ├── zeit_projekt/              # Modul "Zeit Projekt"
     │   ├── billing.py                 # Zeitblatt anlegen/stornieren, Positionen im Auftrag
     │   ├── billing_status.py          # "% berechnet" des Auftrags inkl. Zeitbuchungen
+    │   ├── zeitbudget.py              # verbrauchte gegen geplante Stunden eines Auftrags (Farbe, Prozent)
     │   ├── report/abrechnungsansicht/         # Skriptbericht: offene Zeiten/Kilometer je Kunde, Auftrag, Projekt
     │   ├── report/auftrags__und_projektansicht/  # Skriptbericht: Projekte mit Aufträgen als Baum
     │   ├── sales_invoice.py           # Zeitimport, Kilometer, Prüfung custom_fahrt
