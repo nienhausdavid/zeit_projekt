@@ -224,6 +224,44 @@ class TestFahrt(IntegrationTestCase):
 				}
 			).insert()
 
+	def test_auftrag_und_projekt_werden_serverseitig_geprueft(self):
+		from zeit_projekt.zeit_projekt.tests.utils import make_project
+
+		fremd = make_sales_order(self.ctx.company, customer="ZP Kunde B")
+		for feld, wert in (("sales_order", fremd.name), ("project", make_project("ZP Kunde B").name)):
+			f = frappe.get_doc(
+				{
+					"doctype": "Fahrt",
+					"customer": KUNDE_A,
+					"date": "2031-03-12",
+					"vehicle": self.vehicle,
+					"start_time": "2031-03-12 08:00:00",
+					feld: wert,
+				}
+			)
+			with expect_error(self):
+				f.insert()
+		with expect_error(self):
+			frappe.get_doc(
+				{
+					"doctype": "Fahrt",
+					"customer": KUNDE_A,
+					"date": "2031-03-12",
+					"vehicle": self.vehicle,
+					"start_time": "2031-03-12 08:00:00",
+					"project": make_project(KUNDE_A, status="Cancelled").name,
+				}
+			).insert()
+
+	def test_abgeschlossener_auftrag_blockiert_das_buchen(self):
+		so = make_sales_order(self.ctx.company)
+		f = self.fahrt("2031-03-13 08:00:00", "2031-03-13 09:00:00", bill_km=0)
+		f.db_set("sales_order", so.name)
+		f.reload()
+		frappe.db.set_value("Sales Order", so.name, "status", "Closed")
+		with expect_error(self):
+			f.submit()
+
 	def test_zeitueberschneidung_klare_meldung(self):
 		self.fahrt("2031-03-16 08:00:00", "2031-03-16 09:00:00").submit()
 		zweite = self.fahrt("2031-03-16 08:30:00", "2031-03-16 09:30:00")

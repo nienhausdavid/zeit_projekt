@@ -4,7 +4,11 @@ from frappe.model.document import Document
 from frappe.utils import cint, flt, get_datetime, time_diff_in_hours
 
 from zeit_projekt.fahrtenbuch.fahrtenbuch import letztes_fahrzeug
-from zeit_projekt.zeit_projekt.billing import check_employee_required
+from zeit_projekt.zeit_projekt.billing import (
+	check_employee_required,
+	check_project,
+	check_sales_order,
+)
 from zeit_projekt.zeit_projekt.pausen import arbeitsabschnitte, pausen_pruefen
 
 
@@ -26,6 +30,8 @@ class Fahrt(Document):
 				frappe.throw(_("Das Ende muss nach dem Beginn liegen."))
 			self.duration_hours = flt(time_diff_in_hours(self.end_time, self.start_time), 2)
 		pausen_pruefen(self)
+		if self.is_new() or any(self.has_value_changed(f) for f in ("sales_order", "project", "customer")):
+			self.pruefe_zuordnung()
 		if self.breaks and self.start_time and self.end_time:
 			# Fahrzeit ohne Pausen (Netto), wie die Arbeitszeit beim Kundeneinsatz
 			self.duration_hours = flt(
@@ -36,6 +42,14 @@ class Fahrt(Document):
 		# bleiben, bis er korrigiert ist - nur das Buchen blockiert (unten).
 		start, end = cint(self.start_odometer), cint(self.end_odometer)
 		self.distance_km = end - start if start and end and end >= start else 0
+
+	def pruefe_zuordnung(self):
+		"""Auftrag und Projekt muessen offen sein und zum Kunden passen - wie beim Kundeneinsatz.
+		Das Formular filtert nur die Auswahl, ueber API oder Import kaeme sonst jeder Auftrag durch."""
+		if self.sales_order:
+			check_sales_order(self.sales_order, self.customer)
+		if self.project:
+			check_project(self.project, self.customer)
 
 	def before_submit(self):
 		"""Was zum Speichern fehlen darf, aber nicht zum Buchen."""
@@ -51,6 +65,8 @@ class Fahrt(Document):
 			frappe.throw(_("Der Kilometerstand am Ende darf nicht kleiner als am Anfang sein."))
 		if not self.customer:
 			frappe.throw(_("Bitte vor dem Buchen einen Kunden wählen."))
+		# Seit dem Speichern kann der Auftrag abgeschlossen worden sein
+		self.pruefe_zuordnung()
 		if not self.activity_type:
 			frappe.throw(_("Bitte vor dem Buchen eine Aktivitätsart für die Fahrzeit wählen."))
 		if not flt(self.duration_hours):
