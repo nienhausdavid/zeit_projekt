@@ -608,12 +608,23 @@ function fetch_odometer_reading(frm, photo_field, odometer_field) {
 	const file_url = frm.doc[photo_field];
 	if (!file_url) return;
 
+	// Dasselbe Foto nicht zweimal schicken (das Feld-Ereignis kann bei Upload, Speichern und
+	// Warteschlange mehrfach feuern - das waeren zwei Anfragen an das Modell und zwei Kosten).
+	frm.__zp_erkennung_foto = frm.__zp_erkennung_foto || {};
+	if (frm.__zp_erkennung_foto[photo_field] === file_url) return;
+	frm.__zp_erkennung_foto[photo_field] = file_url;
+
 	frappe
 		.call({
 			method: 'zeit_projekt.fahrtenbuch.fahrtenbuch.get_odometer_reading',
 			args: { file_url, fieldname: odometer_field },
 		})
+		.catch(() => {
+			frm.__zp_erkennung_foto[photo_field] = null; // Anfrage selbst gescheitert: erneut versuchbar
+			entferne_status(frm, photo_field);
+		})
 		.then((r) => {
+			if (!r) return;
 			const res = r.message || {};
 			if (!res.queued) {
 				entferne_status(frm, photo_field); // Erkennung nicht eingerichtet
