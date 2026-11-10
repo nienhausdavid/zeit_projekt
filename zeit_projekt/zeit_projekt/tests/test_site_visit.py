@@ -196,8 +196,12 @@ class TestSiteVisit(IntegrationTestCase):
 	def test_neuer_auftrag_pauschale_mit_artikel_und_preis(self):
 		frappe.set_user(TECH)
 		# Standard: Dienstleistungsartikel der Aktivitaetsart, Menge 1, Pauschalpreis; Stunden bleiben Budget
-		name = create_sales_order(KUNDE_A, MONTAGE, abrechnungsart="Pauschale", geplante_stunden=16, pauschalpreis=1200)
+		name = create_sales_order(
+			KUNDE_A, MONTAGE, abrechnungsart="Pauschale", geplante_stunden=16, pauschalpreis=1200,
+			pauschalbezeichnung=" Einrichtung <b>Arbeitsplatz</b> ",
+		)
 		so = frappe.get_doc("Sales Order", name)
+		self.assertEqual(so.items[0].description, "Einrichtung &lt;b&gt;Arbeitsplatz&lt;/b&gt;")
 		self.assertEqual([(i.item_code, flt(i.qty), flt(i.rate), flt(i.amount)) for i in so.items], [("ZP-MONTAGE", 1, 1200, 1200)])
 		self.assertEqual(flt(so.custom_geplante_stunden), 16)
 

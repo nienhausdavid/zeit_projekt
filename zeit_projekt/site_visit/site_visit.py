@@ -130,6 +130,7 @@ def create_sales_order(
 	positionen=None,
 	pauschalartikel=None,
 	pauschalpreis=None,
+	pauschalbezeichnung=None,
 ):
 	"""Fuer den "Neuer Auftrag"-Dialog: legt einen Auftrag (Entwurf) an - auch
 	aus einem noch nicht gespeicherten Kundeneinsatz, denn der Auftrag ist dort
@@ -149,6 +150,8 @@ def create_sales_order(
 	Aktivitaetsart) mit Menge 1 und dem pauschalpreis. Ohne Preis gilt der Preislistenpreis des
 	Artikels (fehlt er, steht 0 im Auftrag und der Vertrieb traegt ihn ein). Die Position zaehlt im
 	Abrechnungsstand wie jede andere - die Zeit ist bei Pauschale nicht abrechenbar.
+	pauschalbezeichnung: Freitext fuer die Pauschalposition (steht als Beschreibung im Auftrag und
+	spaeter auf der Rechnung), Standard: Artikelname.
 
 	Nach Aufwand mit geplanten Stunden: die Dienstleistungsposition bekommt diese Stunden als Menge
 	und den Preis des Artikels aus der Preisliste - so zeigt der Auftrag, was eingeplant ist. Die
@@ -193,6 +196,7 @@ def create_sales_order(
 		# gleiche Regeln wie bei den weiteren Positionen
 		_pruefe_positionen([{"item_code": pauschalartikel, "qty": 1}], service_item)
 	artikel = pauschalartikel or service_item
+	bezeichnung = frappe.utils.escape_html((pauschalbezeichnung or "").strip())[:1000]
 	if any(p["item_code"] == artikel for p in weitere):
 		frappe.throw(
 			_("Artikel {0} steht schon als Pauschalposition im Auftrag - bitte nicht noch einmal als weitere Position eintragen.").format(
@@ -233,7 +237,7 @@ def create_sales_order(
 				{
 					"item_code": artikel,
 					"qty": geplante_stunden if mit_stunden else 1,
-					"description": (frappe.db.get_value("Item", artikel, "item_name") or artikel)
+					"description": (bezeichnung or frappe.db.get_value("Item", artikel, "item_name") or artikel)
 					if ist_pauschale
 					else _("Einsatzzeit - Abrechnung nach Zeiterfassung"),
 				},

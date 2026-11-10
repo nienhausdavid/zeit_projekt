@@ -262,7 +262,7 @@ function show_create_sales_order_dialog(frm) {
 					label: __('Activity Type'),
 					reqd: 1,
 					default: frm.doc.activity_type,
-					description: __('Der Dienstleistungsartikel der Aktivitätsart wird die erste Position des Auftrags (bei Pauschale ersetzbar).'),
+					description: __('Der Dienstleistungsartikel der Aktivitätsart wird die erste Position des Auftrags .'),
 				},
 				{
 					fieldname: 'abrechnungsart',
@@ -275,6 +275,7 @@ function show_create_sales_order_dialog(frm) {
 						const pauschale = dialog.get_value('abrechnungsart') === __('Pauschale');
 						dialog.set_df_property('pauschalartikel', 'hidden', pauschale ? 0 : 1);
 						dialog.set_df_property('pauschalpreis', 'hidden', pauschale ? 0 : 1);
+						dialog.set_df_property('pauschalbezeichnung', 'hidden', pauschale ? 0 : 1);
 						dialog.set_df_property(
 							'geplante_stunden',
 							'description',
@@ -285,10 +286,17 @@ function show_create_sales_order_dialog(frm) {
 					},
 				},
 				{
+					fieldname: 'pauschalbezeichnung',
+					fieldtype: 'Small Text',
+					label: __('Bezeichnung der Pauschale'),
+					hidden: 1,
+					description: __('Freitext für die Pauschalposition, z. B. „Einrichtung Arbeitsplatz inkl. Anfahrt“. Leer: Name des Artikels.'),
+				},
+				{
 					fieldname: 'pauschalartikel',
 					fieldtype: 'Link',
 					options: 'Item',
-					label: __('Pauschalartikel'),
+					label: __('Artikel (optional)'),
 					hidden: 1,
 					description: __('Leer lassen für den Dienstleistungsartikel der Aktivitätsart.'),
 					get_query: () => ({ query: `${TECHNICIAN_API}.item_query` }),
@@ -353,6 +361,7 @@ function show_create_sales_order_dialog(frm) {
 						geplante_stunden: values.geplante_stunden || 0,
 						pauschalartikel: values.pauschalartikel || null,
 						pauschalpreis: values.pauschalpreis || 0,
+						pauschalbezeichnung: values.pauschalbezeichnung || null,
 						positionen: (values.positionen || []).filter((p) => p.item_code),
 						project: frm.doc.project || null,
 						company: frm.doc.company || null,

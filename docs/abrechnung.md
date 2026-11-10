@@ -97,7 +97,7 @@ Im Auftrag stehen zwei Felder (auch nach dem Bestätigen änderbar), im Dialog
   aber **nicht einzeln abgerechnet**: das Zeitblatt wird mit nicht abrechenbaren
   Zeilen angelegt, der Zeitimport der Rechnung und die Abrechnungsansicht
   führen sie nicht auf, und die Kilometer stecken im Pauschalpreis. Im Dialog
-  „Neuer Auftrag“ gibt man **Pauschalartikel** und **Pauschalpreis** gleich an
+  „Neuer Auftrag“ gibt man Bezeichnung (Freitext), optional Artikel und **Pauschalpreis** gleich an
   (Menge 1); sonst trägt der Vertrieb den Preis in der Auftragsposition ein.
   Die Einstellung gilt für **ab dann gebuchte** Zeit; schon gebuchte Zeiten
   bleiben, wie sie waren.
