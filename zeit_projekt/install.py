@@ -170,6 +170,7 @@ def after_migrate():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True, update=True)
 	_desk_abgleichen()
 	_auftrag_an_zeitbuchungen_nachtragen()
+	_pauschalartikel_anlegen()
 
 
 def after_install():
@@ -177,7 +178,43 @@ def after_install():
 	_deaktiviere_alte_client_scripts()
 	_site_visit_pdf_on_submit_enable()
 	_desk_abgleichen()
+	_pauschalartikel_anlegen()
 	click.secho("Zeit & Projekt: Felder angelegt.", fg="green")
+
+
+PAUSCHALARTIKEL = "Pauschale"
+
+
+def _pauschalartikel_anlegen():
+	"""Legt den Artikel fuer Pauschalpositionen an (Dienstleistung ohne Lagerfuehrung) und traegt ihn in
+	den Einstellungen ein - nur, wenn dort noch keiner steht. Ein vorhandener Artikel gleichen Namens
+	wird uebernommen, nichts wird ueberschrieben. Scheitert still (Log), damit kein Migrate daran haengt -
+	etwa auf einer Site vor dem Einrichtungsassistenten ohne Artikelgruppen."""
+	try:
+		if frappe.db.get_single_value("Zeit Projekt Einstellungen", "pauschalartikel"):
+			return
+		if not frappe.db.exists("Item", PAUSCHALARTIKEL):
+			gruppe = next(
+				(g for g in ("Dienstleistungen", "Services", "All Item Groups") if frappe.db.exists("Item Group", g)), None
+			)
+			if not gruppe or not frappe.db.exists("UOM", "Nos"):
+				return
+			frappe.get_doc(
+				{
+					"doctype": "Item",
+					"item_code": PAUSCHALARTIKEL,
+					"item_name": PAUSCHALARTIKEL,
+					"item_group": gruppe,
+					"stock_uom": "Nos",
+					"is_stock_item": 0,
+					"is_sales_item": 1,
+					"is_purchase_item": 0,
+					"description": "Pauschalposition im Auftrag (Bezeichnung und Preis stehen in der Position)",
+				}
+			).insert(ignore_permissions=True)
+		frappe.db.set_single_value("Zeit Projekt Einstellungen", "pauschalartikel", PAUSCHALARTIKEL)
+	except Exception:
+		frappe.log_error("Zeit & Projekt: Pauschalartikel konnte nicht angelegt werden")
 
 
 def _auftrag_an_zeitbuchungen_nachtragen():

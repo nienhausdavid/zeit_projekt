@@ -60,7 +60,7 @@ class TestZeitbudget(IntegrationTestCase):
 		self.assertEqual((b["prozent"], b["farbe"], b["rest"]), (112.5, "red", -0.5))
 
 	def test_pauschale_zeit_zaehlt_gegen_den_plan(self):
-		so = create_sales_order(KUNDE_A, MONTAGE, abrechnungsart="Pauschale", geplante_stunden=10)
+		so = create_sales_order(KUNDE_A, abrechnungsart="Pauschale", geplante_stunden=10, pauschalbezeichnung="Test")
 		self.einsatz(so, 4, 2)
 		self.assertEqual(verbrauchte_stunden([so]), {so: 2.0})
 		self.assertEqual(get_zeitbudget(so)["prozent"], 20.0)

@@ -97,8 +97,8 @@ Im Auftrag stehen zwei Felder (auch nach dem Bestätigen änderbar), im Dialog
   aber **nicht einzeln abgerechnet**: das Zeitblatt wird mit nicht abrechenbaren
   Zeilen angelegt, der Zeitimport der Rechnung und die Abrechnungsansicht
   führen sie nicht auf, und die Kilometer stecken im Pauschalpreis. Im Dialog
-  „Neuer Auftrag“ gibt man Bezeichnung (Freitext), optional Artikel und **Pauschalpreis** gleich an
-  (Menge 1); sonst trägt der Vertrieb den Preis in der Auftragsposition ein.
+  „Neuer Auftrag“ gibt man Bezeichnung (Freitext) und **Pauschalpreis** gleich an (Menge 1, Artikel
+  siehe unten); sonst trägt der Vertrieb den Preis in der Auftragsposition ein.
   Die Einstellung gilt für **ab dann gebuchte** Zeit; schon gebuchte Zeiten
   bleiben, wie sie waren.
 - **Geplante Stunden:** optional, die eingeplante Zeit. Bei *Nach Aufwand*
@@ -118,6 +118,27 @@ selbst lesen zu dürfen.
 In der Auftrags- und Projektansicht stehen dazu die Spalten *Abrechnung*,
 *Geplant (h)*, *Verbraucht (h)* und *Verbraucht %* (farbig); Projektzeilen
 bleiben dort leer. Die Berechnung steckt in `zeitbudget.py`.
+
+### Pauschalartikel und Rentabilität
+
+- **Pauschalartikel:** Einstellung *Artikel Pauschale* in „Zeit Projekt
+  Einstellungen“. Die App legt den Artikel „Pauschale“ (Dienstleistung ohne
+  Lagerführung, Einheit Nos) beim Migrieren selbst an und trägt ihn dort ein,
+  sofern noch keiner steht; vorhandene Artikel und Einträge bleiben unberührt.
+  Erlöskonto und Steuer kommen aus den Standardwerten, bei Bedarf im Artikel
+  anpassen. Ohne Eintrag bricht „Neuer Auftrag“ bei Pauschale mit einer
+  Meldung ab.
+- **Rentabilität:** Pauschalbetrag (Positionen mit Pauschalartikel oder einem
+  Dienstleistungsartikel einer Aktivitätsart, ohne Material) je Stunde gegen
+  den **Sollsatz**: Preislistenpreis des Dienstleistungsartikels der gebuchten
+  Aktivitätsarten, nach Stunden gewichtet (ohne Buchungen: Standard-Aktivitätsart
+  aus den Einstellungen). Gerechnet wird mit dem *effektiven* Satz (Betrag ÷
+  gebuchte Stunden), solange Zeit gebucht ist, sonst mit dem *geplanten* (Betrag ÷
+  geplante Stunden). Farbe: **grün** ab Sollsatz, **orange** bis 20 % darunter,
+  **rot** darüber hinaus. Im Auftrag als zweiter Balken („Rentabilität“, nur für
+  Nutzer mit Leserecht am Auftrag – Techniker sehen keine Preise) und in der
+  Auftrags- und Projektansicht als Spalten. Fahrt-, Material- und Lohnkosten sind
+  nicht eingerechnet (Verkaufssatz als Maßstab). Code: `rentabilitaet.py`.
 
 ## Zusatzartikel im Auftrag
 

@@ -21,6 +21,7 @@
   "section_break_abrechnung",
   "activity_type",
   "km_item",
+  "pauschalartikel",
   "rounding_minutes",
   "section_break_projekt",
   "auto_start_timer",
@@ -157,6 +158,13 @@
    "fieldname": "km_item",
    "fieldtype": "Link",
    "label": "Artikel Kilometer",
+   "options": "Item"
+  },
+  {
+   "description": "Artikel der Pauschalposition im Auftrag („Neuer Auftrag“ bei Pauschale). Die App legt ihn beim Migrieren an, wenn er fehlt; Erlöskonto und Steuer bei Bedarf im Artikel anpassen.",
+   "fieldname": "pauschalartikel",
+   "fieldtype": "Link",
+   "label": "Artikel Pauschale",
    "options": "Item"
   },
   {

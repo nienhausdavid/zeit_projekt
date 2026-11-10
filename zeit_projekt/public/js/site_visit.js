@@ -273,33 +273,27 @@ function show_create_sales_order_dialog(frm) {
 					description: __('Nach Aufwand: Zeit und Kilometer werden einzeln abgerechnet. Pauschale: sie werden nur erfasst, abgerechnet wird die Pauschalposition.'),
 					change() {
 						const pauschale = dialog.get_value('abrechnungsart') === __('Pauschale');
-						dialog.set_df_property('pauschalartikel', 'hidden', pauschale ? 0 : 1);
 						dialog.set_df_property('pauschalpreis', 'hidden', pauschale ? 0 : 1);
 						dialog.set_df_property('pauschalbezeichnung', 'hidden', pauschale ? 0 : 1);
+						dialog.set_df_property('pauschalbezeichnung', 'reqd', pauschale ? 1 : 0);
+						// Bei Pauschale bestimmt der Pauschalartikel die Position, nicht die Aktivitätsart
+						dialog.set_df_property('activity_type', 'hidden', pauschale ? 1 : 0);
+						dialog.set_df_property('activity_type', 'reqd', pauschale ? 0 : 1);
 						dialog.set_df_property(
 							'geplante_stunden',
 							'description',
 							pauschale
-								? __('Optional: eingeplante Zeit, nur als Zeitbudget des Auftrags.')
+								? __('Optional: eingeplante Zeit. Sie dient als Zeitbudget und zur Prüfung der Rentabilität der Pauschale.')
 								: __('Optional: eingeplante Zeit. Sie wird als Menge der ersten Position mit dem Preis des Artikels eingetragen; die gebuchte Zeit wird dagegen gerechnet.')
 						);
 					},
 				},
 				{
 					fieldname: 'pauschalbezeichnung',
-					fieldtype: 'Small Text',
+					fieldtype: 'Data',
 					label: __('Bezeichnung der Pauschale'),
 					hidden: 1,
-					description: __('Freitext für die Pauschalposition, z. B. „Einrichtung Arbeitsplatz inkl. Anfahrt“. Leer: Name des Artikels.'),
-				},
-				{
-					fieldname: 'pauschalartikel',
-					fieldtype: 'Link',
-					options: 'Item',
-					label: __('Artikel (optional)'),
-					hidden: 1,
-					description: __('Leer lassen für den Dienstleistungsartikel der Aktivitätsart.'),
-					get_query: () => ({ query: `${TECHNICIAN_API}.item_query` }),
+					description: __('Freitext für die Pauschalposition, z. B. „Einrichtung Arbeitsplatz inkl. Anfahrt“. Er steht in Auftrag und Rechnung.'),
 				},
 				{
 					fieldname: 'pauschalpreis',
@@ -307,13 +301,15 @@ function show_create_sales_order_dialog(frm) {
 					label: __('Pauschalpreis'),
 					hidden: 1,
 					non_negative: 1,
-					description: __('Preis der Pauschalposition. Leer: Preis aus der Preisliste.'),
+					description: __('Preis der Pauschalposition (netto). Leer: der Vertrieb trägt ihn im Auftrag ein.'),
+					change: () => satz_hinweis(dialog),
 				},
 				{
 					fieldname: 'geplante_stunden',
 					fieldtype: 'Float',
 					label: __('Geplante Stunden'),
 					non_negative: 1,
+					change: () => satz_hinweis(dialog),
 					description: __('Optional: eingeplante Zeit. Sie wird als Menge der ersten Position mit dem Preis des Artikels eingetragen; die gebuchte Zeit wird dagegen gerechnet.'),
 				},
 				{ fieldtype: 'Section Break', label: __('Weitere Positionen') },
@@ -359,7 +355,6 @@ function show_create_sales_order_dialog(frm) {
 						// Der Server kennt nur die deutschen Werte; __() liefert in anderen Sprachen die Uebersetzung
 						abrechnungsart: values.abrechnungsart === __('Pauschale') ? 'Pauschale' : 'Nach Aufwand',
 						geplante_stunden: values.geplante_stunden || 0,
-						pauschalartikel: values.pauschalartikel || null,
 						pauschalpreis: values.pauschalpreis || 0,
 						pauschalbezeichnung: values.pauschalbezeichnung || null,
 						positionen: (values.positionen || []).filter((p) => p.item_code),
@@ -384,6 +379,19 @@ function show_create_sales_order_dialog(frm) {
 		});
 		dialog.show();
 	});
+}
+
+// Pauschale: was der Preis je geplanter Stunde ergibt - so sieht man schon beim Anlegen, ob die
+// Pauschale auskömmlich kalkuliert ist.
+function satz_hinweis(dialog) {
+	const preis = flt(dialog.get_value('pauschalpreis'));
+	const stunden = flt(dialog.get_value('geplante_stunden'));
+	const basis = __('Preis der Pauschalposition (netto). Leer: der Vertrieb trägt ihn im Auftrag ein.');
+	const hinweis =
+		preis > 0 && stunden > 0
+			? basis + ' ' + __('Entspricht {0} je geplanter Stunde.', [format_currency(preis / stunden)])
+			: basis;
+	dialog.set_df_property('pauschalpreis', 'description', hinweis);
 }
 
 // Ersatz fuer fetch_from bei Artikelname/Einheit (s. customer() oben).
