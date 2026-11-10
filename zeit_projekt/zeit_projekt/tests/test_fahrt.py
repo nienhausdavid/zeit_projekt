@@ -382,3 +382,34 @@ class TestFahrt(IntegrationTestCase):
 			self.assertEqual(self._meldungen(lang), [])
 		finally:
 			self._einstellung("reminders_enabled", 1)
+
+	def test_serverfelder_lassen_sich_nicht_von_aussen_setzen(self):
+		fremd = frappe.get_doc(
+			{"doctype": "Timesheet", "employee": self.ctx.employee, "company": self.ctx.company, "customer": KUNDE_A,
+			 "time_logs": [{"activity_type": FAHRZEIT, "from_time": "2031-03-30 08:00:00", "to_time": "2031-03-30 09:00:00"}]}
+		).insert()
+
+		rechnung = frappe.get_doc(
+			{"doctype": "Sales Invoice", "customer": KUNDE_A, "company": self.ctx.company, "items": [{"item_code": "ZP-KM", "qty": 1}]}
+		).insert()
+
+		# neuer Entwurf: vorbelegte Felder werden geleert
+		f = self.fahrt(start="2031-03-31 08:00:00", end="2031-03-31 09:00:00")
+		f.timesheet, f.km_sales_invoice = fremd.name, rechnung.name
+		f.save()
+		f.reload()
+		self.assertFalse(f.timesheet or f.km_sales_invoice)
+
+		# gebucht: Zeitblatt kommt von der App; nach dem Buchen laesst sich die Rechnung nicht mehr loesen
+		f.submit()
+		eigenes = f.timesheet
+		self.assertTrue(eigenes)
+		f.km_sales_invoice = rechnung.name
+		with expect_error(self):
+			f.save()
+		f.reload()
+		f.km_sales_invoice = None
+		f.timesheet = fremd.name
+		with expect_error(self):
+			f.save()
+		self.assertEqual(frappe.db.get_value("Fahrt", f.name, "timesheet"), eigenes)

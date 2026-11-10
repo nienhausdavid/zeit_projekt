@@ -139,9 +139,47 @@ def _open_kilometers(customer, project, from_time, to_time, sales_order=None):
 	return fahrten
 
 
+def pruefe_zeitbuchungen(doc):
+	"""Position und Zeitblatt-Zeile des Zeitimports gehoeren zusammen.
+
+	ERPNext markiert eine Zeit als abgerechnet, sobald ihre Zeile in der Zeitblatt-Tabelle der
+	gebuchten Rechnung steht - unabhaengig von den Positionen. Wird nach dem Import nur eine der
+	beiden Seiten geloescht, gilt die Zeit entweder als abgerechnet, ohne dass sie auf der Rechnung
+	steht (Umsatz geht verloren), oder sie steht auf der Rechnung und bleibt trotzdem offen (wird
+	ein zweites Mal importiert). Geprueft wird nur, was der Import selbst markiert hat
+	(custom_zeitbuchung / custom_aus_import) - von Hand oder mit ERPNexts eigenem Knopf angelegte
+	Zeilen bleiben unberuehrt."""
+	zeilen = {z.timesheet_detail: z for z in doc.get("timesheets") or [] if z.get("timesheet_detail")}
+	positionen = {}
+	for item in doc.items:
+		detail = item.get("custom_zeitbuchung")
+		if not detail:
+			continue
+		if detail in positionen:
+			frappe.throw(_("Zeile {0}: Diese Zeitbuchung steht schon in Zeile {1}.").format(item.idx, positionen[detail]))
+		positionen[detail] = item.idx
+		if detail not in zeilen:
+			frappe.throw(
+				_(
+					"Zeile {0}: Die Zeitbuchung fehlt in der Tabelle „Zeitblätter“. Ohne sie bliebe die Zeit nach "
+					"dem Buchen offen und würde erneut importiert. Bitte die Position löschen oder die Zeiten neu importieren."
+				).format(item.idx)
+			)
+	for detail, zeile in zeilen.items():
+		if zeile.get("custom_aus_import") and detail not in positionen:
+			frappe.throw(
+				_(
+					"Zeitblatt {0} (Zeile {1}): Zu dieser Zeit gibt es keine Rechnungsposition mehr. Nach dem Buchen "
+					"gälte sie als abgerechnet, ohne auf der Rechnung zu stehen. Bitte die Zeile in der Tabelle "
+					"„Zeitblätter“ löschen oder die Zeiten neu importieren."
+				).format(zeile.time_sheet, zeile.idx)
+			)
+
+
 def validate(doc, method=None):
 	"""Jede Fahrt darf nur einmal abgerechnet werden und muss zum Kunden der
-	Rechnung gehoeren."""
+	Rechnung gehoeren; Zeitimport-Positionen und Zeitblatt-Zeilen muessen zusammenpassen."""
+	pruefe_zeitbuchungen(doc)
 	gesehen = set()
 	for item in doc.items:
 		if not item.get("custom_fahrt"):

@@ -147,6 +147,45 @@ class TestSiteVisit(IntegrationTestCase):
 		sv.cancel()
 		self.assertEqual([z.item_code for z in sales_order_rows(name)], ["ZP-MONTAGE"])
 
+	def test_serverfelder_lassen_sich_nicht_von_aussen_setzen(self):
+		so = make_sales_order(self.ctx.company)
+		fremd = frappe.get_doc(
+			{"doctype": "Timesheet", "employee": self.ctx.employee, "company": self.ctx.company, "customer": KUNDE_A,
+			 "time_logs": [{"activity_type": MONTAGE, "from_time": "2031-04-28 08:00:00", "to_time": "2031-04-28 09:00:00"}]}
+		).insert()
+		sv = self.site_visit(
+			28, so.name, [{"item_code": "ZP-ADAPTER", "qty": 2, "added_to_order": 1, "sales_order_item": "fremd"}]
+		)
+		sv.timesheet = fremd.name
+		sv.save()
+		sv.reload()
+		self.assertFalse(sv.timesheet)
+		self.assertEqual((sv.extra_items[0].added_to_order, sv.extra_items[0].sales_order_item), (0, None))
+
+		# bestehender Entwurf: Merker aus der Anfrage werden ignoriert, das Material kommt trotzdem in den Auftrag
+		sv.extra_items[0].added_to_order = 1
+		sv.save()
+		sv.submit()
+		self.assertEqual(sales_order_rows(so.name)[-1].item_code, "ZP-ADAPTER")
+		self.assertTrue(frappe.db.get_value("Timesheet", sv.timesheet, "docstatus") == 1 and sv.timesheet != fremd.name)
+
+	def test_druckformat_escaped_freitext(self):
+		so = make_sales_order(self.ctx.company)
+		sv = self.site_visit(27, so.name)
+		sv.description = "<script>alert(1)</script> & Co"
+		sv.signee_name = '"><img src=x onerror=alert(2)>'
+		sv.append("breaks", {"from_time": "2031-04-27 10:30:00", "to_time": "2031-04-27 10:45:00", "reason": "Pause", "note": "<b>x</b>"})
+		sv.save()
+		# Frappe entfernt Skripte beim Speichern selbst; geprueft wird, dass der Rest nicht als HTML ausgegeben wird
+		sv.description = "<i>kursiv</i> & Co"
+		html = frappe.render_template(
+			frappe.db.get_value("Print Format", "Site Visit Report", "html"), {"doc": sv, "_": frappe._}
+		)
+		self.assertNotIn("<i>kursiv</i>", html)
+		self.assertIn("&lt;i&gt;kursiv&lt;/i&gt; &amp; Co", html)
+		self.assertNotIn("<b>x</b>", html)
+		self.assertNotIn("<img src=x", html)
+
 	def test_neuer_auftrag_geplante_stunden_werden_menge_mit_preis(self):
 		frappe.set_user(TECH)
 		name = create_sales_order(KUNDE_A, MONTAGE, geplante_stunden=16)
