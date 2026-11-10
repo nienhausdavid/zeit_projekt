@@ -128,6 +128,8 @@ def create_sales_order(
 	abrechnungsart=None,
 	geplante_stunden=None,
 	positionen=None,
+	pauschalartikel=None,
+	pauschalpreis=None,
 ):
 	"""Fuer den "Neuer Auftrag"-Dialog: legt einen Auftrag (Entwurf) an - auch
 	aus einem noch nicht gespeicherten Kundeneinsatz, denn der Auftrag ist dort
@@ -140,8 +142,13 @@ def create_sales_order(
 	Einsatzes dazu (billing.add_rows_to_sales_order).
 
 	Die Kommissionsnummer landet in po_no. abrechnungsart: "Nach Aufwand" (Standard) oder "Pauschale"
-	(Zeit und Kilometer werden nicht einzeln abgerechnet - den Pauschalpreis traegt der Vertrieb in
-	der Position ein); geplante_stunden: optional, das Zeitbudget des Auftrags.
+	(Zeit und Kilometer werden nicht einzeln abgerechnet); geplante_stunden: optional, das
+	Zeitbudget des Auftrags.
+
+	Pauschale: die erste Position ist der pauschalartikel (Standard: Dienstleistungsartikel der
+	Aktivitaetsart) mit Menge 1 und dem pauschalpreis. Ohne Preis gilt der Preislistenpreis des
+	Artikels (fehlt er, steht 0 im Auftrag und der Vertrieb traegt ihn ein). Die Position zaehlt im
+	Abrechnungsstand wie jede andere - die Zeit ist bei Pauschale nicht abrechenbar.
 
 	Nach Aufwand mit geplanten Stunden: die Dienstleistungsposition bekommt diese Stunden als Menge
 	und den Preis des Artikels aus der Preisliste - so zeigt der Auftrag, was eingeplant ist. Die
@@ -177,6 +184,21 @@ def create_sales_order(
 		)
 
 	weitere = _pruefe_positionen(positionen, service_item)
+	pauschalpreis = flt(pauschalpreis)
+	if pauschalpreis < 0:
+		frappe.throw(_("Der Pauschalpreis darf nicht negativ sein."))
+	ist_pauschale = abrechnungsart == ABRECHNUNG_PAUSCHALE
+	pauschalartikel = (pauschalartikel or "").strip() if ist_pauschale else ""
+	if pauschalartikel and pauschalartikel != service_item:
+		# gleiche Regeln wie bei den weiteren Positionen
+		_pruefe_positionen([{"item_code": pauschalartikel, "qty": 1}], service_item)
+	artikel = pauschalartikel or service_item
+	if any(p["item_code"] == artikel for p in weitere):
+		frappe.throw(
+			_("Artikel {0} steht schon als Pauschalposition im Auftrag - bitte nicht noch einmal als weitere Position eintragen.").format(
+				frappe.bold(artikel)
+			)
+		)
 
 	quelle = None
 	if site_visit and frappe.db.exists("Site Visit", site_visit):
@@ -209,11 +231,10 @@ def create_sales_order(
 			so,
 			[
 				{
-					"item_code": service_item,
-					# Pauschale: eine Position, den Preis traegt der Vertrieb ein
+					"item_code": artikel,
 					"qty": geplante_stunden if mit_stunden else 1,
-					"description": _("Pauschale - Preis bitte hier eintragen")
-					if abrechnungsart == ABRECHNUNG_PAUSCHALE
+					"description": (frappe.db.get_value("Item", artikel, "item_name") or artikel)
+					if ist_pauschale
 					else _("Einsatzzeit - Abrechnung nach Zeiterfassung"),
 				},
 				*[
@@ -228,7 +249,11 @@ def create_sales_order(
 			throw=False,
 		)
 		zeile, material = zeilen[0], zeilen[1:]
-		if not mit_stunden:
+		if ist_pauschale and pauschalpreis:
+			zeile.update(
+				{"rate": pauschalpreis, "price_list_rate": pauschalpreis, "discount_percentage": 0, "margin_rate_or_amount": 0}
+			)
+		elif not mit_stunden and not ist_pauschale:
 			# Ohne eingeplante Stunden waere ein Preis je Stunde irrefuehrend
 			zeile.update({"rate": 0, "price_list_rate": 0, "discount_percentage": 0, "margin_rate_or_amount": 0})
 		so.append("items", dict(zeile, custom_site_visit=quelle.name if quelle else None))
@@ -240,7 +265,9 @@ def create_sales_order(
 		)
 		so.add_comment("Comment", _("Angelegt aus {0} von {1}.").format(herkunft, nutzer))
 
-	ohne_preis = [z["item_code"] for z in zeilen[(0 if mit_stunden else 1):] if not flt(z["rate"])]
+	ohne_preis = [
+		z["item_code"] for z in zeilen[(0 if (mit_stunden or ist_pauschale) else 1) :] if not flt(z["rate"])
+	]
 	if ohne_preis:
 		frappe.msgprint(
 			_("Für {0} wurde kein Verkaufspreis gefunden - die Position steht mit 0 im Auftrag {1}.").format(

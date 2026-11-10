@@ -36,8 +36,12 @@ storniertes Projekt werden abgelehnt.
     eingeplant ist. Abgerechnet wird weiter die gebuchte Zeit über das
     Zeitblatt; die Position zählt im Abrechnungsstand nicht mit (siehe
     [Abrechnungsstand](abrechnung.md#abrechnungsstand-des-auftrags)).
-  - *Nach Aufwand* ohne Stunden und *Pauschale*: Menge 1, **Preis 0**; bei
-    Pauschale trägt der Vertrieb den Pauschalpreis ein.
+  - *Nach Aufwand* ohne Stunden: Menge 1, **Preis 0**.
+  - *Pauschale*: im Dialog erscheinen **Pauschalartikel** (leer = Dienstleistungsartikel
+    der Aktivitätsart) und **Pauschalpreis**. Die erste Position bekommt Menge 1
+    und diesen Preis; ohne Preis gilt der Preislistenpreis des Artikels (fehlt er,
+    steht 0 im Auftrag). Geplante Stunden sind hier nur das Zeitbudget. Die
+    Pauschalposition zählt im Abrechnungsstand wie jede andere Position.
 
   Im Abschnitt **Weitere Positionen** lassen sich beliebig viele Artikel
   (Material, Leistungen) mit Menge gleich mit anlegen. Der Preis kommt aus der

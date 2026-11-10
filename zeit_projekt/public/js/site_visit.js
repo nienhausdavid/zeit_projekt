@@ -262,7 +262,7 @@ function show_create_sales_order_dialog(frm) {
 					label: __('Activity Type'),
 					reqd: 1,
 					default: frm.doc.activity_type,
-					description: __('Der Dienstleistungsartikel der Aktivitätsart wird die erste Position des Auftrags.'),
+					description: __('Der Dienstleistungsartikel der Aktivitätsart wird die erste Position des Auftrags (bei Pauschale ersetzbar).'),
 				},
 				{
 					fieldname: 'abrechnungsart',
@@ -270,14 +270,43 @@ function show_create_sales_order_dialog(frm) {
 					label: __('Abrechnung'),
 					options: [__('Nach Aufwand'), __('Pauschale')].join('\n'),
 					default: __('Nach Aufwand'),
-					description: __('Nach Aufwand: Zeit und Kilometer werden einzeln abgerechnet. Pauschale: sie werden nur erfasst, den Preis trägt der Vertrieb im Auftrag ein.'),
+					description: __('Nach Aufwand: Zeit und Kilometer werden einzeln abgerechnet. Pauschale: sie werden nur erfasst, abgerechnet wird die Pauschalposition.'),
+					change() {
+						const pauschale = dialog.get_value('abrechnungsart') === __('Pauschale');
+						dialog.set_df_property('pauschalartikel', 'hidden', pauschale ? 0 : 1);
+						dialog.set_df_property('pauschalpreis', 'hidden', pauschale ? 0 : 1);
+						dialog.set_df_property(
+							'geplante_stunden',
+							'description',
+							pauschale
+								? __('Optional: eingeplante Zeit, nur als Zeitbudget des Auftrags.')
+								: __('Optional: eingeplante Zeit. Sie wird als Menge der ersten Position mit dem Preis des Artikels eingetragen; die gebuchte Zeit wird dagegen gerechnet.')
+						);
+					},
+				},
+				{
+					fieldname: 'pauschalartikel',
+					fieldtype: 'Link',
+					options: 'Item',
+					label: __('Pauschalartikel'),
+					hidden: 1,
+					description: __('Leer lassen für den Dienstleistungsartikel der Aktivitätsart.'),
+					get_query: () => ({ query: `${TECHNICIAN_API}.item_query` }),
+				},
+				{
+					fieldname: 'pauschalpreis',
+					fieldtype: 'Currency',
+					label: __('Pauschalpreis'),
+					hidden: 1,
+					non_negative: 1,
+					description: __('Preis der Pauschalposition. Leer: Preis aus der Preisliste.'),
 				},
 				{
 					fieldname: 'geplante_stunden',
 					fieldtype: 'Float',
 					label: __('Geplante Stunden'),
 					non_negative: 1,
-					description: __('Optional: eingeplante Zeit. Nach Aufwand wird sie als Menge der ersten Position mit dem Preis des Artikels eingetragen; die gebuchte Zeit wird dagegen gerechnet.'),
+					description: __('Optional: eingeplante Zeit. Sie wird als Menge der ersten Position mit dem Preis des Artikels eingetragen; die gebuchte Zeit wird dagegen gerechnet.'),
 				},
 				{ fieldtype: 'Section Break', label: __('Weitere Positionen') },
 				{
@@ -322,6 +351,8 @@ function show_create_sales_order_dialog(frm) {
 						// Der Server kennt nur die deutschen Werte; __() liefert in anderen Sprachen die Uebersetzung
 						abrechnungsart: values.abrechnungsart === __('Pauschale') ? 'Pauschale' : 'Nach Aufwand',
 						geplante_stunden: values.geplante_stunden || 0,
+						pauschalartikel: values.pauschalartikel || null,
+						pauschalpreis: values.pauschalpreis || 0,
 						positionen: (values.positionen || []).filter((p) => p.item_code),
 						project: frm.doc.project || null,
 						company: frm.doc.company || null,
