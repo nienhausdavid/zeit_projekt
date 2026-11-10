@@ -37,11 +37,13 @@ storniertes Projekt werden abgelehnt.
     Zeitblatt; die Position zählt im Abrechnungsstand nicht mit (siehe
     [Abrechnungsstand](abrechnung.md#abrechnungsstand-des-auftrags)).
   - *Nach Aufwand* ohne Stunden: Menge 1, **Preis 0**.
-  - *Pauschale*: im Dialog erscheinen **Bezeichnung der Pauschale** (Freitext, steht
-    als Beschreibung im Auftrag und auf der Rechnung), optional ein **Artikel**
-    (leer = Dienstleistungsartikel der Aktivitätsart) und der **Pauschalpreis**. Die erste Position bekommt Menge 1
-    und diesen Preis; ohne Preis gilt der Preislistenpreis des Artikels (fehlt er,
-    steht 0 im Auftrag). Geplante Stunden sind hier nur das Zeitbudget. Die
+  - *Pauschale*: im Dialog entfällt die Aktivitätsart; es erscheinen **Bezeichnung der Pauschale** (Pflicht, Freitext, steht
+    als Beschreibung im Auftrag und auf der Rechnung) und der **Pauschalpreis**
+    (der Dialog zeigt den Preis je geplanter Stunde). Der Artikel ist der
+    **Pauschalartikel** aus den Einstellungen. Die erste Position bekommt Menge 1
+    und diesen Preis; ohne Preis steht 0 im Auftrag und der Vertrieb trägt ihn ein.
+    Geplante Stunden sind hier Zeitbudget und Grundlage der
+    [Rentabilitätsprüfung](abrechnung.md#pauschalartikel-und-rentabilität). Die
     Pauschalposition zählt im Abrechnungsstand wie jede andere Position.
 
   Im Abschnitt **Weitere Positionen** lassen sich beliebig viele Artikel

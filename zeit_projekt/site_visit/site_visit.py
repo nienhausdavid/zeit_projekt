@@ -119,7 +119,7 @@ def get_sales_order_form():
 @frappe.whitelist()
 def create_sales_order(
 	customer,
-	activity_type,
+	activity_type=None,
 	po_no=None,
 	project=None,
 	company=None,
@@ -128,7 +128,6 @@ def create_sales_order(
 	abrechnungsart=None,
 	geplante_stunden=None,
 	positionen=None,
-	pauschalartikel=None,
 	pauschalpreis=None,
 	pauschalbezeichnung=None,
 ):
@@ -146,12 +145,11 @@ def create_sales_order(
 	(Zeit und Kilometer werden nicht einzeln abgerechnet); geplante_stunden: optional, das
 	Zeitbudget des Auftrags.
 
-	Pauschale: die erste Position ist der pauschalartikel (Standard: Dienstleistungsartikel der
-	Aktivitaetsart) mit Menge 1 und dem pauschalpreis. Ohne Preis gilt der Preislistenpreis des
-	Artikels (fehlt er, steht 0 im Auftrag und der Vertrieb traegt ihn ein). Die Position zaehlt im
+	Pauschale: die Aktivitaetsart entfaellt, die Bezeichnung ist Pflicht. Die erste Position ist der Pauschalartikel aus den Einstellungen (die App legt ihn an)
+	mit Menge 1 und dem pauschalpreis. Ohne Preis steht 0 im Auftrag und der Vertrieb traegt ihn ein. Die Position zaehlt im
 	Abrechnungsstand wie jede andere - die Zeit ist bei Pauschale nicht abrechenbar.
 	pauschalbezeichnung: Freitext fuer die Pauschalposition (steht als Beschreibung im Auftrag und
-	spaeter auf der Rechnung), Standard: Artikelname.
+	spaeter auf der Rechnung) - Pflicht bei Pauschale.
 
 	Nach Aufwand mit geplanten Stunden: die Dienstleistungsposition bekommt diese Stunden als Menge
 	und den Preis des Artikels aus der Preisliste - so zeigt der Auftrag, was eingeplant ist. Die
@@ -177,8 +175,12 @@ def create_sales_order(
 					frappe.bold(project), frappe.bold(projekt_kunde), frappe.bold(customer)
 				)
 			)
-	service_item = frappe.db.get_value("Activity Type", activity_type, "custom_dienstleistungsartikel")
-	if not service_item:
+	ist_pauschale = abrechnungsart == ABRECHNUNG_PAUSCHALE
+	# Pauschale: der Artikel ist der Pauschalartikel, die Aktivitaetsart wird nicht gebraucht
+	service_item = (
+		frappe.db.get_value("Activity Type", activity_type, "custom_dienstleistungsartikel") if activity_type else None
+	)
+	if not service_item and not ist_pauschale:
 		frappe.throw(
 			_(
 				"Aktivitätsart {0} hat keinen Dienstleistungsartikel. Er wird als Position des neuen "
@@ -190,13 +192,10 @@ def create_sales_order(
 	pauschalpreis = flt(pauschalpreis)
 	if pauschalpreis < 0:
 		frappe.throw(_("Der Pauschalpreis darf nicht negativ sein."))
-	ist_pauschale = abrechnungsart == ABRECHNUNG_PAUSCHALE
-	pauschalartikel = (pauschalartikel or "").strip() if ist_pauschale else ""
-	if pauschalartikel and pauschalartikel != service_item:
-		# gleiche Regeln wie bei den weiteren Positionen
-		_pruefe_positionen([{"item_code": pauschalartikel, "qty": 1}], service_item)
-	artikel = pauschalartikel or service_item
+	artikel = _pauschalartikel() if ist_pauschale else service_item
 	bezeichnung = frappe.utils.escape_html((pauschalbezeichnung or "").strip())[:1000]
+	if ist_pauschale and not bezeichnung:
+		frappe.throw(_("Bitte eine Bezeichnung für die Pauschale angeben - sie steht als Text in der Position."))
 	if any(p["item_code"] == artikel for p in weitere):
 		frappe.throw(
 			_("Artikel {0} steht schon als Pauschalposition im Auftrag - bitte nicht noch einmal als weitere Position eintragen.").format(
@@ -237,7 +236,7 @@ def create_sales_order(
 				{
 					"item_code": artikel,
 					"qty": geplante_stunden if mit_stunden else 1,
-					"description": (bezeichnung or frappe.db.get_value("Item", artikel, "item_name") or artikel)
+					"description": bezeichnung
 					if ist_pauschale
 					else _("Einsatzzeit - Abrechnung nach Zeiterfassung"),
 				},
@@ -253,11 +252,11 @@ def create_sales_order(
 			throw=False,
 		)
 		zeile, material = zeilen[0], zeilen[1:]
-		if ist_pauschale and pauschalpreis:
-			zeile.update(
-				{"rate": pauschalpreis, "price_list_rate": pauschalpreis, "discount_percentage": 0, "margin_rate_or_amount": 0}
-			)
-		elif not mit_stunden and not ist_pauschale:
+		if ist_pauschale:
+			# Preis nur, wenn angegeben - ERPNext holt sonst Preislisten- oder letzte Preise
+			preis = pauschalpreis or 0
+			zeile.update({"rate": preis, "price_list_rate": preis, "discount_percentage": 0, "margin_rate_or_amount": 0})
+		elif not mit_stunden:
 			# Ohne eingeplante Stunden waere ein Preis je Stunde irrefuehrend
 			zeile.update({"rate": 0, "price_list_rate": 0, "discount_percentage": 0, "margin_rate_or_amount": 0})
 		so.append("items", dict(zeile, custom_site_visit=quelle.name if quelle else None))
@@ -281,6 +280,26 @@ def create_sales_order(
 			alert=True,
 		)
 	return so.name
+
+
+def _pauschalartikel():
+	"""Artikel der Pauschalposition aus den Einstellungen; nicht ueber die Regeln fuer weitere Positionen
+	geprueft (seine Artikelgruppe darf dort ausgeschlossen sein)."""
+	code = frappe.db.get_single_value("Zeit Projekt Einstellungen", "pauschalartikel")
+	if not code:
+		frappe.throw(
+			_("In den Zeit Projekt Einstellungen ist kein Pauschalartikel eingetragen. Bitte dort einen Artikel für Pauschalen auswählen.")
+		)
+	artikel = frappe.db.get_value("Item", code, ["disabled", "is_sales_item", "has_variants"], as_dict=True)
+	if not artikel or artikel.disabled or not artikel.is_sales_item or artikel.has_variants:
+		frappe.throw(_("Der Pauschalartikel {0} existiert nicht oder ist kein Verkaufsartikel.").format(frappe.bold(code)))
+	from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
+		gesperrte_artikel,
+	)
+
+	if code in gesperrte_artikel():
+		frappe.throw(_("Der Pauschalartikel {0} darf kein Dienstleistungsartikel einer Aktivitätsart sein.").format(frappe.bold(code)))
+	return code
 
 
 def _pruefe_positionen(positionen, service_item):

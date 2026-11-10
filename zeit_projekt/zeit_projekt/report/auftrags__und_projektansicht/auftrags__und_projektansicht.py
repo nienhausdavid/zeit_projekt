@@ -17,6 +17,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from zeit_projekt.zeit_projekt.rentabilitaet import rentabilitaet
 from zeit_projekt.zeit_projekt.zeitbudget import budget, verbrauchte_stunden
 
 
@@ -179,6 +180,11 @@ def _projekt_zeile(projekt, kundennamen, summe):
 			verbraucht=None,
 			budget_prozent=None,
 			budget_farbe=None,
+			satz_geplant=None,
+			satz_effektiv=None,
+			sollsatz=None,
+			satz_abweichung=None,
+			satz_farbe=None,
 			indent=0,
 		),
 		summe,
@@ -187,6 +193,7 @@ def _projekt_zeile(projekt, kundennamen, summe):
 
 def _auftrag_zeile(auftrag, kundennamen, zeit, rechnungen, verbraucht, indent):
 	plan = budget(auftrag.custom_geplante_stunden, verbraucht.get(auftrag.name))
+	rent = rentabilitaet(auftrag.name, verbraucht.get(auftrag.name)) or {}
 	return _zeit_felder(
 		frappe._dict(
 			beleg=auftrag.name,
@@ -205,6 +212,11 @@ def _auftrag_zeile(auftrag, kundennamen, zeit, rechnungen, verbraucht, indent):
 			verbraucht=plan["verbraucht"] if plan else None,
 			budget_prozent=plan["prozent"] if plan else None,
 			budget_farbe=plan["farbe"] if plan else None,
+			satz_geplant=rent.get("geplanter_satz"),
+			satz_effektiv=rent.get("effektiver_satz"),
+			sollsatz=rent.get("sollsatz"),
+			satz_abweichung=rent.get("abweichung"),
+			satz_farbe=rent.get("farbe"),
 			indent=indent,
 		),
 		zeit.get(auftrag.name),
@@ -238,4 +250,8 @@ def _spalten():
 		{"fieldname": "geplant", "label": _("Geplant (h)"), "fieldtype": "Float", "precision": 2, "width": 100},
 		{"fieldname": "verbraucht", "label": _("Verbraucht (h)"), "fieldtype": "Float", "precision": 2, "width": 110},
 		{"fieldname": "budget_prozent", "label": _("Verbraucht %"), "fieldtype": "Percent", "precision": 1, "width": 110},
+		{"fieldname": "satz_geplant", "label": _("Pauschale je Std. (geplant)"), "fieldtype": "Currency", "width": 130},
+		{"fieldname": "satz_effektiv", "label": _("Pauschale je Std. (effektiv)"), "fieldtype": "Currency", "width": 130},
+		{"fieldname": "sollsatz", "label": _("Sollsatz je Std."), "fieldtype": "Currency", "width": 110},
+		{"fieldname": "satz_abweichung", "label": _("Abweichung vom Sollsatz %"), "fieldtype": "Percent", "precision": 1, "width": 130},
 	]

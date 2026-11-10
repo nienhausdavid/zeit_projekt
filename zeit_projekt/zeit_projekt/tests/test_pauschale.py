@@ -26,6 +26,8 @@ class TestPauschale(IntegrationTestCase):
 		frappe.set_user("Administrator")
 
 	def auftrag(self, **kwargs):
+		if kwargs.get("abrechnungsart") == "Pauschale":
+			kwargs.setdefault("pauschalbezeichnung", "Pauschale Test")
 		return create_sales_order(KUNDE_A, MONTAGE, **kwargs)
 
 	def einsatz(self, so, tag, von="10:00:00", bis="12:00:00"):

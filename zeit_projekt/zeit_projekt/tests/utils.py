@@ -42,6 +42,7 @@ def ensure_fixtures():
 		("ZP-KM", "Nos", 0.5),
 		("ZP-ADAPTER", "Nos", 15),
 		("ZP-OHNEPREIS", "Nos", 0),
+		("ZP-PAUSCHALE", "Nos", 0),
 	):
 		if not frappe.db.exists("Item", code):
 			frappe.get_doc(
@@ -59,6 +60,9 @@ def ensure_fixtures():
 			frappe.get_doc(
 				{"doctype": "Item Price", "item_code": code, "price_list": "Standard Selling", "price_list_rate": preis}
 			).insert()
+
+	frappe.db.set_single_value("Zeit Projekt Einstellungen", "pauschalartikel", "ZP-PAUSCHALE")
+	frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 
 	for name, rate, item in ((FAHRZEIT, 60, "ZP-FAHRZEIT"), (MONTAGE, 90, "ZP-MONTAGE")):
 		if not frappe.db.exists("Activity Type", name):

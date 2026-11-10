@@ -14,8 +14,9 @@ frappe.query_reports['Auftrags- und Projektansicht'] = {
 	// Verbrauchte Zeit gegen die geplanten Stunden: gruen im Rahmen, orange ab 80 %, rot ueber 100 %
 	formatter(value, row, column, data, default_formatter) {
 		const text = default_formatter(value, row, column, data);
-		if (column.fieldname !== 'budget_prozent' || !data || !data.budget_farbe) return text;
+		const farbe = { budget_prozent: data && data.budget_farbe, satz_abweichung: data && data.satz_farbe }[column.fieldname];
+		if (!farbe) return text;
 		const farben = { green: 'var(--green-600)', orange: 'var(--orange-600)', red: 'var(--red-600)' };
-		return `<span style="color: ${farben[data.budget_farbe]}; font-weight: 600">${text}</span>`;
+		return `<span style="color: ${farben[farbe]}; font-weight: 600">${text}</span>`;
 	},
 };
