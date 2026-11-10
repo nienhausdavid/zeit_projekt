@@ -20,6 +20,11 @@ MONTAGE = "ZP Montage"
 
 def ensure_fixtures():
 	frappe.set_user("Administrator")
+	# Mit developer_mode und webserver_port haengt Frappe ":80" an die Host-URL (get_url). Das Muster, mit
+	# dem der Chrome-PDF-Generator die Startseite abfaengt, passt dann nicht zu der URL, die Chromium
+	# meldet (ohne Port) - jedes PDF (z. B. pdf_on_submit beim Kundeneinsatz) bricht mit CancelledError ab.
+	# "Produktionsmodus" nur fuer diesen Testprozess vortaeuschen, die Site-Config bleibt unberuehrt.
+	frappe.local.conf.restart_supervisor_on_update = 1
 	company = frappe.db.get_single_value("Global Defaults", "default_company")
 	abbr = frappe.db.get_value("Company", company, "abbr")
 	# Das Standardlager liegt seit ERPNext 16.51 an der Firma (frueher in den Lager-Einstellungen)
@@ -181,3 +186,22 @@ def ensure_vehicle(kennzeichen="ZP-TEST-1", stand=5000):
 			}
 		).insert()
 	return kennzeichen
+
+
+_FEHLT = object()
+
+
+def mock_request(testcase, **werte):
+	"""Setzt frappe.local.request auf ein Mini-Objekt und stellt nach dem Test den alten Zustand her -
+	auch "Attribut fehlt": Frappe unterscheidet das von None (z. B. get_url, Routing)."""
+	vorher = getattr(frappe.local, "request", _FEHLT)
+
+	def zurueck():
+		if vorher is _FEHLT:
+			if hasattr(frappe.local, "request"):
+				del frappe.local.request
+		else:
+			frappe.local.request = vorher
+
+	testcase.addCleanup(zurueck)
+	frappe.local.request = frappe._dict(**werte)

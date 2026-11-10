@@ -7,9 +7,14 @@ from zeit_projekt.zeit_projekt.tests.utils import (
 	BUCHHALTUNG,
 	KUNDE_A,
 	KUNDE_B,
+	MONTAGE,
 	TECH,
 	ensure_fixtures,
+	expect_error,
+	make_project,
 	make_sales_order,
+	mock_request,
+	sales_order_rows,
 )
 
 
@@ -40,7 +45,8 @@ class TestTechnikerRechte(IntegrationTestCase):
 		from frappe.client import validate_link_and_fetch
 
 		frappe.set_user(TECH)
-		frappe.local.request = frappe._dict(method="POST")
+		# Mock wird nach dem Test entfernt: sonst scheitern spaetere Tests (z. B. Projekt anlegen -> get_url)
+		mock_request(self, method="POST")
 		r = validate_link_and_fetch("Customer", KUNDE_A, query="zeit_projekt.zeit_projekt.technician.customer_query")
 		self.assertEqual(r.get("name"), KUNDE_A)
 
@@ -54,6 +60,80 @@ class TestTechnikerRechte(IntegrationTestCase):
 		frappe.set_user(BUCHHALTUNG)
 		with self.assertRaises(frappe.PermissionError):
 			self.search(technician.customer_query, "Customer")
+
+	def _benutzerberechtigung(self, user, doctype, wert):
+		up = frappe.get_doc({"doctype": "User Permission", "user": user, "allow": doctype, "for_value": wert}).insert()
+		frappe.clear_cache(user=user)
+
+		def weg():
+			frappe.set_user("Administrator")
+			frappe.delete_doc("User Permission", up.name, force=True)
+			frappe.clear_cache(user=user)
+
+		self.addCleanup(weg)
+
+	def test_benutzerberechtigungen_gelten_in_den_abfragen(self):
+		"""Techniker lesen Kunde/Auftrag ohne eigenes Leserecht (get_all) - Benutzerberechtigungen
+		(hier: nur Kunde A) muessen trotzdem greifen."""
+		from zeit_projekt.zeit_projekt.zeitbudget import get_zeitbudget
+
+		so_a = make_sales_order(self.ctx.company, KUNDE_A)
+		so_b = self.so_b.name
+		frappe.db.set_value("Sales Order", so_b, "custom_geplante_stunden", 8, update_modified=False)
+		projekt = make_project(KUNDE_B)
+		frappe.db.set_value("Sales Order", so_b, "project", projekt.name, update_modified=False)
+		self._benutzerberechtigung(TECH, "Customer", KUNDE_A)
+
+		frappe.set_user(TECH)
+		kunden = [k[0] for k in self.search(technician.customer_query, "Customer", "ZP Kunde")]
+		self.assertIn(KUNDE_A, kunden)
+		self.assertNotIn(KUNDE_B, kunden)
+
+		auftraege = [a[0] for a in self.search(technician.sales_order_query, "Sales Order")]
+		self.assertIn(so_a.name, auftraege)
+		self.assertNotIn(so_b, auftraege)
+
+		self.assertEqual(technician.get_link_details("Sales Order", so_a.name).get("customer"), KUNDE_A)
+		self.assertEqual(technician.get_link_details("Sales Order", so_b), {})
+		self.assertEqual(technician.get_link_details("Customer", KUNDE_B), {})
+		self.assertIsNone(get_zeitbudget(so_b))
+
+		self.assertEqual(technician.get_open_sales_orders(projekt.name), [])
+
+	def test_session_bleibt_nach_as_administrator_erhalten(self):
+		from zeit_projekt.zeit_projekt.billing import as_administrator
+
+		frappe.set_user(TECH)
+		frappe.local.session.sid = "sid-vorher"
+		frappe.local.session.data = frappe._dict(marker=1)
+		frappe.local.form_dict = frappe._dict(parameter="x")
+		with as_administrator():
+			self.assertEqual(frappe.session.user, "Administrator")
+		self.assertEqual(frappe.session.user, TECH)
+		self.assertEqual(frappe.local.session.sid, "sid-vorher")
+		self.assertEqual(frappe.local.session.data.get("marker"), 1)
+		self.assertEqual(frappe.local.form_dict.get("parameter"), "x")
+
+	def test_neuer_auftrag_prueft_firma_und_projekt(self):
+		from zeit_projekt.site_visit.site_visit import create_sales_order
+
+		with expect_error(self):
+			create_sales_order(KUNDE_A, MONTAGE, company="Gibt es nicht")
+		storniert = make_project(KUNDE_A, status="Cancelled")
+		with expect_error(self):
+			create_sales_order(KUNDE_A, MONTAGE, project=storniert.name)
+		with expect_error(self):
+			create_sales_order(KUNDE_A, MONTAGE, project="PROJ-GIBT-ES-NICHT")
+		self.assertTrue(create_sales_order(KUNDE_A, MONTAGE, project=make_project(KUNDE_A).name))
+
+	def test_pauschalbezeichnung_wird_vor_dem_escapen_gekuerzt(self):
+		from zeit_projekt.site_visit.site_visit import create_sales_order
+
+		name = create_sales_order(KUNDE_A, abrechnungsart="Pauschale", pauschalbezeichnung="&" * 200)
+		beschreibung = sales_order_rows(name)[0].description
+		# 140 Zeichen, jedes als vollstaendige Entitaet - keine angeschnittene wie "&am"
+		self.assertEqual(beschreibung.count("&amp;"), 140)
+		self.assertNotIn("&amp;&", beschreibung.replace("&amp;", ""))
 
 	def test_fahrt_vorbelegung(self):
 		frappe.set_user(TECH)

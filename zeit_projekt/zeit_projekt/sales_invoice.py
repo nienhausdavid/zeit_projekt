@@ -184,11 +184,18 @@ def validate(doc, method=None):
 	for item in doc.items:
 		if not item.get("custom_fahrt"):
 			continue
+		# for_update: zwei gleichzeitig gebuchte Rechnungen duerfen dieselbe Fahrt nicht beide abrechnen
 		fahrt = frappe.db.get_value(
-			"Fahrt", item.custom_fahrt, ["docstatus", "customer", "km_sales_invoice"], as_dict=True
+			"Fahrt",
+			item.custom_fahrt,
+			["docstatus", "customer", "km_sales_invoice", "bill_km"],
+			as_dict=True,
+			for_update=doc.get("_action") == "submit",
 		)
 		if not fahrt or fahrt.docstatus != 1:
 			frappe.throw(_("Zeile {0}: Fahrt {1} ist nicht gebucht.").format(item.idx, item.custom_fahrt))
+		if not fahrt.bill_km:
+			frappe.throw(_("Zeile {0}: Für die Fahrt {1} sind keine Kilometer zur Abrechnung vorgesehen.").format(item.idx, item.custom_fahrt))
 		if fahrt.customer != doc.customer:
 			frappe.throw(
 				_("Zeile {0}: Fahrt {1} gehört zum Kunden {2}.").format(item.idx, item.custom_fahrt, fahrt.customer)

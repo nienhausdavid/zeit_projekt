@@ -24,12 +24,10 @@ class Fahrt(Document):
 			# Formular entsteht (z. B. aus dem Projekt). Das Formular schlaegt es selbst vor; hat der
 			# Benutzer das Feld dort geleert, bleibt es leer.
 			self.vehicle = letztes_fahrzeug()
-		"""Ende/Kilometerstand sind erst beim Buchen Pflicht (siehe
-		before_submit) - beim Speichern als Entwurf, z. B. durch den Timer,
-		sind sie oft noch leer. Hier nur rechnen, wenn die Werte vorliegen.
-
-		Leere Int-Felder speichert Frappe als 0 (Spalte NOT NULL DEFAULT 0),
-		"leer" ist hier also immer 0, nie None."""
+		# Ende/Kilometerstand sind erst beim Buchen Pflicht (siehe before_submit) - beim
+		# Speichern als Entwurf, z. B. durch den Timer, sind sie oft noch leer. Hier nur
+		# rechnen, wenn die Werte vorliegen. Leere Int-Felder speichert Frappe als 0
+		# (Spalte NOT NULL DEFAULT 0), "leer" ist hier also immer 0, nie None.
 		if self.start_time and self.end_time:
 			if get_datetime(self.end_time) <= get_datetime(self.start_time):
 				frappe.throw(_("Das Ende muss nach dem Beginn liegen."))

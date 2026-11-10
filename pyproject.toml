@@ -1,7 +1,7 @@
 [project]
 name = "zeit_projekt"
 authors = [
-    { name = "Dein Name", email = "info@example.com" },
+    { name = "David Nienhaus", email = "317006733+nienhausdavid@users.noreply.github.com" },
 ]
 description = "Zeiterfassung als Einzelpositionen, automatische Projektanlage aus dem Auftrag, Fahrtenbuch und Site Visit"
 requires-python = ">=3.10"

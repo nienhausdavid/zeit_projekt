@@ -231,6 +231,19 @@ class TestFahrt(IntegrationTestCase):
 				}
 			).insert()
 
+	def test_kilometer_ohne_haken_nicht_abrechenbar(self):
+		f = self.fahrt("2031-03-22 08:00:00", "2031-03-22 09:00:00", bill_km=0)
+		f.submit()
+		with expect_error(self):
+			frappe.get_doc(
+				{
+					"doctype": "Sales Invoice",
+					"customer": KUNDE_A,
+					"company": self.ctx.company,
+					"items": [{"item_code": "ZP-KM", "qty": 42, "custom_fahrt": f.name}],
+				}
+			).insert()
+
 	def test_auftrag_und_projekt_werden_serverseitig_geprueft(self):
 		from zeit_projekt.zeit_projekt.tests.utils import make_project
 

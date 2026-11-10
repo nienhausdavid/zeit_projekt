@@ -63,6 +63,10 @@ def _darf_sehen(sales_order):
 	Auftrag selbst nicht lesen, sollen aber sehen, wie viel Zeit noch da ist)."""
 	if frappe.has_permission("Sales Order", "read", sales_order):
 		return True
+	if not frappe.db.exists("Sales Order", sales_order) or not frappe.permissions.has_user_permission(
+		frappe.get_doc("Sales Order", sales_order)
+	):
+		return False
 	return any(
 		frappe.has_permission(doctype, ptype) for doctype in ("Fahrt", "Site Visit") for ptype in ("create", "write")
 	)

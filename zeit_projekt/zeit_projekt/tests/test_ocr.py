@@ -432,6 +432,41 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 			["https://opencode.ai/inference/go/openai/v1/models", "https://opencode.ai/inference/go/v1/models"],
 		)
 
+	def test_gespeicherter_schluessel_geht_nur_an_die_gespeicherte_url(self):
+		einstellungen = frappe.get_doc("Zeit Projekt Einstellungen")
+		einstellungen.update({"api_type": "OpenAI-kompatibel", "api_url": "http://gespeichert.example/v1", "api_key": "geheim"})
+		einstellungen.save(ignore_permissions=True)
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
+
+		gesendet = []
+
+		def get(url, headers=None, **kwargs):
+			gesendet.append((url, (headers or {}).get("Authorization")))
+			return self._http(200, {"data": [{"id": "m"}]})
+
+		maskiert = "*" * 8  # so zeigt Frappe einen gespeicherten Schluessel im Formular an
+		with patch("zeit_projekt.fahrtenbuch.ocr.requests.get", side_effect=get):
+			ocr.list_models("http://fremd.example/v1", maskiert, "OpenAI-kompatibel")
+			ocr.list_models("http://gespeichert.example/v1/", maskiert, "OpenAI-kompatibel")
+			ocr.list_models(None, maskiert, "OpenAI-kompatibel")
+			ocr.list_models("http://fremd.example/v1", "eigener", "OpenAI-kompatibel")
+		self.assertEqual(
+			gesendet,
+			[
+				("http://fremd.example/v1/models", None),
+				("http://gespeichert.example/v1/models", "Bearer geheim"),
+				("http://gespeichert.example/v1/models", "Bearer geheim"),
+				("http://fremd.example/v1/models", "Bearer eigener"),
+			],
+		)
+
+	def test_modellliste_nur_http_und_https(self):
+		for url in ("file:///etc/passwd", "ftp://x.example", "gopher://x.example"):
+			with patch("zeit_projekt.fahrtenbuch.ocr.requests.get") as get:
+				with self.assertRaises(frappe.ValidationError):
+					ocr.list_models(url, "k", "OpenAI-kompatibel")
+			get.assert_not_called()
+
 	def test_modellliste_meldet_die_echte_ursache(self):
 		import requests
 
@@ -586,8 +621,12 @@ class TestKilometerstandErkennung(IntegrationTestCase):
 			self.assertFalse(FakeVisionApi.pfade[0].endswith("/openai/v1/chat/completions"), protokoll)
 
 	def test_modellliste_ignoriert_maskierten_schluessel(self):
-		"""Das Formular schickt einen gespeicherten Schluessel nur als Sternchen: dann den echten nehmen."""
-		frappe.get_doc("Zeit Projekt Einstellungen").update({"api_key": "geheim-123"}).save()
+		"""Das Formular schickt einen gespeicherten Schluessel nur als Sternchen: dann den echten nehmen -
+		aber nur, wenn die URL die gespeicherte ist (siehe test_gespeicherter_schluessel_geht_nur_an_...)."""
+		frappe.get_doc("Zeit Projekt Einstellungen").update(
+			{"api_key": "geheim-123", "api_url": "https://api.example.com/v1"}
+		).save()
+		frappe.clear_document_cache("Zeit Projekt Einstellungen", "Zeit Projekt Einstellungen")
 		gesendet = []
 
 		def get(url, headers=None, **kwargs):

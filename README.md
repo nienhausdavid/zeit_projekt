@@ -28,7 +28,7 @@ wie jede andere Auftragsposition geliefert und berechnet wird.
 
 ```bash
 cd ~/frappe-bench
-bench get-app https://github.com/<dein-user>/zeit_projekt.git
+bench get-app https://github.com/nienhausdavid/zeit_projekt.git
 bench --site <deine-site> install-app zeit_projekt
 bench build --app zeit_projekt
 bench --site <deine-site> clear-cache
