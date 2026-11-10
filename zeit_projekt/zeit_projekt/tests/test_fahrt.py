@@ -232,7 +232,7 @@ class TestFahrt(IntegrationTestCase):
 			).insert()
 
 	def test_kilometer_ohne_haken_nicht_abrechenbar(self):
-		f = self.fahrt("2031-03-16 08:00:00", "2031-03-16 09:00:00", bill_km=0)
+		f = self.fahrt("2031-03-22 08:00:00", "2031-03-22 09:00:00", bill_km=0)
 		f.submit()
 		with expect_error(self):
 			frappe.get_doc(
