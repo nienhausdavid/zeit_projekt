@@ -13,12 +13,7 @@ class SiteVisit(Document):
 		check_employee_required(self)
 		if not self.company:
 			self.company = erpnext.get_default_company()
-		if self.is_new() and not self.amended_from:
-			# added_to_order wird mitkopiert, damit eine Berichtigung bereits im
-			# Auftrag stehende Zeilen nicht doppelt uebernimmt - bei einem
-			# duplizierten (neuen) Einsatz muessen sie dagegen neu hinein.
-			for row in self.extra_items:
-				row.added_to_order = 0
+		self.schuetze_serverfelder()
 		self.set_from_links()
 		self.set_link_names()
 		self.validate_extra_item_groups()
@@ -29,6 +24,42 @@ class SiteVisit(Document):
 			if self.to_time
 			else 0
 		)
+
+	def schuetze_serverfelder(self):
+		"""Zeitblatt und die Merker der Zusatzartikel (added_to_order, sales_order_item) setzt nur die
+		App beim Buchen. "Nur lesen" erzwingt Frappe serverseitig nicht: ein vorbelegtes Zeitblatt
+		uebersprange das ganze Buchen (kein Zeitblatt, kein Material im Auftrag), ein gesetzter
+		Merker liesse Material am Auftrag vorbeigehen oder beim Stornieren fremde Positionen entfernen.
+
+		Bestehender Einsatz: die gespeicherten Werte gelten. Neuer Einsatz: leer - ausser bei einer
+		Berichtigung, wo Zeilen aus frueheren App-Staenden, die schon im Auftrag stehen (Merker ohne
+		Auftragsposition), nicht ein zweites Mal hineinsollen."""
+		vorher = self.get_doc_before_save()
+		self.timesheet = vorher.timesheet if vorher else None
+
+		if vorher:
+			alt = {row.name: row for row in vorher.extra_items}
+			for row in self.extra_items:
+				row.added_to_order = alt[row.name].added_to_order if row.name in alt else 0
+				row.sales_order_item = alt[row.name].sales_order_item if row.name in alt else None
+			return
+
+		# Neu: nur bei Berichtigung duerfen alte Zeilen als uebernommen gelten (je Artikel hoechstens so viele)
+		uebernommen = {}
+		if self.amended_from:
+			for artikel in frappe.get_all(
+				"Site Visit Item",
+				filters={"parent": self.amended_from, "added_to_order": 1, "sales_order_item": ["in", ["", None]]},
+				pluck="item_code",
+			):
+				uebernommen[artikel] = uebernommen.get(artikel, 0) + 1
+		for row in self.extra_items:
+			row.sales_order_item = None
+			if uebernommen.get(row.item_code):
+				uebernommen[row.item_code] -= 1
+				row.added_to_order = 1
+			else:
+				row.added_to_order = 0
 
 	def validate_breaks(self):
 		"""Pausen muessen im Einsatzzeitraum liegen und duerfen sich nicht

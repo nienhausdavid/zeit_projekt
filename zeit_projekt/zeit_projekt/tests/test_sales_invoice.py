@@ -171,3 +171,65 @@ class TestZeitimport(IntegrationTestCase):
 
 		self.assertEqual(flt(frappe.db.get_value("Project", projekt.name, "total_billed_amount")), flt(si.net_total))
 		self.assertEqual(get_billable_time_logs(KUNDE_A, project=projekt.name)["rows"], [])
+
+	def rechnung_aus_import(self, loeschen=None):
+		"""Rechnung wie aus dem Zeitimport (mit dessen Markierungen); loeschen: "position" oder "zeile"."""
+		from frappe.utils import flt
+
+		# Jeder Aufruf eigene Tage: die Tests einer Klasse teilen sich eine Transaktion (Zeitueberschneidung)
+		self.__class__.import_tage = getattr(self.__class__, "import_tage", 9) + 2
+		tag = self.__class__.import_tage
+		so = make_sales_order(self.ctx.company)
+		self.einsatz(so.name, tag)
+		self.einsatz(so.name, tag + 1)
+		zeilen = get_billable_time_logs(
+			KUNDE_A, from_time=f"2031-06-{tag:02d} 00:00:00", to_time=f"2031-06-{tag + 1:02d} 23:59:59", sales_order=so.name
+		)["rows"]
+		self.assertEqual(len(zeilen), 2)
+		items = [
+			{"item_code": "ZP-MONTAGE", "qty": flt(z.billing_hours), "description": z.from_time, "custom_zeitbuchung": z.name}
+			for z in zeilen
+		]
+		timesheets = [
+			{"time_sheet": z.time_sheet, "timesheet_detail": z.name, "billing_hours": z.billing_hours, "custom_aus_import": 1}
+			for z in zeilen
+		]
+		if loeschen == "position":
+			items = items[:1]
+		elif loeschen == "zeile":
+			timesheets = timesheets[:1]
+		si = frappe.get_doc(
+			{"doctype": "Sales Invoice", "customer": KUNDE_A, "company": self.ctx.company, "items": items, "timesheets": timesheets}
+		)
+		si.set_missing_values()
+		return si
+
+	def test_position_und_zeitblatt_zeile_muessen_zusammenpassen(self):
+		si = self.rechnung_aus_import()
+		si.insert()
+		si.submit()
+		self.assertEqual(
+			frappe.db.count("Timesheet Detail", {"sales_invoice": si.name}), 2
+		)
+
+	def test_position_geloescht_zeit_wuerde_als_abgerechnet_gelten(self):
+		from zeit_projekt.zeit_projekt.tests.utils import expect_error
+
+		with expect_error(self):
+			self.rechnung_aus_import("position").insert()
+
+	def test_zeitblatt_zeile_geloescht_zeit_bliebe_offen(self):
+		from zeit_projekt.zeit_projekt.tests.utils import expect_error
+
+		with expect_error(self):
+			self.rechnung_aus_import("zeile").insert()
+
+	def test_von_hand_angelegte_zeilen_werden_nicht_geprueft(self):
+		"""Ohne Markierung (ERPNexts eigener Weg) bleibt alles wie bisher."""
+		si = self.rechnung_aus_import()
+		for item in si.items:
+			item.custom_zeitbuchung = None
+		for zeile in si.timesheets:
+			zeile.custom_aus_import = 0
+		si.items = si.items[:1]
+		si.insert()

@@ -67,6 +67,8 @@ der App.
 | Sales Order Item | `custom_site_visit` | Herkunft einer Zusatzartikel-Position |
 | Timesheet Detail | `custom_sales_order` | Auftrag der Zeitbuchung (Filter im Zeitimport) |
 | Sales Invoice Item | `custom_fahrt` | Fahrt einer Kilometer-Position |
+| Sales Invoice Item | `custom_zeitbuchung` | Zeitbuchung (Timesheet Detail), die diese Position abrechnet |
+| Sales Invoice Timesheet | `custom_aus_import` | Zeile stammt aus dem Zeitimport – braucht eine Position |
 
 `after_migrate` legt sie erneut an bzw. aktualisiert sie – neue Felder kommen
 so auch auf bestehenden Sites an.
@@ -127,6 +129,26 @@ die Symbole unter dem App-Namen und fände „Zeit & Projekt" nicht, und das
 Löschen der Seitenleisten schreibt Frappe nur bei `--dry-run` fest. Gelöscht
 wird ohne `on_trash`, das im `developer_mode` sonst auch die JSON-Dateien in
 der App entfernen würde.
+
+### Vom Server geschützte Felder
+
+„Nur lesen“ erzwingt Frappe serverseitig nicht – über die API ließe sich jedes
+solche Feld setzen. Deshalb gelten bei Fahrt und Kundeneinsatz in `validate`
+immer die gespeicherten Werte (bei neuen Belegen: leer) für `timesheet`,
+`km_sales_invoice` und die Merker der Zusatzartikel (`added_to_order`,
+`sales_order_item`); nur bei einer Berichtigung bleiben Zeilen aus früheren
+App-Ständen als „schon im Auftrag“ markiert. `km_sales_invoice` ist nach dem
+Buchen nicht mehr änderbar (die App setzt es per `db.set_value`).
+
+Der Zeitimport markiert Position (`custom_zeitbuchung`) und Zeitblatt-Zeile
+(`custom_aus_import`); `sales_invoice.pruefe_zeitbuchungen` verlangt beim
+Speichern, dass beide zusammenpassen. Sonst gälte eine Zeit nach dem Buchen als
+abgerechnet, ohne auf der Rechnung zu stehen – oder bliebe trotz Rechnung offen
+und würde erneut importiert. Von Hand oder mit ERPNexts eigenem Knopf angelegte
+Zeilen haben keine Markierung und werden nicht geprüft. Der Import legt die
+Zeitblatt-Zeile nur noch zusammen mit ihrer Position an (Zeiten ohne
+Dienstleistungsartikel standen früher in der Tabelle, ohne eine Position zu
+haben).
 
 ## Berechtigungen
 

@@ -102,6 +102,29 @@ CUSTOM_FIELDS = {
 			"description": "Vom Zeitimport gesetzt - die Kilometer dieser Fahrt gelten mit dem Buchen der Rechnung als abgerechnet",
 			"module": MODULE,
 		},
+		{
+			"fieldname": "custom_zeitbuchung",
+			"label": "Zeitbuchung (Import)",
+			"fieldtype": "Data",
+			"insert_after": "custom_fahrt",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "Vom Zeitimport gesetzt - Zeile der Zeitbuchung (Timesheet Detail), die diese Position abrechnet",
+			"module": MODULE,
+		},
+	],
+	"Sales Invoice Timesheet": [
+		{
+			"fieldname": "custom_aus_import",
+			"label": "Aus Zeitimport",
+			"fieldtype": "Check",
+			"insert_after": "timesheet_detail",
+			"read_only": 1,
+			"no_copy": 1,
+			"default": "0",
+			"description": "Vom Zeitimport gesetzt - zu dieser Zeile muss es eine Rechnungsposition geben",
+			"module": MODULE,
+		},
 	],
 }
 

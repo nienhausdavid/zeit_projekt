@@ -17,6 +17,7 @@ FORMULAR_SPEICHERN = "frappe.desk.form.save.savedocs"
 
 class Fahrt(Document):
 	def validate(self):
+		self.schuetze_serverfelder()
 		check_employee_required(self)
 		if self.is_new() and not self.vehicle and frappe.form_dict.get("cmd") != FORMULAR_SPEICHERN:
 			# Standardfahrzeug: das zuletzt vom Benutzer verwendete, wenn die Fahrt nicht ueber das
@@ -46,6 +47,14 @@ class Fahrt(Document):
 		# bleiben, bis er korrigiert ist - nur das Buchen blockiert (unten).
 		start, end = cint(self.start_odometer), cint(self.end_odometer)
 		self.distance_km = end - start if start and end and end >= start else 0
+
+	def schuetze_serverfelder(self):
+		"""Zeitblatt und Rechnung setzt nur die App (before_submit, Rechnung). "Nur lesen" erzwingt
+		Frappe serverseitig nicht: ueber die API liesse sich sonst ein fremdes Zeitblatt eintragen
+		(wird beim Stornieren mitstorniert) oder der Beleg als schon "gebucht" ausgeben."""
+		vorher = self.get_doc_before_save()
+		for feld in ("timesheet", "km_sales_invoice"):
+			self.set(feld, vorher.get(feld) if vorher else None)
 
 	def pruefe_zuordnung(self):
 		"""Auftrag und Projekt muessen offen sein und zum Kunden passen - wie beim Kundeneinsatz.

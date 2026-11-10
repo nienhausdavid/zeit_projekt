@@ -110,21 +110,6 @@
 					}
 				});
 			}
-			zeiten.forEach((t) => {
-				frm.add_child('timesheets', {
-					activity_type: t.activity_type,
-					description: t.description,
-					time_sheet: t.time_sheet,
-					from_time: t.from_time,
-					to_time: t.to_time,
-					billing_hours: t.billing_hours,
-					billing_amount: t.billing_amount,
-					timesheet_detail: t.name,
-					project_name: t.project_name,
-				});
-			});
-			frm.refresh_field('timesheets');
-
 			const ohne_artikel = [];
 			const ohne_preis = [];
 			let quelle_artikel = 0;
@@ -139,7 +124,22 @@
 					ohne_artikel.push(__(t.activity_type || '?'));
 					continue;
 				}
+				// Zeitblatt-Zeile nur zusammen mit ihrer Position: ERPNext markiert die Zeit sonst als
+				// abgerechnet, ohne dass sie auf der Rechnung steht (Prüfung: sales_invoice.pruefe_zeitbuchungen)
+				frm.add_child('timesheets', {
+					activity_type: t.activity_type,
+					description: t.description,
+					time_sheet: t.time_sheet,
+					from_time: t.from_time,
+					to_time: t.to_time,
+					billing_hours: t.billing_hours,
+					billing_amount: t.billing_amount,
+					timesheet_detail: t.name,
+					project_name: t.project_name,
+					custom_aus_import: 1,
+				});
 				const row = frm.add_child('items', {});
+				await frappe.model.set_value(row.doctype, row.name, 'custom_zeitbuchung', t.name);
 				await frappe.model.set_value(row.doctype, row.name, 'item_code', artikel);
 				await frappe.model.set_value(row.doctype, row.name, 'qty', flt(t.billing_hours) || 1);
 				// Projekt der Zeitbuchung: ERPNext fuehrt "abgerechnet" am Projekt
@@ -233,6 +233,7 @@
 				}
 			}
 
+			frm.refresh_field('timesheets');
 			frm.refresh_field('items');
 			if (frm.cscript && frm.cscript.calculate_taxes_and_totals) {
 				frm.cscript.calculate_taxes_and_totals();
