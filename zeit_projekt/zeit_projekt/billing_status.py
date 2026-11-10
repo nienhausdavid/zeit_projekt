@@ -28,6 +28,10 @@ Auftrag."""
 import frappe
 from frappe.utils import flt
 
+from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
+	gesperrte_artikel,
+)
+
 
 def update_sales_orders(sales_orders):
 	for name in sorted({so for so in sales_orders if so}):
@@ -52,11 +56,19 @@ def _update(sales_order):
 	if not zeiten:
 		return
 
-	positionen = frappe.get_all(
-		"Sales Order Item",
-		filters={"parent": sales_order, "parenttype": "Sales Order"},
-		fields=["amount", "billed_amt"],
-	)
+	# Die Dienstleistungsposition aus "Neuer Auftrag" (geplante Stunden x Stundensatz) steht nur
+	# als Hinweis im Auftrag - berechnet wird die Zeit ueber die Zeitbuchungen. Sie zaehlte sonst
+	# doppelt (einmal als Position, einmal als Zeit) und der Stand erreichte nie 100 %.
+	platzhalter = gesperrte_artikel()
+	positionen = [
+		p
+		for p in frappe.get_all(
+			"Sales Order Item",
+			filters={"parent": sales_order, "parenttype": "Sales Order"},
+			fields=["item_code", "amount", "billed_amt"],
+		)
+		if p.item_code not in platzhalter
+	]
 	gesamt = sum(abs(flt(p.amount)) for p in positionen) + sum(flt(z.billing_amount) for z in zeiten)
 	berechnet = sum(min(abs(flt(p.billed_amt)), abs(flt(p.amount))) for p in positionen) + sum(
 		flt(z.billing_amount) for z in zeiten if z.sales_invoice

@@ -18,6 +18,10 @@ from zeit_projekt.zeit_projekt.billing import (
 )
 
 
+# Obergrenze fuer die weiteren Positionen im Dialog "Neuer Auftrag"
+MAX_POSITIONEN = 50
+
+
 def before_submit(doc, method=None):
 	"""Legt ein Timesheet an, bucht es und verknuepft es - im selben Request
 	wie das Buchen des Site Visit selbst. Serverseitig, damit kein zweiter
@@ -123,6 +127,7 @@ def create_sales_order(
 	site_visit=None,
 	abrechnungsart=None,
 	geplante_stunden=None,
+	positionen=None,
 ):
 	"""Fuer den "Neuer Auftrag"-Dialog: legt einen Auftrag (Entwurf) an - auch
 	aus einem noch nicht gespeicherten Kundeneinsatz, denn der Auftrag ist dort
@@ -136,7 +141,15 @@ def create_sales_order(
 
 	Die Kommissionsnummer landet in po_no. abrechnungsart: "Nach Aufwand" (Standard) oder "Pauschale"
 	(Zeit und Kilometer werden nicht einzeln abgerechnet - den Pauschalpreis traegt der Vertrieb in
-	der Position ein); geplante_stunden: optional, das Zeitbudget des Auftrags."""
+	der Position ein); geplante_stunden: optional, das Zeitbudget des Auftrags.
+
+	Nach Aufwand mit geplanten Stunden: die Dienstleistungsposition bekommt diese Stunden als Menge
+	und den Preis des Artikels aus der Preisliste - so zeigt der Auftrag, was eingeplant ist. Die
+	Rechnung entsteht weiter aus den Zeitbuchungen; die Position zaehlt im Abrechnungsstand nicht mit
+	(billing_status.py). Ohne Stunden bleibt es bei Menge 1 und Preis 0.
+
+	positionen: optional weitere Artikel [{"item_code", "qty"}] (JSON-Text oder Liste) - Material
+	u. Ae., mit Preis aus der Preisliste wie die Zusatzartikel des Kundeneinsatzes."""
 	_check_create_access()
 	abrechnungsart = abrechnungsart or ABRECHNUNG_AUFWAND
 	if abrechnungsart not in (ABRECHNUNG_AUFWAND, ABRECHNUNG_PAUSCHALE):
@@ -162,6 +175,8 @@ def create_sales_order(
 				"Auftrags gebraucht - bitte in der Aktivitätsart eintragen."
 			).format(frappe.bold(activity_type))
 		)
+
+	weitere = _pruefe_positionen(positionen, service_item)
 
 	quelle = None
 	if site_visit and frappe.db.exists("Site Visit", site_visit):
@@ -189,28 +204,92 @@ def create_sales_order(
 				"delivery_date": str(max(getdate(date or heute), heute)),
 			}
 		)
-		zeile = price_rows(
+		mit_stunden = abrechnungsart == ABRECHNUNG_AUFWAND and geplante_stunden > 0
+		zeilen = price_rows(
 			so,
 			[
 				{
 					"item_code": service_item,
-					"qty": 1,
+					# Pauschale: eine Position, den Preis traegt der Vertrieb ein
+					"qty": geplante_stunden if mit_stunden else 1,
 					"description": _("Pauschale - Preis bitte hier eintragen")
 					if abrechnungsart == ABRECHNUNG_PAUSCHALE
 					else _("Einsatzzeit - Abrechnung nach Zeiterfassung"),
-				}
+				},
+				*[
+					{
+						"item_code": p["item_code"],
+						"qty": p["qty"],
+						"description": frappe.db.get_value("Item", p["item_code"], "item_name") or p["item_code"],
+					}
+					for p in weitere
+				],
 			],
 			throw=False,
-		)[0]
-		zeile.update({"rate": 0, "price_list_rate": 0, "discount_percentage": 0, "margin_rate_or_amount": 0})
+		)
+		zeile, material = zeilen[0], zeilen[1:]
+		if not mit_stunden:
+			# Ohne eingeplante Stunden waere ein Preis je Stunde irrefuehrend
+			zeile.update({"rate": 0, "price_list_rate": 0, "discount_percentage": 0, "margin_rate_or_amount": 0})
 		so.append("items", dict(zeile, custom_site_visit=quelle.name if quelle else None))
+		for position in material:
+			so.append("items", position)
 		so.insert()
 		herkunft = (
 			frappe.utils.get_link_to_form(quelle.doctype, quelle.name) if quelle else _("einem neuen Kundeneinsatz")
 		)
 		so.add_comment("Comment", _("Angelegt aus {0} von {1}.").format(herkunft, nutzer))
 
+	ohne_preis = [z["item_code"] for z in zeilen[(0 if mit_stunden else 1):] if not flt(z["rate"])]
+	if ohne_preis:
+		frappe.msgprint(
+			_("Für {0} wurde kein Verkaufspreis gefunden - die Position steht mit 0 im Auftrag {1}.").format(
+				", ".join(ohne_preis), so.name
+			),
+			indicator="orange",
+			alert=True,
+		)
 	return so.name
+
+
+def _pruefe_positionen(positionen, service_item):
+	"""Weitere Artikel des neuen Auftrags: gleiche Regeln wie die Zusatzartikel im Kundeneinsatz
+	(verkaeuflich, keine Dienstleistungsartikel der Aktivitaetsarten, keine ausgeschlossenen
+	Gruppen). Gleiche Artikel werden zusammengefasst - ERPNext lehnt sie sonst ab."""
+	from zeit_projekt.zeit_projekt.doctype.zeit_projekt_einstellungen.zeit_projekt_einstellungen import (
+		excluded_item_groups,
+		gesperrte_artikel,
+	)
+
+	if isinstance(positionen, str):
+		positionen = frappe.parse_json(positionen)
+	positionen = [p for p in positionen or [] if p and p.get("item_code")]
+	if len(positionen) > MAX_POSITIONEN:
+		frappe.throw(_("Höchstens {0} weitere Positionen möglich.").format(MAX_POSITIONEN))
+
+	gesperrt, ausgeschlossen = gesperrte_artikel() | {service_item}, excluded_item_groups()
+	menge = {}
+	for p in positionen:
+		code, qty = p["item_code"], flt(p.get("qty"))
+		if qty <= 0:
+			frappe.throw(_("Artikel {0}: Die Menge muss größer als 0 sein.").format(frappe.bold(code)))
+		artikel = frappe.db.get_value("Item", code, ["disabled", "is_sales_item", "has_variants", "item_group"], as_dict=True)
+		if not artikel or artikel.disabled or not artikel.is_sales_item or artikel.has_variants:
+			frappe.throw(_("Artikel {0} existiert nicht oder ist kein Verkaufsartikel.").format(frappe.bold(code)))
+		if code in gesperrt:
+			frappe.throw(
+				_("Artikel {0} ist ein Dienstleistungsartikel und kann nicht als weitere Position gebucht werden.").format(
+					frappe.bold(code)
+				)
+			)
+		if artikel.item_group in ausgeschlossen:
+			frappe.throw(
+				_("Artikel {0} gehört zur Artikelgruppe {1}, die als Zusatzartikel ausgeschlossen ist.").format(
+					frappe.bold(code), frappe.bold(artikel.item_group)
+				)
+			)
+		menge[code] = menge.get(code, 0) + qty
+	return [{"item_code": code, "qty": qty} for code, qty in menge.items()]
 
 
 def _check_create_access():

@@ -100,7 +100,9 @@ Im Auftrag stehen zwei Felder (auch nach dem Bestätigen änderbar), im Dialog
   trägt der Vertrieb in der (zunächst mit 0 angelegten) Auftragsposition ein.
   Die Einstellung gilt für **ab dann gebuchte** Zeit; schon gebuchte Zeiten
   bleiben, wie sie waren.
-- **Geplante Stunden:** optional, die eingeplante Zeit.
+- **Geplante Stunden:** optional, die eingeplante Zeit. Bei *Nach Aufwand*
+  trägt „Neuer Auftrag“ sie zusätzlich als Menge der Dienstleistungsposition
+  ein (mit dem Preis des Artikels), damit der Auftragswert sichtbar ist.
 
 ### Zeitbudget (Anzeige mit Farbe und Prozent)
 
@@ -155,6 +157,12 @@ beim Buchen und Stornieren von Rechnungen, Zeitblättern (auch aus
 Kundeneinsatz und Fahrt) und beim Buchen des Auftrags – auch wenn der Auftrag
 beim Abrechnen noch ein Entwurf war. Aufträge ohne Zeitbuchungen rechnet
 weiter ERPNext allein.
+
+Ausgenommen sind Positionen mit einem Dienstleistungsartikel einer
+Aktivitätsart (und der Kilometer-Artikel): Sie stehen im Auftrag nur als
+Hinweis auf die eingeplante Zeit, die Zeit selbst steht in den Zeitbuchungen
+und würde sonst doppelt zählen. Wer eine solche Position bewusst über eine
+normale Rechnung abrechnet, sieht sie deshalb nicht im Stand.
 
 Den Lieferstatus ändert das nicht: Ein Auftrag nur mit Dienstleistungen
 bleibt in ERPNext „Zu liefern", solange nicht *Lieferschein überspringen*
