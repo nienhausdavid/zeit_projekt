@@ -2,8 +2,8 @@
 
 App `zeit_projekt` für ERPNext v16, entwickelt auf einem Server mit Frappe Manager (fm).
 
-Bench: `<BENCHNAME>` — Site: `<SITENAME>`
-(beim ersten Start bitte ersetzen, z. B. `erpdev` / `erpdev.localhost`)
+Bench: `dev.erp16.nienhaus-it.de` — Site: `dev.erp16.nienhaus-it.de`
+(Frappe Manager, Container `fm__dev_erp16_nienhaus-it_de__frappe`; Bench- und Sitename sind identisch)
 
 Vier Funktionen in drei Modulen (aus den ursprünglich getrennten Apps `zeit_projekt`, `fahrtenbuch` und `site_visit` zu einer App zusammengeführt, siehe README.md "Herkunft"):
 1. (Modul „Zeit Projekt") Knopf in der Ausgangsrechnung, der Zeiterfassungen als einzelne Rechnungspositionen importiert (Artikel aus der Aktivitätsart, Preis aus dem Artikel, Beschreibung und Liefertermin konfigurierbar).
@@ -17,8 +17,8 @@ Details zu Funktionsweise, Feldern und Einstellungen stehen in `README.md` und `
 
 Dieses Verzeichnis ist gleichzeitig `/workspace/frappe-bench/apps/zeit_projekt` im Container. Dateien werden direkt hier bearbeitet. Alles, was bench oder Python im Frappe-Kontext braucht, läuft über:
 
-- Shell-Befehl:  `fm shell <BENCHNAME> -c "<befehl>"`
-- Python/Frappe: `fm shell <BENCHNAME> --bench-console -c "<python>"`
+- Shell-Befehl:  `fm shell dev.erp16.nienhaus-it.de -c "<befehl>"`
+- Python/Frappe: `fm shell dev.erp16.nienhaus-it.de --bench-console -c "<python>"`
 
 Frappe- und ERPNext-Quellcode zum Nachschlagen (nur lesen, nie ändern):
 `../frappe/frappe/` und `../erpnext/erpnext/`
@@ -27,13 +27,13 @@ Frappe- und ERPNext-Quellcode zum Nachschlagen (nur lesen, nie ändern):
 
 | Zweck | Befehl |
 |---|---|
-| Nach JS-Änderung | `fm shell <BENCHNAME> -c "bench build --app zeit_projekt"` |
-| Nach hooks.py/Python-Änderung | `fm shell <BENCHNAME> -c "bench --site <SITENAME> clear-cache && bench restart"` |
-| Nach DocType-Änderung | `fm shell <BENCHNAME> -c "bench --site <SITENAME> migrate"` |
-| App installieren | `fm shell <BENCHNAME> -c "bench --site <SITENAME> install-app zeit_projekt"` |
-| App entfernen | `fm shell <BENCHNAME> -c "bench --site <SITENAME> uninstall-app zeit_projekt --yes"` |
-| Logs | `fm logs <BENCHNAME> --follow` |
-| Tests | `fm shell <BENCHNAME> -c "bench --site <SITENAME> run-tests --app zeit_projekt"` (einmalig vorher `set-config allow_tests true`) |
+| Nach JS-Änderung | `fm shell dev.erp16.nienhaus-it.de -c "bench build --app zeit_projekt"` |
+| Nach hooks.py/Python-Änderung | `fm shell dev.erp16.nienhaus-it.de -c "bench --site dev.erp16.nienhaus-it.de clear-cache && bench restart"` |
+| Nach DocType-Änderung | `fm shell dev.erp16.nienhaus-it.de -c "bench --site dev.erp16.nienhaus-it.de migrate"` |
+| App installieren | `fm shell dev.erp16.nienhaus-it.de -c "bench --site dev.erp16.nienhaus-it.de install-app zeit_projekt"` |
+| App entfernen | `fm shell dev.erp16.nienhaus-it.de -c "bench --site dev.erp16.nienhaus-it.de uninstall-app zeit_projekt --yes"` |
+| Logs | `fm logs dev.erp16.nienhaus-it.de --follow` |
+| Tests | `fm shell dev.erp16.nienhaus-it.de -c "bench --site dev.erp16.nienhaus-it.de run-tests --app zeit_projekt"` (einmalig vorher `set-config allow_tests true`) |
 
 ## Regeln
 
@@ -49,17 +49,17 @@ Frappe- und ERPNext-Quellcode zum Nachschlagen (nur lesen, nie ändern):
 
 ```bash
 # Sind die Felder da?
-fm shell <BENCHNAME> --bench-console -c "print(frappe.get_all('Custom Field', filters={'module':'Zeit Projekt'}, pluck='name'))"
+fm shell dev.erp16.nienhaus-it.de --bench-console -c "print(frappe.get_all('Custom Field', filters={'module':'Zeit Projekt'}, pluck='name'))"
 
 # Ist die App installiert?
-fm shell <BENCHNAME> -c "bench --site <SITENAME> list-apps"
+fm shell dev.erp16.nienhaus-it.de -c "bench --site dev.erp16.nienhaus-it.de list-apps"
 
 # Sind die Einstellungen erreichbar?
-fm shell <BENCHNAME> --bench-console -c "print(frappe.get_doc('Zeit Projekt Einstellungen').as_dict())"
+fm shell dev.erp16.nienhaus-it.de --bench-console -c "print(frappe.get_doc('Zeit Projekt Einstellungen').as_dict())"
 
 # Sind alle drei Module registriert und die neuen Doctypes da?
-fm shell <BENCHNAME> --bench-console -c "print(frappe.get_all('Module Def', filters={'app_name':'zeit_projekt'}, pluck='name'))"
-fm shell <BENCHNAME> --bench-console -c "print(frappe.db.exists('DocType', 'Fahrt'), frappe.db.exists('DocType', 'Site Visit'))"
+fm shell dev.erp16.nienhaus-it.de --bench-console -c "print(frappe.get_all('Module Def', filters={'app_name':'zeit_projekt'}, pluck='name'))"
+fm shell dev.erp16.nienhaus-it.de --bench-console -c "print(frappe.db.exists('DocType', 'Fahrt'), frappe.db.exists('DocType', 'Site Visit'))"
 ```
 
 Browserseitiges Verhalten (Knopf, Dialog, Sprung auf den Reiter Verknüpfungen) lässt sich nicht automatisiert prüfen — dafür eine kurze Klickliste vorschlagen und das Ergebnis vom Nutzer zurückmelden lassen.

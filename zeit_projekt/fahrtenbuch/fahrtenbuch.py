@@ -2,6 +2,7 @@ import math
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from frappe.utils import cint, flt, format_date, get_datetime
 
 from zeit_projekt.zeit_projekt.billing import cancel_timesheet, create_timesheet
@@ -129,7 +130,9 @@ def get_letztes_fahrzeug():
 	return letztes_fahrzeug()
 
 
+# Jeder Aufruf loest mehrere Anfragen an die externe API aus - je Benutzer begrenzen
 @frappe.whitelist()
+@rate_limit(limit=30, seconds=3600, ip_based=False, user_based=True)
 def get_odometer_reading(file_url, fieldname):
 	"""Fuer den Foto-Upload im Formular: stoesst die Kilometerstand-Erkennung
 	per Vision-Modell (siehe ocr.py) als Hintergrund-Job an - die Anfrage kann

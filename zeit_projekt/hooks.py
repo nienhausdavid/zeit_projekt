@@ -1,9 +1,9 @@
 app_name = "zeit_projekt"
 app_title = "Zeit & Projekt"
-app_publisher = "Dein Name"
+app_publisher = "David Nienhaus"
 app_description = "Zeiterfassung als Einzelpositionen, automatische Projektanlage aus dem Auftrag, Fahrtenbuch und Site Visit"
-app_email = "info@example.com"
-app_license = "mit"
+app_email = "317006733+nienhausdavid@users.noreply.github.com"
+app_license = "MIT"
 
 required_apps = ["frappe/erpnext"]
 

@@ -214,7 +214,10 @@ def list_models(
 	gespeichertes Feld direkt getestet werden kann. Ohne Angabe wird der
 	bereits gespeicherte Stand aus den Einstellungen verwendet."""
 	settings = frappe.get_cached_doc("Zeit Projekt Einstellungen")
+	fremde_url = bool(api_url) and api_url.rstrip("/") != (settings.api_url or "").rstrip("/")
 	api_url = api_url or settings.api_url
+	if api_url and not api_url.lower().startswith(("http://", "https://")):
+		frappe.throw(_("Die API-URL muss mit http:// oder https:// beginnen."))
 	if not api_url and (api_type or settings.api_type) != API_TYP_OPENCODE:
 		frappe.throw(_("Bitte zuerst eine API-URL eintragen."))
 	typ = api_type or settings.api_type
@@ -224,7 +227,8 @@ def list_models(
 	headers = _opencode_headers() if opencode else {}
 	if api_key and set(api_key) == {"*"}:
 		api_key = None  # so zeigt Frappe einen gespeicherten Schluessel an: den echten nehmen
-	key = api_key or settings.get_password("api_key", raise_exception=False)
+	# Der gespeicherte Schluessel geht nur an die gespeicherte URL - nie an eine eben eingetippte andere
+	key = api_key or (None if fremde_url else settings.get_password("api_key", raise_exception=False))
 	if key:
 		headers["Authorization"] = f"Bearer {key}"
 
