@@ -290,7 +290,7 @@ function show_create_sales_order_dialog(frm) {
 				},
 				{
 					fieldname: 'pauschalbezeichnung',
-					fieldtype: 'Small Text',
+					fieldtype: 'Data',
 					label: __('Bezeichnung der Pauschale'),
 					hidden: 1,
 					description: __('Freitext für die Pauschalposition, z. B. „Einrichtung Arbeitsplatz inkl. Anfahrt“. Er steht in Auftrag und Rechnung.'),

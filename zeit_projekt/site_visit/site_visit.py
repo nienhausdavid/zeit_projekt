@@ -193,7 +193,7 @@ def create_sales_order(
 	if pauschalpreis < 0:
 		frappe.throw(_("Der Pauschalpreis darf nicht negativ sein."))
 	artikel = _pauschalartikel() if ist_pauschale else service_item
-	bezeichnung = frappe.utils.escape_html((pauschalbezeichnung or "").strip())[:1000]
+	bezeichnung = frappe.utils.escape_html((pauschalbezeichnung or "").strip())[:140]
 	if ist_pauschale and not bezeichnung:
 		frappe.throw(_("Bitte eine Bezeichnung für die Pauschale angeben - sie steht als Text in der Position."))
 	if any(p["item_code"] == artikel for p in weitere):
