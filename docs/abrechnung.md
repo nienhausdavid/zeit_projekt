@@ -96,8 +96,9 @@ Im Auftrag stehen zwei Felder (auch nach dem Bestätigen änderbar), im Dialog
   *Pauschale*. Bei Pauschale werden Zeit und Fahrt-Kilometer weiter erfasst,
   aber **nicht einzeln abgerechnet**: das Zeitblatt wird mit nicht abrechenbaren
   Zeilen angelegt, der Zeitimport der Rechnung und die Abrechnungsansicht
-  führen sie nicht auf, und die Kilometer stecken im Pauschalpreis. Den Preis
-  trägt der Vertrieb in der (zunächst mit 0 angelegten) Auftragsposition ein.
+  führen sie nicht auf, und die Kilometer stecken im Pauschalpreis. Im Dialog
+  „Neuer Auftrag“ gibt man Bezeichnung (Freitext), optional Artikel und **Pauschalpreis** gleich an
+  (Menge 1); sonst trägt der Vertrieb den Preis in der Auftragsposition ein.
   Die Einstellung gilt für **ab dann gebuchte** Zeit; schon gebuchte Zeiten
   bleiben, wie sie waren.
 - **Geplante Stunden:** optional, die eingeplante Zeit. Bei *Nach Aufwand*

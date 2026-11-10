@@ -193,12 +193,45 @@ class TestSiteVisit(IntegrationTestCase):
 		self.assertEqual([(i.item_code, flt(i.qty), flt(i.rate), flt(i.amount)) for i in so.items], [("ZP-MONTAGE", 16, 95, 1520)])
 		self.assertEqual(flt(so.custom_geplante_stunden), 16)
 
-	def test_neuer_auftrag_pauschale_bleibt_eine_position_ohne_preis(self):
+	def test_neuer_auftrag_pauschale_mit_artikel_und_preis(self):
 		frappe.set_user(TECH)
-		name = create_sales_order(KUNDE_A, MONTAGE, abrechnungsart="Pauschale", geplante_stunden=16)
+		# Standard: Dienstleistungsartikel der Aktivitaetsart, Menge 1, Pauschalpreis; Stunden bleiben Budget
+		name = create_sales_order(
+			KUNDE_A, MONTAGE, abrechnungsart="Pauschale", geplante_stunden=16, pauschalpreis=1200,
+			pauschalbezeichnung=" Einrichtung <b>Arbeitsplatz</b> ",
+		)
 		so = frappe.get_doc("Sales Order", name)
-		self.assertEqual([(i.item_code, flt(i.qty), flt(i.rate)) for i in so.items], [("ZP-MONTAGE", 1, 0)])
+		self.assertEqual(so.items[0].description, "Einrichtung &lt;b&gt;Arbeitsplatz&lt;/b&gt;")
+		self.assertEqual([(i.item_code, flt(i.qty), flt(i.rate), flt(i.amount)) for i in so.items], [("ZP-MONTAGE", 1, 1200, 1200)])
 		self.assertEqual(flt(so.custom_geplante_stunden), 16)
+
+		# anderer Pauschalartikel plus weitere Position
+		name = create_sales_order(
+			KUNDE_A, MONTAGE, abrechnungsart="Pauschale", pauschalartikel="ZP-ADAPTER", pauschalpreis="500",
+			positionen=[{"item_code": "ZP-OHNEPREIS", "qty": 2}],
+		)
+		zeilen = [(i.item_code, flt(i.qty), flt(i.rate)) for i in frappe.get_doc("Sales Order", name).items]
+		self.assertEqual(zeilen, [("ZP-ADAPTER", 1, 500), ("ZP-OHNEPREIS", 2, 0)])
+
+	def test_neuer_auftrag_pauschale_ohne_preis_nimmt_preisliste(self):
+		frappe.set_user(TECH)
+		name = create_sales_order(KUNDE_A, MONTAGE, abrechnungsart="Pauschale")
+		so = frappe.get_doc("Sales Order", name)
+		self.assertEqual([(i.item_code, flt(i.qty), flt(i.rate)) for i in so.items], [("ZP-MONTAGE", 1, 95)])
+
+	def test_neuer_auftrag_pauschale_wird_geprueft(self):
+		frappe.set_user(TECH)
+		for kwargs in (
+			{"pauschalpreis": -5},
+			{"pauschalartikel": "ZP-FAHRZEIT"},  # Dienstleistungsartikel einer anderen Aktivitaetsart
+			{"pauschalartikel": "gibt-es-nicht"},
+			{"pauschalartikel": "ZP-ADAPTER", "positionen": [{"item_code": "ZP-ADAPTER", "qty": 1}]},
+		):
+			with expect_error(self):
+				create_sales_order(KUNDE_A, MONTAGE, abrechnungsart="Pauschale", **kwargs)
+		# bei "Nach Aufwand" werden Pauschalfelder ignoriert
+		name = create_sales_order(KUNDE_A, MONTAGE, pauschalartikel="ZP-ADAPTER", pauschalpreis=500)
+		self.assertEqual([(i.item_code, flt(i.rate)) for i in frappe.get_doc("Sales Order", name).items], [("ZP-MONTAGE", 0)])
 
 	def test_neuer_auftrag_mit_mehreren_positionen(self):
 		frappe.set_user(TECH)
