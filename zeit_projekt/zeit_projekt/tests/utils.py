@@ -181,3 +181,22 @@ def ensure_vehicle(kennzeichen="ZP-TEST-1", stand=5000):
 			}
 		).insert()
 	return kennzeichen
+
+
+_FEHLT = object()
+
+
+def mock_request(testcase, **werte):
+	"""Setzt frappe.local.request auf ein Mini-Objekt und stellt nach dem Test den alten Zustand her -
+	auch "Attribut fehlt": Frappe unterscheidet das von None (z. B. get_url, Routing)."""
+	vorher = getattr(frappe.local, "request", _FEHLT)
+
+	def zurueck():
+		if vorher is _FEHLT:
+			if hasattr(frappe.local, "request"):
+				del frappe.local.request
+		else:
+			frappe.local.request = vorher
+
+	testcase.addCleanup(zurueck)
+	frappe.local.request = frappe._dict(**werte)

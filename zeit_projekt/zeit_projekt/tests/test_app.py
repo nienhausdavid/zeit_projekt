@@ -1,6 +1,8 @@
 import frappe
 from frappe.tests import IntegrationTestCase
 
+from zeit_projekt.zeit_projekt.tests.utils import mock_request
+
 
 class TestApp(IntegrationTestCase):
 	"""Installation, Desk-Einbindung, Uebersetzungen, PDF-Einstellung."""
@@ -44,10 +46,9 @@ class TestApp(IntegrationTestCase):
 		from zeit_projekt.zeit_projekt.pdf import chrome_enabled, force_chrome_pdf
 
 		self.assertFalse(chrome_enabled())
-		# Mock nach dem Test entfernen: sonst scheitern spaetere Tests (z. B. Projekt anlegen -> get_url)
-		self.addCleanup(setattr, frappe.local, "request", getattr(frappe.local, "request", None))
+		# Mock wird nach dem Test entfernt: sonst scheitern spaetere Tests (z. B. Projekt anlegen -> get_url)
+		mock_request(self, path="/api/method/frappe.utils.print_format.download_pdf")
 		self.addCleanup(setattr, frappe.local, "form_dict", frappe.local.form_dict)
-		frappe.local.request = frappe._dict(path="/api/method/frappe.utils.print_format.download_pdf")
 		frappe.local.form_dict = frappe._dict()
 		force_chrome_pdf()
 		self.assertIsNone(frappe.local.form_dict.get("pdf_generator"))

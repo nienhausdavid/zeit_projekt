@@ -10,6 +10,7 @@ from zeit_projekt.zeit_projekt.tests.utils import (
 	TECH,
 	ensure_fixtures,
 	make_sales_order,
+	mock_request,
 )
 
 
@@ -40,9 +41,8 @@ class TestTechnikerRechte(IntegrationTestCase):
 		from frappe.client import validate_link_and_fetch
 
 		frappe.set_user(TECH)
-		# Mock nach dem Test entfernen: sonst scheitern spaetere Tests (z. B. Projekt anlegen -> get_url)
-		self.addCleanup(setattr, frappe.local, "request", getattr(frappe.local, "request", None))
-		frappe.local.request = frappe._dict(method="POST")
+		# Mock wird nach dem Test entfernt: sonst scheitern spaetere Tests (z. B. Projekt anlegen -> get_url)
+		mock_request(self, method="POST")
 		r = validate_link_and_fetch("Customer", KUNDE_A, query="zeit_projekt.zeit_projekt.technician.customer_query")
 		self.assertEqual(r.get("name"), KUNDE_A)
 
