@@ -18,15 +18,22 @@ def as_administrator():
 	"""Techniker (Employee) haben i. d. R. keine Rechte auf Auftrag/Artikel -
 	die eigentliche Berechtigungspruefung ist die auf Fahrt bzw. Site Visit.
 
-	frappe.set_user() leert local.form_dict komplett; ohne Sicherung verloere
-	der umgebende Request (z. B. das Buchen selbst) seine Parameter."""
+	frappe.set_user() leert local.form_dict, setzt sid und leert session.data;
+	ohne Sicherung verloere der umgebende Request (z. B. das Buchen selbst)
+	seine Parameter und Sitzungsdaten."""
 	current_user = frappe.session.user
+	# set_user ueberschreibt auch sid und session.data - ohne Sicherung liefe der Rest des
+	# Requests mit sid = Benutzername und leeren Sitzungsdaten weiter.
+	sid_backup = frappe.local.session.sid
+	session_data_backup = frappe.local.session.data
 	form_dict_backup = copy.deepcopy(frappe.local.form_dict)
 	frappe.set_user("Administrator")
 	try:
 		yield
 	finally:
 		frappe.set_user(current_user)
+		frappe.local.session.sid = sid_backup
+		frappe.local.session.data = session_data_backup
 		frappe.local.form_dict = form_dict_backup
 
 

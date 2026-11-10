@@ -92,6 +92,12 @@ def _sync_extra_items_to_sales_order(doc):
 	]
 	new_items = add_rows_to_sales_order(doc.sales_order, doc.customer, rows, source=doc)
 
+	if len(new_items) != len(pending):
+		frappe.throw(
+			_("Die Zusatzartikel konnten nicht vollständig in den Auftrag {0} übernommen werden ({1} von {2}).").format(
+				frappe.bold(doc.sales_order), len(new_items), len(pending)
+			)
+		)
 	for row, so_item in zip(pending, new_items, strict=True):
 		row.added_to_order = 1
 		row.sales_order_item = so_item
@@ -167,14 +173,10 @@ def create_sales_order(
 		frappe.throw(_("Die geplanten Stunden dürfen nicht negativ sein."))
 	if not frappe.db.exists("Customer", {"name": customer, "disabled": 0}):
 		frappe.throw(_("Kunde {0} existiert nicht oder ist gesperrt.").format(frappe.bold(customer)))
+	if company and not frappe.db.exists("Company", company):
+		frappe.throw(_("Firma {0} existiert nicht.").format(frappe.bold(company)))
 	if project:
-		projekt_kunde = frappe.db.get_value("Project", project, "customer")
-		if projekt_kunde and projekt_kunde != customer:
-			frappe.throw(
-				_("Projekt {0} gehört zum Kunden {1}, nicht zu {2}.").format(
-					frappe.bold(project), frappe.bold(projekt_kunde), frappe.bold(customer)
-				)
-			)
+		check_project(project, customer)
 	ist_pauschale = abrechnungsart == ABRECHNUNG_PAUSCHALE
 	# Pauschale: der Artikel ist der Pauschalartikel, die Aktivitaetsart wird nicht gebraucht
 	service_item = (
@@ -193,7 +195,7 @@ def create_sales_order(
 	if pauschalpreis < 0:
 		frappe.throw(_("Der Pauschalpreis darf nicht negativ sein."))
 	artikel = _pauschalartikel() if ist_pauschale else service_item
-	bezeichnung = frappe.utils.escape_html((pauschalbezeichnung or "").strip())[:140]
+	bezeichnung = frappe.utils.escape_html((pauschalbezeichnung or "").strip()[:140])
 	if ist_pauschale and not bezeichnung:
 		frappe.throw(_("Bitte eine Bezeichnung für die Pauschale angeben - sie steht als Text in der Position."))
 	if any(p["item_code"] == artikel for p in weitere):

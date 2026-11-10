@@ -34,6 +34,20 @@ def _check_access():
 	frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
 
 
+def _user_permission_ok(doctype, name):
+	"""Gilt fuer den Beleg keine Benutzerberechtigung dagegen? Die Abfragen hier lesen ohne
+	Leserecht auf den Doctype (Techniker haben keins) und umgingen sonst die
+	Benutzerberechtigungen, z. B. auf Firma oder Kunde."""
+	if not frappe.db.exists(doctype, name):
+		return False
+	return frappe.permissions.has_user_permission(frappe.get_doc(doctype, name))
+
+
+def _nur_erlaubte(doctype, zeilen, name_index=0):
+	"""Zeilen einer Suche, deren Beleg die Benutzerberechtigungen des Nutzers zulassen."""
+	return [z for z in zeilen if _user_permission_ok(doctype, z[name_index] if not isinstance(z, dict) else z["name"])]
+
+
 def _as_dict(filters):
 	if isinstance(filters, dict):
 		return filters
@@ -43,7 +57,7 @@ def _as_dict(filters):
 
 def _search(doctype, txt, fields, filters, start, page_len, search_fields):
 	or_filters = [[doctype, f, "like", f"%{txt}%"] for f in search_fields] if txt else None
-	return frappe.get_all(
+	zeilen = frappe.get_all(
 		doctype,
 		filters=filters,
 		or_filters=or_filters,
@@ -53,6 +67,8 @@ def _search(doctype, txt, fields, filters, start, page_len, search_fields):
 		order_by="modified desc",
 		as_list=True,
 	)
+	# Benutzerberechtigungen gelten auch hier (get_all wendet sie nicht an)
+	return _nur_erlaubte(doctype, zeilen) if doctype in ("Customer", "Sales Order", "Project") else zeilen
 
 
 @frappe.whitelist()
@@ -125,6 +141,12 @@ def get_link_details(doctype, name):
 	fields = LINK_DETAILS.get(doctype)
 	if not fields:
 		frappe.throw(_("Keine Berechtigung."), frappe.PermissionError)
+	if doctype == "Site Visit":
+		# eigene Rechte des Doctypes (Techniker sehen nur ihre Einsaetze)
+		if not frappe.has_permission("Site Visit", "read", name):
+			return {}
+	elif not _user_permission_ok(doctype, name):
+		return {}
 	return frappe.db.get_value(doctype, name, list(fields), as_dict=True) or {}
 
 
@@ -137,12 +159,15 @@ def get_open_sales_orders(project, customer=None):
 	filters = {"project": project, "docstatus": ["<", 2], "status": ["not in", GESCHLOSSENE_STATUS]}
 	if customer:
 		filters["customer"] = customer
-	return frappe.get_all(
+	return _nur_erlaubte(
 		"Sales Order",
-		filters=filters,
-		fields=["name", "po_no", "transaction_date", "customer_name"],
-		order_by="transaction_date desc, creation desc",
-		limit=20,
+		frappe.get_all(
+			"Sales Order",
+			filters=filters,
+			fields=["name", "po_no", "transaction_date", "customer_name"],
+			order_by="transaction_date desc, creation desc",
+			limit=20,
+		),
 	)
 
 
