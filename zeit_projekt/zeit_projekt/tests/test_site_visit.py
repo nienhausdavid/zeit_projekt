@@ -147,6 +147,41 @@ class TestSiteVisit(IntegrationTestCase):
 		sv.cancel()
 		self.assertEqual([z.item_code for z in sales_order_rows(name)], ["ZP-MONTAGE"])
 
+	def test_neuer_auftrag_geplante_stunden_werden_menge_mit_preis(self):
+		frappe.set_user(TECH)
+		name = create_sales_order(KUNDE_A, MONTAGE, geplante_stunden=16)
+		so = frappe.get_doc("Sales Order", name)
+		self.assertEqual([(i.item_code, flt(i.qty), flt(i.rate), flt(i.amount)) for i in so.items], [("ZP-MONTAGE", 16, 95, 1520)])
+		self.assertEqual(flt(so.custom_geplante_stunden), 16)
+
+	def test_neuer_auftrag_pauschale_bleibt_eine_position_ohne_preis(self):
+		frappe.set_user(TECH)
+		name = create_sales_order(KUNDE_A, MONTAGE, abrechnungsart="Pauschale", geplante_stunden=16)
+		so = frappe.get_doc("Sales Order", name)
+		self.assertEqual([(i.item_code, flt(i.qty), flt(i.rate)) for i in so.items], [("ZP-MONTAGE", 1, 0)])
+		self.assertEqual(flt(so.custom_geplante_stunden), 16)
+
+	def test_neuer_auftrag_mit_mehreren_positionen(self):
+		frappe.set_user(TECH)
+		# als JSON-Text, wie ihn der Dialog schickt; gleiche Artikel werden zusammengefasst
+		positionen = frappe.as_json(
+			[{"item_code": "ZP-ADAPTER", "qty": 2}, {"item_code": "ZP-ADAPTER", "qty": 1}, {"item_code": "ZP-OHNEPREIS", "qty": 4}]
+		)
+		name = create_sales_order(KUNDE_A, MONTAGE, geplante_stunden=2, positionen=positionen)
+		zeilen = [(i.item_code, flt(i.qty), flt(i.rate)) for i in frappe.get_doc("Sales Order", name).items]
+		self.assertEqual(zeilen, [("ZP-MONTAGE", 2, 95), ("ZP-ADAPTER", 3, 15), ("ZP-OHNEPREIS", 4, 0)])
+
+	def test_neuer_auftrag_weitere_positionen_werden_geprueft(self):
+		frappe.set_user(TECH)
+		for positionen in (
+			[{"item_code": "ZP-FAHRZEIT", "qty": 1}],  # Dienstleistungsartikel einer Aktivitaetsart
+			[{"item_code": "ZP-MONTAGE", "qty": 1}],  # der Artikel der ersten Position
+			[{"item_code": "ZP-ADAPTER", "qty": 0}],
+			[{"item_code": "gibt-es-nicht", "qty": 1}],
+		):
+			with expect_error(self):
+				create_sales_order(KUNDE_A, MONTAGE, positionen=positionen)
+
 	def test_neuer_auftrag_braucht_dienstleistungsartikel(self):
 		frappe.set_user(TECH)
 		frappe.db.set_value("Activity Type", MONTAGE, "custom_dienstleistungsartikel", None)

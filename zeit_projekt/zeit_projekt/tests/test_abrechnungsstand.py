@@ -100,3 +100,17 @@ class TestAbrechnungsstand(IntegrationTestCase):
 
 		self.rechnung(4)
 		self.assertEqual(self.stand(so.name), (100, "Fully Billed"))
+
+	def test_geplante_stunden_als_position_zaehlen_nicht_doppelt(self):
+		"""Die Position "16 Std. x Stundensatz" aus "Neuer Auftrag" ist nur ein Hinweis -
+		abgerechnet wird die Zeit; der Stand darf durch die Position nicht verfaelscht werden."""
+		so = frappe.get_doc("Sales Order", create_sales_order(KUNDE_A, MONTAGE, geplante_stunden=16))
+		self.assertEqual(flt(so.items[0].amount), 1520)
+		so.submit()
+		self.einsatz(so.name, 5)
+		self.einsatz(so.name, 6)
+
+		self.rechnung(5)
+		self.assertEqual(self.stand(so.name), (50, "Partly Billed"))
+		self.rechnung(6)
+		self.assertEqual(self.stand(so.name), (100, "Fully Billed"))

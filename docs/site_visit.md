@@ -29,10 +29,23 @@ storniertes Projekt werden abgelehnt.
   [Abrechnung – Pauschale und Zeitbudget](abrechnung.md#abrechnung-nach-aufwand-oder-pauschale-geplante-stunden)). Die Kommissionsnummer steht im Auftragsfeld `po_no` (je nach
   Site z. B. „Customer Reference"; ist es dort Pflicht, ist es auch im Dialog
   Pflicht). Der Auftrag entsteht als **Entwurf** – Buchen bleibt Sache des
-  Vertriebs – mit einer Position: dem Dienstleistungsartikel der
-  Aktivitätsart, Menge 1, **Preis 0**. ERPNext verlangt mindestens eine
-  Position; die Zeit selbst wird über das Zeitblatt abgerechnet, so wird
-  nichts doppelt berechnet.
+  Vertriebs. Die erste Position ist der Dienstleistungsartikel der
+  Aktivitätsart:
+  - *Nach Aufwand* **mit geplanten Stunden**: Menge = geplante Stunden, Preis
+    aus der Preisliste (16 Std. → 16 × Stundensatz). Der Auftrag zeigt so, was
+    eingeplant ist. Abgerechnet wird weiter die gebuchte Zeit über das
+    Zeitblatt; die Position zählt im Abrechnungsstand nicht mit (siehe
+    [Abrechnungsstand](abrechnung.md#abrechnungsstand-des-auftrags)).
+  - *Nach Aufwand* ohne Stunden und *Pauschale*: Menge 1, **Preis 0**; bei
+    Pauschale trägt der Vertrieb den Pauschalpreis ein.
+
+  Im Abschnitt **Weitere Positionen** lassen sich beliebig viele Artikel
+  (Material, Leistungen) mit Menge gleich mit anlegen. Der Preis kommt aus der
+  Preisliste; es gelten dieselben Regeln wie bei Zusatzartikeln (nur
+  Verkaufsartikel, keine Dienstleistungsartikel der Aktivitätsarten, keine
+  ausgeschlossenen Artikelgruppen). Gleiche Artikel werden zusammengefasst.
+  Fehlt ein Preis, steht die Position mit 0 im Auftrag und der Dialog meldet
+  es.
 
 ## Buchen
 
